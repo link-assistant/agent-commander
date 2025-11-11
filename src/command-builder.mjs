@@ -49,15 +49,18 @@ export function buildAgentCommand(options) {
  * @returns {string} Base command
  */
 function buildToolCommand(tool, workingDirectory, prompt, systemPrompt) {
-  let command = `cd "${workingDirectory}" && ${tool}`;
+  let toolCommand = tool;
 
   if (prompt) {
-    command += ` --prompt "${escapeQuotes(prompt)}"`;
+    toolCommand += ` --prompt "${escapeQuotes(prompt)}"`;
   }
 
   if (systemPrompt) {
-    command += ` --system-prompt "${escapeQuotes(systemPrompt)}"`;
+    toolCommand += ` --system-prompt "${escapeQuotes(systemPrompt)}"`;
   }
+
+  // Wrap in bash -c to ensure proper handling of cd && command
+  const command = `bash -c "cd ${escapeForBashC(workingDirectory)} && ${escapeForBashC(toolCommand)}"`;
 
   return command;
 }
@@ -134,4 +137,14 @@ export function buildDockerStopCommand(containerName) {
  */
 function escapeQuotes(str) {
   return str.replace(/'/g, "'\\''");
+}
+
+/**
+ * Escape strings for use inside bash -c "..."
+ * @param {string} str - String to escape
+ * @returns {string} Escaped string
+ */
+function escapeForBashC(str) {
+  // Escape backslashes first, then double quotes
+  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`');
 }

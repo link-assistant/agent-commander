@@ -132,9 +132,16 @@ const myAgent = agent({
   systemPrompt: 'You are a helpful assistant',
 });
 
-// Start the agent
-const result = await myAgent.start();
+// Start the agent (non-blocking, returns immediately)
+await myAgent.start();
+
+// Do other work while agent runs...
+
+// Stop the agent and collect output
+const result = await myAgent.stop();
 console.log('Exit code:', result.exitCode);
+console.log('Plain output:', result.output.plain);
+console.log('Parsed output:', result.output.parsed); // JSON messages if supported
 ```
 
 ### With Screen Isolation
@@ -154,7 +161,8 @@ const myAgent = agent({
 await myAgent.start({ detached: true });
 
 // Later, stop the agent
-await myAgent.stop();
+const result = await myAgent.stop();
+console.log('Exit code:', result.exitCode);
 ```
 
 ### With Docker Isolation
@@ -170,11 +178,12 @@ const myAgent = agent({
   containerName: 'my-agent-container',
 });
 
-// Start attached (stream output)
+// Start attached (stream output to console)
 await myAgent.start({ attached: true });
 
-// Stop the container
-await myAgent.stop();
+// Stop the container and get results
+const result = await myAgent.stop();
+console.log('Exit code:', result.exitCode);
 ```
 
 ### Dry Run Mode
@@ -186,9 +195,8 @@ const myAgent = agent({
   prompt: 'Test command',
 });
 
-// Preview the command without executing
-const result = await myAgent.start({ dryRun: true });
-console.log('Command:', result.command);
+// Preview the command without executing (prints to console)
+await myAgent.start({ dryRun: true });
 ```
 
 ## API Reference
@@ -210,23 +218,35 @@ Creates an agent controller.
 
 ### `controller.start(startOptions)`
 
-Starts the agent.
+Starts the agent (non-blocking - returns immediately after starting the process).
 
 **Parameters:**
 - `startOptions.dryRun` (boolean, optional) - Preview command without executing
 - `startOptions.detached` (boolean, optional) - Run in detached mode
 - `startOptions.attached` (boolean, optional) - Stream output (default: true)
 
-**Returns:** Promise resolving to `{ exitCode, stdout, stderr, command }`
+**Returns:** Promise resolving to `void` (or prints command in dry-run mode)
 
 ### `controller.stop(stopOptions)`
 
-Stops the agent (only for screen/docker isolation).
+Stops the agent and collects output.
+
+For `isolation: 'none'`: Waits for process to exit and collects all output.
+For `isolation: 'screen'` or `'docker'`: Sends stop command to the isolated environment.
 
 **Parameters:**
 - `stopOptions.dryRun` (boolean, optional) - Preview command without executing
 
-**Returns:** Promise resolving to `{ exitCode, stdout, stderr, command }`
+**Returns:** Promise resolving to:
+```javascript
+{
+  exitCode: number,
+  output: {
+    plain: string,      // Raw text output (stdout + stderr)
+    parsed: Array|null  // JSON-parsed messages (if tool supports it, e.g., Claude)
+  }
+}
+```
 
 ## Isolation Modes
 

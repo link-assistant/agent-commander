@@ -18,9 +18,10 @@ test('buildAgentCommand - basic no isolation', () => {
     isolation: 'none',
   });
 
-  assert.ok(command.includes('cd "/tmp/test"'));
+  assert.ok(command.includes('bash -c'));
+  assert.ok(command.includes('cd /tmp/test'));
   assert.ok(command.includes('claude'));
-  assert.ok(command.includes('--prompt "Hello"'));
+  assert.ok(command.includes('--prompt \\"Hello\\"'));
 });
 
 test('buildAgentCommand - with system prompt', () => {
@@ -32,8 +33,8 @@ test('buildAgentCommand - with system prompt', () => {
     isolation: 'none',
   });
 
-  assert.ok(command.includes('--prompt "Hello"'));
-  assert.ok(command.includes('--system-prompt "You are helpful"'));
+  assert.ok(command.includes('--prompt \\"Hello\\"'));
+  assert.ok(command.includes('--system-prompt \\"You are helpful\\"'));
 });
 
 test('buildAgentCommand - screen isolation', () => {

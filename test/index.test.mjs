@@ -62,12 +62,11 @@ test('agent - start in dry-run mode', async () => {
 
   const result = await controller.start({ dryRun: true });
 
-  assert.strictEqual(result.exitCode, 0);
-  assert.ok(result.command);
-  assert.ok(result.command.includes('echo'));
+  // start() in dry-run mode returns void, doesn't return result
+  assert.strictEqual(result, undefined);
 });
 
-test('agent - stop throws for no isolation', async () => {
+test('agent - stop throws for no isolation without start', async () => {
   const controller = agent({
     tool: 'claude',
     workingDirectory: '/tmp/test',
@@ -78,7 +77,7 @@ test('agent - stop throws for no isolation', async () => {
     async () => {
       await controller.stop();
     },
-    /Cannot stop agent with no isolation/
+    /Agent not started/
   );
 });
 
@@ -93,7 +92,27 @@ test('agent - stop in dry-run mode with screen', async () => {
   const result = await controller.stop({ dryRun: true });
 
   assert.strictEqual(result.exitCode, 0);
-  assert.ok(result.command);
-  assert.ok(result.command.includes('screen'));
-  assert.ok(result.command.includes('test-session'));
+  assert.ok(result.output);
+  assert.ok(result.output.plain !== undefined);
+  assert.ok(result.output.parsed !== undefined);
+});
+
+test('agent - start and stop with no isolation', async () => {
+  const controller = agent({
+    tool: 'echo',
+    workingDirectory: '/tmp',
+    prompt: 'Hello World',
+  });
+
+  // Start should not wait for completion
+  await controller.start({ attached: false });
+
+  // Stop should wait and collect output
+  const result = await controller.stop();
+
+  assert.ok(result.exitCode !== null);
+  assert.strictEqual(result.exitCode, 0);
+  assert.ok(result.output);
+  assert.ok(result.output.plain);
+  assert.ok(result.output.plain.includes('Hello World'));
 });
