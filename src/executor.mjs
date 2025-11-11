@@ -89,7 +89,7 @@ export async function startCommand(command, options = {}) {
   });
 
   // Start processing the stream in the background
-  const streamProcessor = (async () => {
+  (async () => {
     try {
       for await (const chunk of commandStream.stream()) {
         if (chunk.type === 'stdout') {
@@ -125,7 +125,7 @@ export async function startCommand(command, options = {}) {
   })();
 
   // Give the stream a moment to start
-  await new Promise(resolve => setImmediate(resolve));
+  await Promise.resolve();
 
   return {
     command,
