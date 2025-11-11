@@ -15,6 +15,8 @@ export default [
         global: 'readonly',
         globalThis: 'readonly',
         fetch: 'readonly',
+        Deno: 'readonly',
+        AbortController: 'readonly',
       },
     },
     rules: {

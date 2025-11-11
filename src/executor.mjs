@@ -165,21 +165,53 @@ export async function executeDetached(command) {
  * @returns {Function} Function to remove the handler
  */
 export function setupSignalHandler(cleanupFn) {
-  const handler = async (signal) => {
-    console.log(`\nReceived ${signal}, shutting down gracefully...`);
-    try {
-      await cleanupFn();
-    } catch (error) {
-      console.error('Error during cleanup:', error.message);
-    }
-    process.exit(0);
-  };
+  // Detect runtime
+  const isDeno = typeof Deno !== 'undefined';
+  const isNode = typeof process !== 'undefined' && process.versions && process.versions.node;
 
-  process.on('SIGINT', handler);
-  process.on('SIGTERM', handler);
+  if (isDeno) {
+    // Deno signal handling
+    const handler = async () => {
+      console.log('\nReceived SIGINT, shutting down gracefully...');
+      try {
+        await cleanupFn();
+      } catch (error) {
+        console.error('Error during cleanup:', error.message);
+      }
+      Deno.exit(0);
+    };
 
-  return () => {
-    process.off('SIGINT', handler);
-    process.off('SIGTERM', handler);
-  };
+    // Listen for SIGINT in Deno
+    Deno.addSignalListener('SIGINT', handler);
+
+    return () => {
+      try {
+        Deno.removeSignalListener('SIGINT', handler);
+      } catch {
+        // Signal listener may already be removed
+      }
+    };
+  } else if (isNode) {
+    // Node.js signal handling
+    const handler = async (signal) => {
+      console.log(`\nReceived ${signal}, shutting down gracefully...`);
+      try {
+        await cleanupFn();
+      } catch (error) {
+        console.error('Error during cleanup:', error.message);
+      }
+      process.exit(0);
+    };
+
+    process.on('SIGINT', handler);
+    process.on('SIGTERM', handler);
+
+    return () => {
+      process.off('SIGINT', handler);
+      process.off('SIGTERM', handler);
+    };
+  }
+
+  // Return no-op for other runtimes
+  return () => {};
 }
