@@ -2,13 +2,18 @@
  * Build command strings for different agent tools
  */
 
+import { isToolSupported, getTool } from './tools/index.mjs';
+
 /**
  * Build the command for executing an agent
  * @param {Object} options - Command options
- * @param {string} options.tool - The CLI tool to use (e.g., 'claude')
+ * @param {string} options.tool - The CLI tool to use (e.g., 'claude', 'codex', 'opencode', 'agent')
  * @param {string} options.workingDirectory - Working directory path
  * @param {string} [options.prompt] - Prompt for the agent
  * @param {string} [options.systemPrompt] - System prompt for the agent
+ * @param {string} [options.model] - Model to use (tool-specific)
+ * @param {boolean} [options.json] - Enable JSON output mode
+ * @param {string} [options.resume] - Resume session ID (tool-specific)
  * @param {string} [options.isolation] - Isolation mode: 'none', 'screen', 'docker'
  * @param {string} [options.screenName] - Screen session name (for screen isolation)
  * @param {string} [options.containerName] - Container name (for docker isolation)
@@ -21,34 +26,84 @@ export function buildAgentCommand(options) {
     workingDirectory,
     prompt,
     systemPrompt,
+    model,
+    json,
+    resume,
     isolation = 'none',
     screenName,
     containerName,
     detached = false,
+    ...toolOptions
   } = options;
 
-  // Build base command
-  let baseCommand = buildToolCommand(tool, workingDirectory, prompt, systemPrompt);
+  // Build base command using tool-specific builder if available
+  let baseCommand;
+
+  if (isToolSupported({ toolName: tool })) {
+    const toolConfig = getTool({ toolName: tool });
+    if (toolConfig.buildCommand) {
+      // Use tool-specific command builder
+      baseCommand = toolConfig.buildCommand({
+        workingDirectory,
+        prompt,
+        systemPrompt,
+        model,
+        json,
+        resume,
+        ...toolOptions,
+      });
+    } else {
+      // Fall back to generic command builder
+      baseCommand = buildToolCommand({
+        tool,
+        workingDirectory,
+        prompt,
+        systemPrompt,
+      });
+    }
+  } else {
+    // Unknown tool, use generic command builder
+    baseCommand = buildToolCommand({
+      tool,
+      workingDirectory,
+      prompt,
+      systemPrompt,
+    });
+  }
+
+  // Wrap in bash -c with working directory change
+  let fullCommand = `bash -c "cd ${escapeForBashC(workingDirectory)} && ${escapeForBashC(baseCommand)}"`;
 
   // Apply isolation wrapper
   if (isolation === 'screen') {
-    baseCommand = buildScreenCommand(baseCommand, screenName, detached);
+    fullCommand = buildScreenCommand({
+      baseCommand: fullCommand,
+      screenName,
+      detached,
+    });
   } else if (isolation === 'docker') {
-    baseCommand = buildDockerCommand(baseCommand, containerName, workingDirectory, detached);
+    fullCommand = buildDockerCommand({
+      baseCommand: fullCommand,
+      containerName,
+      workingDirectory,
+      detached,
+    });
   }
 
-  return baseCommand;
+  return fullCommand;
 }
 
 /**
- * Build the base tool command
- * @param {string} tool - Tool name
- * @param {string} workingDirectory - Working directory
- * @param {string} [prompt] - Prompt
- * @param {string} [systemPrompt] - System prompt
+ * Build the base tool command (generic)
+ * @param {Object} options - Options
+ * @param {string} options.tool - Tool name
+ * @param {string} options.workingDirectory - Working directory
+ * @param {string} [options.prompt] - Prompt
+ * @param {string} [options.systemPrompt] - System prompt
  * @returns {string} Base command
  */
-function buildToolCommand(tool, workingDirectory, prompt, systemPrompt) {
+function buildToolCommand(options) {
+  const { tool, prompt, systemPrompt } = options;
   let toolCommand = tool;
 
   if (prompt) {
@@ -59,20 +114,19 @@ function buildToolCommand(tool, workingDirectory, prompt, systemPrompt) {
     toolCommand += ` --system-prompt "${escapeQuotes(systemPrompt)}"`;
   }
 
-  // Wrap in bash -c to ensure proper handling of cd && command
-  const command = `bash -c "cd ${escapeForBashC(workingDirectory)} && ${escapeForBashC(toolCommand)}"`;
-
-  return command;
+  return toolCommand;
 }
 
 /**
  * Build screen isolation command
- * @param {string} baseCommand - Base command to wrap
- * @param {string} [screenName] - Screen session name
- * @param {boolean} detached - Detached mode
+ * @param {Object} options - Options
+ * @param {string} options.baseCommand - Base command to wrap
+ * @param {string} [options.screenName] - Screen session name
+ * @param {boolean} [options.detached] - Detached mode
  * @returns {string} Screen command
  */
-function buildScreenCommand(baseCommand, screenName, detached) {
+function buildScreenCommand(options) {
+  const { baseCommand, screenName, detached = false } = options;
   const sessionName = screenName || `agent-${Date.now()}`;
 
   if (detached) {
@@ -86,13 +140,15 @@ function buildScreenCommand(baseCommand, screenName, detached) {
 
 /**
  * Build docker isolation command
- * @param {string} baseCommand - Base command to wrap
- * @param {string} [containerName] - Container name
- * @param {string} workingDirectory - Working directory to mount
- * @param {boolean} detached - Detached mode
+ * @param {Object} options - Options
+ * @param {string} options.baseCommand - Base command to wrap
+ * @param {string} [options.containerName] - Container name
+ * @param {string} options.workingDirectory - Working directory to mount
+ * @param {boolean} [options.detached] - Detached mode
  * @returns {string} Docker command
  */
-function buildDockerCommand(baseCommand, containerName, workingDirectory, detached) {
+function buildDockerCommand(options) {
+  const { baseCommand, containerName, workingDirectory, detached = false } = options;
   const name = containerName || `agent-${Date.now()}`;
 
   let dockerCommand = 'docker run';
@@ -131,11 +187,12 @@ export function buildDockerStopCommand(containerName) {
 }
 
 /**
- * Escape quotes in strings for shell commands
+ * Escape quotes in strings for shell commands (single quotes)
  * @param {string} str - String to escape
  * @returns {string} Escaped string
  */
 function escapeQuotes(str) {
+  if (!str) return '';
   return str.replace(/'/g, "'\\''");
 }
 
@@ -145,6 +202,24 @@ function escapeQuotes(str) {
  * @returns {string} Escaped string
  */
 function escapeForBashC(str) {
-  // Escape backslashes first, then double quotes
-  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`');
+  if (!str) return '';
+  // Escape backslashes first, then double quotes, dollar signs, and backticks
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\$/g, '\\$')
+    .replace(/`/g, '\\`');
+}
+
+/**
+ * Build stdin piping command for tools that accept input via stdin
+ * @param {Object} options - Options
+ * @param {string} options.input - Input to pipe
+ * @param {string} options.command - Command to pipe to
+ * @returns {string} Piped command
+ */
+export function buildPipedCommand(options) {
+  const { input, command } = options;
+  const escapedInput = (input || '').replace(/'/g, "'\\''");
+  return `printf '%s' '${escapedInput}' | ${command}`;
 }
