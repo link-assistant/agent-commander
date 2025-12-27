@@ -17,6 +17,9 @@ export default [
         fetch: 'readonly',
         Deno: 'readonly',
         AbortController: 'readonly',
+        TextEncoder: 'readonly',
+        TextDecoder: 'readonly',
+        Uint8Array: 'readonly',
       },
     },
     rules: {

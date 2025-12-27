@@ -198,11 +198,19 @@ test('JsonInputStream.from - creates from array', () => {
   assert.strictEqual(stream.size(), 2);
 });
 
-test('JsonInputStream - toBuffer returns Buffer', () => {
+test('JsonInputStream - toBuffer returns Buffer or Uint8Array', () => {
   const stream = new JsonInputStream();
   stream.add({ message: { test: true } });
 
   const buffer = stream.toBuffer();
-  assert.ok(Buffer.isBuffer(buffer));
-  assert.strictEqual(buffer.toString(), '{"test":true}\n');
+  // Works with both Node.js Buffer and Deno Uint8Array
+  const isBuffer = typeof Buffer !== 'undefined' && Buffer.isBuffer(buffer);
+  const isUint8Array = buffer instanceof Uint8Array;
+  assert.ok(isBuffer || isUint8Array, 'Should return Buffer or Uint8Array');
+
+  // Convert to string for comparison
+  const str = typeof buffer.toString === 'function' && isBuffer
+    ? buffer.toString()
+    : new TextDecoder().decode(buffer);
+  assert.strictEqual(str, '{"test":true}\n');
 });

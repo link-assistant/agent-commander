@@ -93,11 +93,17 @@ export class JsonInputStream {
   }
 
   /**
-   * Convert the stream to a Buffer
-   * @returns {Buffer} Buffer containing NDJSON data
+   * Convert the stream to a Buffer (Node.js/Bun compatible)
+   * @returns {Buffer|Uint8Array} Buffer containing NDJSON data
    */
   toBuffer() {
-    return Buffer.from(this.toString(), 'utf-8');
+    const str = this.toString();
+    // Use TextEncoder for cross-runtime compatibility (Deno, Node, Bun)
+    if (typeof Buffer !== 'undefined') {
+      return Buffer.from(str, 'utf-8');
+    }
+    // Fallback to TextEncoder for Deno
+    return new TextEncoder().encode(str);
   }
 
   /**
