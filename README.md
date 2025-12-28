@@ -1,16 +1,23 @@
 # agent-commander
 
-A JavaScript library to control agents enclosed in CLI commands like Anthropic Claude Code CLI.
+A JavaScript library to control agents enclosed in CLI commands like Anthropic Claude Code CLI, OpenAI Codex, OpenCode, and @link-assistant/agent.
 
-Built on the success of [hive-mind](https://github.com/deep-assistant/hive-mind), `agent-commander` provides a flexible JavaScript interface and CLI tools for managing agent processes with various isolation levels.
+Built on the success of [hive-mind](https://github.com/link-assistant/hive-mind), `agent-commander` provides a flexible JavaScript interface and CLI tools for managing agent processes with various isolation levels.
 
 ## Features
 
 - **Universal Runtime Support**: Works with Node.js, Bun, and Deno
+- **Multiple CLI Agents**:
+  - `claude` - Anthropic Claude Code CLI
+  - `codex` - OpenAI Codex CLI
+  - `opencode` - OpenCode CLI
+  - `agent` - @link-assistant/agent (unrestricted OpenCode fork)
 - **Multiple Isolation Modes**:
   - No isolation (direct execution)
   - Screen sessions (detached terminal sessions)
   - Docker containers (full containerization)
+- **JSON Streaming Support**: NDJSON input/output for real-time message processing
+- **Model Mapping**: Automatic mapping of model aliases to full model IDs
 - **CLI & JavaScript Interface**: Use as a library or command-line tool
 - **Graceful Shutdown**: CTRL+C handling with proper cleanup
 - **Dry Run Mode**: Preview commands before execution
@@ -33,7 +40,7 @@ npm install agent-commander
 ### For Deno
 
 ```javascript
-import { agent } from 'https://raw.githubusercontent.com/deep-assistant/agent-commander/main/src/index.mjs';
+import { agent } from 'https://raw.githubusercontent.com/link-assistant/agent-commander/main/src/index.mjs';
 ```
 
 ### For Bun
@@ -41,6 +48,15 @@ import { agent } from 'https://raw.githubusercontent.com/deep-assistant/agent-co
 ```bash
 bun add agent-commander
 ```
+
+## Supported Tools
+
+| Tool | Description | JSON Output | Model Aliases |
+|------|-------------|-------------|---------------|
+| `claude` | Anthropic Claude Code CLI | ✅ | `sonnet`, `opus`, `haiku` |
+| `codex` | OpenAI Codex CLI | ✅ | `gpt5`, `o3`, `gpt4o` |
+| `opencode` | OpenCode CLI | ✅ | `grok`, `gemini`, `sonnet` |
+| `agent` | @link-assistant/agent | ✅ | `grok`, `sonnet`, `haiku` |
 
 ## CLI Usage
 
@@ -54,10 +70,11 @@ start-agent --tool claude --working-directory "/tmp/dir" --prompt "Solve the iss
 
 #### Options
 
-- `--tool <name>` - CLI tool to use (e.g., 'claude') [required]
+- `--tool <name>` - CLI tool to use (e.g., 'claude', 'codex', 'opencode', 'agent') [required]
 - `--working-directory <path>` - Working directory for the agent [required]
 - `--prompt <text>` - Prompt for the agent
 - `--system-prompt <text>` - System prompt for the agent
+- `--model <name>` - Model to use (e.g., 'sonnet', 'opus', 'grok')
 - `--isolation <mode>` - Isolation mode: none, screen, docker (default: none)
 - `--screen-name <name>` - Screen session name (required for screen isolation)
 - `--container-name <name>` - Container name (required for docker isolation)
@@ -67,9 +84,19 @@ start-agent --tool claude --working-directory "/tmp/dir" --prompt "Solve the iss
 
 #### Examples
 
-**Basic usage (no isolation)**
+**Basic usage with Claude**
 ```bash
-start-agent --tool claude --working-directory "/tmp/dir" --prompt "Hello"
+start-agent --tool claude --working-directory "/tmp/dir" --prompt "Hello" --model sonnet
+```
+
+**Using Codex**
+```bash
+start-agent --tool codex --working-directory "/tmp/dir" --prompt "Fix the bug" --model gpt5
+```
+
+**Using @link-assistant/agent with Grok**
+```bash
+start-agent --tool agent --working-directory "/tmp/dir" --prompt "Analyze code" --model grok
 ```
 
 **With screen isolation (detached)**
@@ -130,6 +157,7 @@ const myAgent = agent({
   workingDirectory: '/tmp/project',
   prompt: 'Analyze this code',
   systemPrompt: 'You are a helpful assistant',
+  model: 'sonnet', // Optional: use model alias
 });
 
 // Start the agent (non-blocking, returns immediately)
@@ -142,6 +170,89 @@ const result = await myAgent.stop();
 console.log('Exit code:', result.exitCode);
 console.log('Plain output:', result.output.plain);
 console.log('Parsed output:', result.output.parsed); // JSON messages if supported
+console.log('Session ID:', result.sessionId); // For resuming later
+console.log('Usage:', result.usage); // Token usage statistics
+```
+
+### Using Different Tools
+
+```javascript
+import { agent } from 'agent-commander';
+
+// Using Codex
+const codexAgent = agent({
+  tool: 'codex',
+  workingDirectory: '/tmp/project',
+  prompt: 'Fix this bug',
+  model: 'gpt5',
+});
+
+// Using OpenCode
+const opencodeAgent = agent({
+  tool: 'opencode',
+  workingDirectory: '/tmp/project',
+  prompt: 'Refactor this code',
+  model: 'grok',
+});
+
+// Using @link-assistant/agent
+const linkAgent = agent({
+  tool: 'agent',
+  workingDirectory: '/tmp/project',
+  prompt: 'Implement feature',
+  model: 'grok',
+});
+```
+
+### Streaming JSON Messages
+
+```javascript
+import { agent } from 'agent-commander';
+
+const myAgent = agent({
+  tool: 'claude',
+  workingDirectory: '/tmp/project',
+  prompt: 'Process this',
+  json: true, // Enable JSON output mode
+});
+
+// Stream messages as they arrive
+await myAgent.start({
+  onMessage: (message) => {
+    console.log('Received:', message);
+  },
+  onOutput: (chunk) => {
+    // Raw output chunks
+    console.log(chunk.type, chunk.data);
+  },
+});
+
+const result = await myAgent.stop();
+// result.output.parsed contains all JSON messages
+```
+
+### Using JSON Input/Output Streams
+
+```javascript
+import { createJsonInputStream, createJsonOutputStream } from 'agent-commander';
+
+// Create input stream for sending messages
+const input = createJsonInputStream();
+input.addSystemMessage({ content: 'You are helpful' });
+input.addPrompt({ content: 'Analyze this code' });
+console.log(input.toString()); // NDJSON format
+
+// Parse streaming output
+const output = createJsonOutputStream({
+  onMessage: ({ message }) => console.log('Received:', message),
+});
+
+// Process chunks as they arrive
+output.process({ chunk: '{"type":"hello"}\n' });
+output.process({ chunk: '{"type":"done"}\n' });
+
+// Get all messages
+const messages = output.getMessages();
 ```
 
 ### With Screen Isolation
@@ -199,6 +310,26 @@ const myAgent = agent({
 await myAgent.start({ dryRun: true });
 ```
 
+### Tool Configuration API
+
+```javascript
+import { getTool, listTools, isToolSupported } from 'agent-commander';
+
+// List all available tools
+console.log(listTools()); // ['claude', 'codex', 'opencode', 'agent']
+
+// Check if a tool is supported
+console.log(isToolSupported({ toolName: 'claude' })); // true
+
+// Get tool configuration
+const claudeTool = getTool({ toolName: 'claude' });
+console.log(claudeTool.modelMap); // { sonnet: 'claude-sonnet-4-5-...', ... }
+
+// Map model alias to full ID
+const fullId = claudeTool.mapModelToId({ model: 'opus' });
+console.log(fullId); // 'claude-opus-4-5-20251101'
+```
+
 ## API Reference
 
 ### `agent(options)`
@@ -206,15 +337,19 @@ await myAgent.start({ dryRun: true });
 Creates an agent controller.
 
 **Parameters:**
-- `options.tool` (string, required) - CLI tool to use
+- `options.tool` (string, required) - CLI tool to use ('claude', 'codex', 'opencode', 'agent')
 - `options.workingDirectory` (string, required) - Working directory
 - `options.prompt` (string, optional) - Prompt for the agent
 - `options.systemPrompt` (string, optional) - System prompt
+- `options.model` (string, optional) - Model alias or full ID
+- `options.json` (boolean, optional) - Enable JSON output mode
+- `options.resume` (string, optional) - Resume session ID (tool-specific)
 - `options.isolation` (string, optional) - 'none', 'screen', or 'docker' (default: 'none')
 - `options.screenName` (string, optional) - Screen session name (required for screen isolation)
 - `options.containerName` (string, optional) - Container name (required for docker isolation)
+- `options.toolOptions` (object, optional) - Additional tool-specific options
 
-**Returns:** Agent controller object with `start()` and `stop()` methods
+**Returns:** Agent controller object with `start()`, `stop()`, `getSessionId()`, `getMessages()`, and `getToolConfig()` methods
 
 ### `controller.start(startOptions)`
 
@@ -224,6 +359,8 @@ Starts the agent (non-blocking - returns immediately after starting the process)
 - `startOptions.dryRun` (boolean, optional) - Preview command without executing
 - `startOptions.detached` (boolean, optional) - Run in detached mode
 - `startOptions.attached` (boolean, optional) - Stream output (default: true)
+- `startOptions.onMessage` (function, optional) - Callback for JSON messages
+- `startOptions.onOutput` (function, optional) - Callback for raw output chunks
 
 **Returns:** Promise resolving to `void` (or prints command in dry-run mode)
 
@@ -243,10 +380,31 @@ For `isolation: 'screen'` or `'docker'`: Sends stop command to the isolated envi
   exitCode: number,
   output: {
     plain: string,      // Raw text output (stdout + stderr)
-    parsed: Array|null  // JSON-parsed messages (if tool supports it, e.g., Claude)
-  }
+    parsed: Array|null  // JSON-parsed messages (if tool supports it)
+  },
+  sessionId: string|null,  // Session ID for resuming
+  usage: Object|null       // Token usage statistics
 }
 ```
+
+### `createJsonInputStream(options)`
+
+Creates a JSON input stream for building NDJSON input.
+
+**Parameters:**
+- `options.compact` (boolean, optional) - Use compact JSON (default: true)
+
+**Returns:** JsonInputStream with `add()`, `addPrompt()`, `addSystemMessage()`, `toString()`, `toBuffer()` methods
+
+### `createJsonOutputStream(options)`
+
+Creates a JSON output stream for parsing NDJSON output.
+
+**Parameters:**
+- `options.onMessage` (function, optional) - Callback for each parsed message
+- `options.onError` (function, optional) - Callback for parse errors
+
+**Returns:** JsonOutputStream with `process()`, `flush()`, `getMessages()`, `filterByType()` methods
 
 ## Isolation Modes
 
@@ -327,7 +485,7 @@ npm run lint
 
 ## Architecture
 
-The library is built using patterns from [hive-mind](https://github.com/deep-assistant/hive-mind) and uses:
+The library is built using patterns from [hive-mind](https://github.com/link-assistant/hive-mind) and uses:
 
 - **use-m**: Dynamic module loading from CDN
 - **command-stream**: Asynchronous command execution with streaming output
@@ -341,6 +499,17 @@ agent-commander/
 │   ├── command-builder.mjs    # Command string construction
 │   ├── executor.mjs           # Command execution logic
 │   ├── cli-parser.mjs         # CLI argument parsing
+│   ├── tools/                 # Tool configurations
+│   │   ├── index.mjs          # Tool registry
+│   │   ├── claude.mjs         # Claude Code CLI config
+│   │   ├── codex.mjs          # Codex CLI config
+│   │   ├── opencode.mjs       # OpenCode CLI config
+│   │   └── agent.mjs          # @link-assistant/agent config
+│   ├── streaming/             # JSON streaming utilities
+│   │   ├── index.mjs          # Stream exports
+│   │   ├── ndjson.mjs         # NDJSON parsing/stringify
+│   │   ├── input-stream.mjs   # Input stream builder
+│   │   └── output-stream.mjs  # Output stream parser
 │   └── utils/
 │       └── loader.mjs         # use-m integration
 ├── bin/
@@ -365,10 +534,12 @@ This is free and unencumbered software released into the public domain. See [LIC
 
 ## Acknowledgments
 
-- Inspired by [hive-mind](https://github.com/deep-assistant/hive-mind) - Distributed AI orchestration platform
+- Inspired by [hive-mind](https://github.com/link-assistant/hive-mind) - Distributed AI orchestration platform
 - Testing infrastructure based on [test-anywhere](https://github.com/link-foundation/test-anywhere)
+- Based on best experience from [@link-assistant/agent](https://github.com/link-assistant/agent)
 
 ## Related Projects
 
-- [hive-mind](https://github.com/deep-assistant/hive-mind) - Multi-agent GitHub issue solver
+- [hive-mind](https://github.com/link-assistant/hive-mind) - Multi-agent GitHub issue solver
+- [@link-assistant/agent](https://github.com/link-assistant/agent) - Unrestricted OpenCode fork for autonomous agents
 - [test-anywhere](https://github.com/link-foundation/test-anywhere) - Universal JavaScript testing
