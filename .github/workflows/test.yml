@@ -48,7 +48,7 @@ jobs:
         with:
           deno-version: v1.x
       - name: Run tests
-        run: deno test --allow-read --allow-run --allow-env --allow-net test/**/*.test.mjs
+        run: deno test --allow-read --allow-run --allow-env --allow-net js/test/**/*.test.mjs
 
   lint:
     name: Lint
