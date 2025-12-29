@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "test": "deno test --allow-read --allow-run --allow-env test/**/*.test.mjs"
+    "test": "deno test --allow-read --allow-run --allow-env js/test/**/*.test.mjs"
   },
   "compilerOptions": {
     "allowJs": true,
