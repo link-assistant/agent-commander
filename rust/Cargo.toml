@@ -1,0 +1,30 @@
+[package]
+name = "agent-commander"
+version = "0.1.0"
+edition = "2021"
+description = "A Rust library to control agents enclosed in CLI commands like Anthropic Claude Code CLI"
+license = "Unlicense"
+repository = "https://github.com/link-assistant/agent-commander"
+keywords = ["agent", "cli", "automation", "process-management", "ai"]
+categories = ["command-line-utilities", "development-tools"]
+
+[lib]
+name = "agent_commander"
+path = "src/lib.rs"
+
+[[bin]]
+name = "start-agent"
+path = "src/bin/start_agent.rs"
+
+[[bin]]
+name = "stop-agent"
+path = "src/bin/stop_agent.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+tokio = { version = "1.0", features = ["full"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
