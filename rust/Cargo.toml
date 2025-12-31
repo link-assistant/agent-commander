@@ -1,0 +1,73 @@
+[package]
+name = "agent-commander"
+version = "0.1.0"
+edition = "2021"
+description = "A Rust library to control agents enclosed in CLI commands like Anthropic Claude Code CLI"
+license = "Unlicense"
+repository = "https://github.com/link-assistant/agent-commander"
+keywords = ["agent", "cli", "automation", "process-management", "ai"]
+categories = ["command-line-utilities", "development-tools"]
+
+[lib]
+name = "agent_commander"
+path = "src/lib.rs"
+
+[[bin]]
+name = "start-agent"
+path = "src/bin/start_agent.rs"
+
+[[bin]]
+name = "stop-agent"
+path = "src/bin/stop_agent.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+tokio = { version = "1.0", features = ["full"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+
+# Allow common patterns in this codebase
+module_name_repetitions = "allow"
+too_many_lines = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+must_use_candidate = "allow"
+doc_markdown = "allow"
+needless_raw_string_hashes = "allow"
+struct_excessive_bools = "allow"
+option_if_let_else = "allow"
+redundant_closure = "allow"
+redundant_closure_for_method_calls = "allow"
+if_not_else = "allow"
+missing_fields_in_debug = "allow"
+uninlined_format_args = "allow"
+manual_let_else = "allow"
+bool_to_int_with_if = "allow"
+unnecessary_wraps = "allow"
+missing_const_for_fn = "allow"
+type_complexity = "allow"
+needless_pass_by_value = "allow"
+redundant_clone = "allow"
+inherent_to_string_shadow_display = "allow"
+implicit_clone = "allow"
+map_unwrap_or = "allow"
+nonminimal_bool = "allow"
+format_push_string = "allow"
+future_not_send = "allow"
+default_trait_access = "allow"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

@@ -1,0 +1,27 @@
+{
+  "nodeModulesDir": "auto",
+  "tasks": {
+    "test": "deno test --allow-read --allow-run --allow-env test/**/*.test.mjs"
+  },
+  "test": {
+    "include": ["test/"],
+    "exclude": ["examples/", "node_modules/"]
+  },
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window"],
+    "strict": true
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "semiColons": true,
+    "singleQuote": true
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  }
+}
