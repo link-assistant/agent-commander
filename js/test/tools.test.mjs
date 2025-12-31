@@ -97,6 +97,86 @@ test('claudeTool - extractSessionId', () => {
   assert.strictEqual(sessionId, 'abc123');
 });
 
+// Claude tool - new capability tests (issue #3)
+test('claudeTool - buildArgs includes --dangerously-skip-permissions by default', () => {
+  const args = claudeTool.buildArgs({});
+  assert.ok(args.includes('--dangerously-skip-permissions'));
+});
+
+test('claudeTool - buildArgs uses stream-json output format', () => {
+  const args = claudeTool.buildArgs({ json: true });
+  assert.ok(args.includes('--output-format'));
+  assert.ok(args.includes('stream-json'));
+  assert.ok(!args.includes('json')); // Should not include plain 'json'
+});
+
+test('claudeTool - buildArgs with fallback model', () => {
+  const args = claudeTool.buildArgs({ model: 'opus', fallbackModel: 'sonnet' });
+  assert.ok(args.includes('--model'));
+  assert.ok(args.includes('claude-opus-4-5-20251101'));
+  assert.ok(args.includes('--fallback-model'));
+  assert.ok(args.includes('claude-sonnet-4-5-20250929'));
+});
+
+test('claudeTool - buildArgs with append-system-prompt', () => {
+  const args = claudeTool.buildArgs({
+    appendSystemPrompt: 'Extra instructions',
+  });
+  assert.ok(args.includes('--append-system-prompt'));
+  assert.ok(args.includes('Extra instructions'));
+});
+
+test('claudeTool - buildArgs with session management', () => {
+  const args = claudeTool.buildArgs({
+    sessionId: '123e4567-e89b-12d3-a456-426614174000',
+    resume: 'abc123',
+    forkSession: true,
+  });
+  assert.ok(args.includes('--session-id'));
+  assert.ok(args.includes('123e4567-e89b-12d3-a456-426614174000'));
+  assert.ok(args.includes('--resume'));
+  assert.ok(args.includes('abc123'));
+  assert.ok(args.includes('--fork-session'));
+});
+
+test('claudeTool - buildArgs with verbose mode', () => {
+  const args = claudeTool.buildArgs({ verbose: true });
+  assert.ok(args.includes('--verbose'));
+});
+
+test('claudeTool - buildArgs with input format stream-json', () => {
+  const args = claudeTool.buildArgs({ jsonInput: true });
+  assert.ok(args.includes('--input-format'));
+  assert.ok(args.includes('stream-json'));
+});
+
+test('claudeTool - buildArgs with replay-user-messages', () => {
+  const args = claudeTool.buildArgs({ replayUserMessages: true });
+  assert.ok(args.includes('--replay-user-messages'));
+});
+
+test('claudeTool - buildArgs always includes dangerously-skip-permissions (not configurable)', () => {
+  // dangerouslySkipPermissions is always enabled and not configurable
+  const args = claudeTool.buildArgs({});
+  assert.ok(args.includes('--dangerously-skip-permissions'));
+  // Even if someone tries to pass the option, it should be ignored (the option doesn't exist anymore)
+  const argsWithAnyOption = claudeTool.buildArgs({ someUnknownOption: false });
+  assert.ok(argsWithAnyOption.includes('--dangerously-skip-permissions'));
+});
+
+test('claudeTool - supportsJsonInput is true', () => {
+  assert.strictEqual(claudeTool.supportsJsonInput, true);
+});
+
+test('claudeTool - supports all new capability flags', () => {
+  assert.strictEqual(claudeTool.supportsAppendSystemPrompt, true);
+  assert.strictEqual(claudeTool.supportsForkSession, true);
+  assert.strictEqual(claudeTool.supportsSessionId, true);
+  assert.strictEqual(claudeTool.supportsFallbackModel, true);
+  assert.strictEqual(claudeTool.supportsVerbose, true);
+  assert.strictEqual(claudeTool.supportsReplayUserMessages, true);
+});
+
 // Codex tool tests
 test('codexTool - mapModelToId with alias', () => {
   assert.strictEqual(codexTool.mapModelToId({ model: 'gpt5' }), 'gpt-5');

@@ -31,27 +31,49 @@ export function mapModelToId(options) {
  * @param {Object} options - Options
  * @param {string} [options.prompt] - User prompt
  * @param {string} [options.systemPrompt] - System prompt
+ * @param {string} [options.appendSystemPrompt] - System prompt to append to default
  * @param {string} [options.model] - Model to use
+ * @param {string} [options.fallbackModel] - Fallback model when default is overloaded
  * @param {boolean} [options.print] - Print mode (non-interactive)
- * @param {boolean} [options.json] - JSON output mode
+ * @param {boolean} [options.verbose] - Verbose mode
+ * @param {boolean} [options.json] - JSON output mode (stream-json format)
+ * @param {boolean} [options.jsonInput] - JSON input mode (stream-json format)
+ * @param {boolean} [options.replayUserMessages] - Re-emit user messages on stdout
  * @param {string} [options.resume] - Resume session ID
+ * @param {string} [options.sessionId] - Use specific session ID (must be valid UUID)
+ * @param {boolean} [options.forkSession] - Create new session ID when resuming
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
   const {
     prompt,
     systemPrompt,
+    appendSystemPrompt,
     model,
+    fallbackModel,
     print = false,
+    verbose = false,
     json = false,
+    jsonInput = false,
+    replayUserMessages = false,
     resume,
+    sessionId,
+    forkSession = false,
   } = options;
 
   const args = [];
 
+  // Permission bypass - always enabled, not configurable (per issue #3)
+  args.push('--dangerously-skip-permissions');
+
   if (model) {
     const mappedModel = mapModelToId({ model });
     args.push('--model', mappedModel);
+  }
+
+  if (fallbackModel) {
+    const mappedFallback = mapModelToId({ model: fallbackModel });
+    args.push('--fallback-model', mappedFallback);
   }
 
   if (prompt) {
@@ -62,16 +84,44 @@ export function buildArgs(options) {
     args.push('--system-prompt', systemPrompt);
   }
 
+  if (appendSystemPrompt) {
+    args.push('--append-system-prompt', appendSystemPrompt);
+  }
+
+  if (verbose) {
+    args.push('--verbose');
+  }
+
   if (print) {
     args.push('-p'); // Print mode
   }
 
+  // JSON output mode - use stream-json format per issue #3
   if (json) {
-    args.push('--output-format', 'json');
+    args.push('--output-format', 'stream-json');
+  }
+
+  // JSON input mode - use stream-json format per issue #3
+  if (jsonInput) {
+    args.push('--input-format', 'stream-json');
+  }
+
+  // Replay user messages (only with stream-json input/output)
+  if (replayUserMessages) {
+    args.push('--replay-user-messages');
+  }
+
+  // Session management
+  if (sessionId) {
+    args.push('--session-id', sessionId);
   }
 
   if (resume) {
     args.push('--resume', resume);
+  }
+
+  if (forkSession) {
+    args.push('--fork-session');
   }
 
   return args;
@@ -83,10 +133,17 @@ export function buildArgs(options) {
  * @param {string} options.workingDirectory - Working directory
  * @param {string} [options.prompt] - User prompt
  * @param {string} [options.systemPrompt] - System prompt
+ * @param {string} [options.appendSystemPrompt] - System prompt to append to default
  * @param {string} [options.model] - Model to use
+ * @param {string} [options.fallbackModel] - Fallback model when default is overloaded
  * @param {boolean} [options.print] - Print mode (non-interactive)
- * @param {boolean} [options.json] - JSON output mode
+ * @param {boolean} [options.verbose] - Verbose mode
+ * @param {boolean} [options.json] - JSON output mode (stream-json format)
+ * @param {boolean} [options.jsonInput] - JSON input mode (stream-json format)
+ * @param {boolean} [options.replayUserMessages] - Re-emit user messages on stdout
  * @param {string} [options.resume] - Resume session ID
+ * @param {string} [options.sessionId] - Use specific session ID (must be valid UUID)
+ * @param {boolean} [options.forkSession] - Create new session ID when resuming
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {
@@ -203,9 +260,15 @@ export const claudeTool = {
   displayName: 'Claude Code CLI',
   executable: 'claude',
   supportsJsonOutput: true,
-  supportsJsonInput: false, // Claude doesn't support JSON streaming input yet
+  supportsJsonInput: true, // Claude supports stream-json input format
   supportsSystemPrompt: true,
+  supportsAppendSystemPrompt: true, // Supports --append-system-prompt
   supportsResume: true,
+  supportsForkSession: true, // Supports --fork-session
+  supportsSessionId: true, // Supports --session-id
+  supportsFallbackModel: true, // Supports --fallback-model
+  supportsVerbose: true, // Supports --verbose
+  supportsReplayUserMessages: true, // Supports --replay-user-messages
   defaultModel: 'sonnet',
   modelMap,
   mapModelToId,

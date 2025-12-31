@@ -132,10 +132,18 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
             "claude" => claude::build_command(&ClaudeBuildOptions {
                 prompt: options.prompt.clone(),
                 system_prompt: options.system_prompt.clone(),
+                append_system_prompt: None, // TODO: Add to AgentCommandOptions if needed
                 model: options.model.clone(),
+                fallback_model: None, // TODO: Add to AgentCommandOptions if needed
                 json: options.json,
+                json_input: false,
+                verbose: false,
+                replay_user_messages: false,
                 resume: options.resume.clone(),
+                session_id: None, // TODO: Add to AgentCommandOptions if needed
+                fork_session: false,
                 print: false,
+                // Note: dangerously_skip_permissions is always enabled, not configurable
             }),
             "codex" => codex::build_command(&CodexBuildOptions {
                 prompt: options.prompt.clone(),

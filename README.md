@@ -51,12 +51,24 @@ bun add agent-commander
 
 ## Supported Tools
 
-| Tool | Description | JSON Output | Model Aliases |
-|------|-------------|-------------|---------------|
-| `claude` | Anthropic Claude Code CLI | ✅ | `sonnet`, `opus`, `haiku` |
-| `codex` | OpenAI Codex CLI | ✅ | `gpt5`, `o3`, `gpt4o` |
-| `opencode` | OpenCode CLI | ✅ | `grok`, `gemini`, `sonnet` |
-| `agent` | @link-assistant/agent | ✅ | `grok`, `sonnet`, `haiku` |
+| Tool | Description | JSON Output | JSON Input | Model Aliases |
+|------|-------------|-------------|------------|---------------|
+| `claude` | Anthropic Claude Code CLI | ✅ (stream-json) | ✅ (stream-json) | `sonnet`, `opus`, `haiku` |
+| `codex` | OpenAI Codex CLI | ✅ | ❌ | `gpt5`, `o3`, `gpt4o` |
+| `opencode` | OpenCode CLI | ✅ | ❌ | `grok`, `gemini`, `sonnet` |
+| `agent` | @link-assistant/agent | ✅ | ❌ | `grok`, `sonnet`, `haiku` |
+
+### Claude-specific Features
+
+The Claude Code CLI supports additional features:
+
+- **Stream JSON format**: Uses `--output-format stream-json` and `--input-format stream-json` for real-time streaming
+- **Permission bypass**: Automatically includes `--dangerously-skip-permissions` for unrestricted operation
+- **Fallback model**: Use `--fallback-model` for automatic fallback when the primary model is overloaded
+- **Session management**: Full support for `--session-id`, `--fork-session`, and `--resume`
+- **System prompt appending**: Use `--append-system-prompt` to add to the default system prompt
+- **Verbose mode**: Enable with `--verbose` for detailed output
+- **User message replay**: Use `--replay-user-messages` for streaming acknowledgment
 
 ## CLI Usage
 
@@ -74,7 +86,14 @@ start-agent --tool claude --working-directory "/tmp/dir" --prompt "Solve the iss
 - `--working-directory <path>` - Working directory for the agent [required]
 - `--prompt <text>` - Prompt for the agent
 - `--system-prompt <text>` - System prompt for the agent
+- `--append-system-prompt <text>` - Append to the default system prompt (Claude only)
 - `--model <name>` - Model to use (e.g., 'sonnet', 'opus', 'grok')
+- `--fallback-model <name>` - Fallback model when default is overloaded (Claude only)
+- `--verbose` - Enable verbose mode (Claude only)
+- `--resume <sessionId>` - Resume a previous session by ID
+- `--session-id <uuid>` - Use a specific session ID (Claude only, must be valid UUID)
+- `--fork-session` - Create new session ID when resuming (Claude only)
+- `--replay-user-messages` - Re-emit user messages on stdout (Claude only, streaming mode)
 - `--isolation <mode>` - Isolation mode: none, screen, docker (default: none)
 - `--screen-name <name>` - Screen session name (required for screen isolation)
 - `--container-name <name>` - Container name (required for docker isolation)
@@ -97,6 +116,18 @@ start-agent --tool codex --working-directory "/tmp/dir" --prompt "Fix the bug" -
 **Using @link-assistant/agent with Grok**
 ```bash
 start-agent --tool agent --working-directory "/tmp/dir" --prompt "Analyze code" --model grok
+```
+
+**With model fallback (Claude)**
+```bash
+start-agent --tool claude --working-directory "/tmp/dir" \
+  --prompt "Complex task" --model opus --fallback-model sonnet
+```
+
+**Resume a session with fork (Claude)**
+```bash
+start-agent --tool claude --working-directory "/tmp/dir" \
+  --resume abc123 --fork-session
 ```
 
 **With screen isolation (detached)**
