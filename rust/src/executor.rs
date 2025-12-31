@@ -241,6 +241,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(not(target_os = "windows"))]
     async fn test_execute_command_real() {
         let result = execute_command("echo hello", false, false).await.unwrap();
         assert_eq!(result.exit_code, 0);
@@ -248,6 +249,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(not(target_os = "windows"))]
     async fn test_start_command_and_wait() {
         let mut handle = start_command("echo hello", false).await.unwrap();
         let exit_code = handle.wait_for_exit().await.unwrap();
@@ -258,6 +260,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(not(target_os = "windows"))]
     async fn test_execute_detached() {
         let pid = execute_detached("sleep 0.1").await.unwrap();
         assert!(pid.is_some());
