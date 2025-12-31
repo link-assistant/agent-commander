@@ -48,6 +48,14 @@ export function parseStartAgentArgs(args) {
     workingDirectory: parsed['working-directory'],
     prompt: parsed.prompt,
     systemPrompt: parsed['system-prompt'],
+    appendSystemPrompt: parsed['append-system-prompt'],
+    model: parsed.model,
+    fallbackModel: parsed['fallback-model'],
+    verbose: parsed.verbose || false,
+    replayUserMessages: parsed['replay-user-messages'] || false,
+    resume: parsed.resume,
+    sessionId: parsed['session-id'],
+    forkSession: parsed['fork-session'] || false,
     isolation: parsed.isolation || 'none',
     screenName: parsed['screen-name'],
     containerName: parsed['container-name'],
@@ -87,6 +95,14 @@ Options:
   --working-directory <path>       Working directory for the agent [required]
   --prompt <text>                  Prompt for the agent
   --system-prompt <text>           System prompt for the agent
+  --append-system-prompt <text>    Append to the default system prompt
+  --model <model>                  Model to use (e.g., 'sonnet', 'opus', 'haiku')
+  --fallback-model <model>         Fallback model when default is overloaded
+  --verbose                        Enable verbose mode
+  --resume <sessionId>             Resume a previous session by ID
+  --session-id <uuid>              Use a specific session ID (must be valid UUID)
+  --fork-session                   Create new session ID when resuming
+  --replay-user-messages           Re-emit user messages on stdout (streaming mode)
   --isolation <mode>               Isolation mode: none, screen, docker (default: none)
   --screen-name <name>             Screen session name (required for screen isolation)
   --container-name <name>          Container name (required for docker isolation)
@@ -97,6 +113,14 @@ Options:
 Examples:
   # Basic usage (no isolation)
   start-agent --tool claude --working-directory "/tmp/dir" --prompt "Hello"
+
+  # With model selection
+  start-agent --tool claude --working-directory "/tmp/dir" \\
+    --prompt "Hello" --model opus --fallback-model sonnet
+
+  # Resume a session with fork
+  start-agent --tool claude --working-directory "/tmp/dir" \\
+    --resume abc123 --fork-session
 
   # With screen isolation (detached)
   start-agent --tool claude --working-directory "/tmp/dir" \\

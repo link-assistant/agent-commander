@@ -36,10 +36,28 @@ pub fn map_model_to_id(model: &str) -> String {
 pub struct ClaudeBuildOptions {
     pub prompt: Option<String>,
     pub system_prompt: Option<String>,
+    pub append_system_prompt: Option<String>,
     pub model: Option<String>,
+    pub fallback_model: Option<String>,
     pub print: bool,
+    pub verbose: bool,
     pub json: bool,
+    pub json_input: bool,
+    pub replay_user_messages: bool,
     pub resume: Option<String>,
+    pub session_id: Option<String>,
+    pub fork_session: bool,
+    pub dangerously_skip_permissions: bool,
+}
+
+impl ClaudeBuildOptions {
+    /// Create new options with default dangerously_skip_permissions enabled
+    pub fn new() -> Self {
+        Self {
+            dangerously_skip_permissions: true, // Always enabled by default per issue #3
+            ..Default::default()
+        }
+    }
 }
 
 /// Build command line arguments for Claude
@@ -52,10 +70,21 @@ pub struct ClaudeBuildOptions {
 pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
     let mut args = Vec::new();
 
+    // Permission bypass - always first for security-related flags
+    if options.dangerously_skip_permissions {
+        args.push("--dangerously-skip-permissions".to_string());
+    }
+
     if let Some(ref model) = options.model {
         let mapped_model = map_model_to_id(model);
         args.push("--model".to_string());
         args.push(mapped_model);
+    }
+
+    if let Some(ref fallback_model) = options.fallback_model {
+        let mapped_fallback = map_model_to_id(fallback_model);
+        args.push("--fallback-model".to_string());
+        args.push(mapped_fallback);
     }
 
     if let Some(ref prompt) = options.prompt {
@@ -68,18 +97,49 @@ pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
         args.push(system_prompt.clone());
     }
 
+    if let Some(ref append_system_prompt) = options.append_system_prompt {
+        args.push("--append-system-prompt".to_string());
+        args.push(append_system_prompt.clone());
+    }
+
+    if options.verbose {
+        args.push("--verbose".to_string());
+    }
+
     if options.print {
         args.push("-p".to_string()); // Print mode
     }
 
+    // JSON output mode - use stream-json format per issue #3
     if options.json {
         args.push("--output-format".to_string());
-        args.push("json".to_string());
+        args.push("stream-json".to_string());
+    }
+
+    // JSON input mode - use stream-json format per issue #3
+    if options.json_input {
+        args.push("--input-format".to_string());
+        args.push("stream-json".to_string());
+    }
+
+    // Replay user messages (only with stream-json input/output)
+    if options.replay_user_messages {
+        args.push("--replay-user-messages".to_string());
+    }
+
+    // Session management
+    if let Some(ref session_id) = options.session_id {
+        args.push("--session-id".to_string());
+        args.push(session_id.clone());
     }
 
     if let Some(ref resume) = options.resume {
         args.push("--resume".to_string());
         args.push(resume.clone());
+    }
+
+    if options.fork_session {
+        args.push("--fork-session".to_string());
     }
 
     args
@@ -203,7 +263,13 @@ pub struct ClaudeTool {
     pub supports_json_output: bool,
     pub supports_json_input: bool,
     pub supports_system_prompt: bool,
+    pub supports_append_system_prompt: bool,
     pub supports_resume: bool,
+    pub supports_fork_session: bool,
+    pub supports_session_id: bool,
+    pub supports_fallback_model: bool,
+    pub supports_verbose: bool,
+    pub supports_replay_user_messages: bool,
     pub default_model: &'static str,
 }
 
@@ -214,9 +280,15 @@ impl Default for ClaudeTool {
             display_name: "Claude Code CLI",
             executable: "claude",
             supports_json_output: true,
-            supports_json_input: false, // Claude doesn't support JSON streaming input yet
+            supports_json_input: true, // Claude supports stream-json input format
             supports_system_prompt: true,
+            supports_append_system_prompt: true, // Supports --append-system-prompt
             supports_resume: true,
+            supports_fork_session: true, // Supports --fork-session
+            supports_session_id: true, // Supports --session-id
+            supports_fallback_model: true, // Supports --fallback-model
+            supports_verbose: true, // Supports --verbose
+            supports_replay_user_messages: true, // Supports --replay-user-messages
             default_model: "sonnet",
         }
     }
@@ -277,5 +349,115 @@ mod tests {
         let output = "{\"session_id\":\"abc123\"}\n{\"type\":\"done\"}";
         let session_id = extract_session_id(output);
         assert_eq!(session_id, Some("abc123".to_string()));
+    }
+
+    // New capability tests (issue #3)
+    #[test]
+    fn test_build_options_new_default_has_skip_permissions() {
+        let options = ClaudeBuildOptions::new();
+        assert!(options.dangerously_skip_permissions);
+    }
+
+    #[test]
+    fn test_build_args_includes_dangerously_skip_permissions() {
+        let options = ClaudeBuildOptions::new();
+        let args = build_args(&options);
+        assert!(args.contains(&"--dangerously-skip-permissions".to_string()));
+    }
+
+    #[test]
+    fn test_build_args_uses_stream_json_format() {
+        let options = ClaudeBuildOptions {
+            json: true,
+            ..Default::default()
+        };
+        let args = build_args(&options);
+        assert!(args.contains(&"--output-format".to_string()));
+        assert!(args.contains(&"stream-json".to_string()));
+        assert!(!args.contains(&"json".to_string())); // Should not contain plain 'json'
+    }
+
+    #[test]
+    fn test_build_args_with_fallback_model() {
+        let options = ClaudeBuildOptions {
+            model: Some("opus".to_string()),
+            fallback_model: Some("sonnet".to_string()),
+            ..Default::default()
+        };
+        let args = build_args(&options);
+        assert!(args.contains(&"--model".to_string()));
+        assert!(args.contains(&"claude-opus-4-5-20251101".to_string()));
+        assert!(args.contains(&"--fallback-model".to_string()));
+        assert!(args.contains(&"claude-sonnet-4-5-20250929".to_string()));
+    }
+
+    #[test]
+    fn test_build_args_with_append_system_prompt() {
+        let options = ClaudeBuildOptions {
+            append_system_prompt: Some("Extra instructions".to_string()),
+            ..Default::default()
+        };
+        let args = build_args(&options);
+        assert!(args.contains(&"--append-system-prompt".to_string()));
+        assert!(args.contains(&"Extra instructions".to_string()));
+    }
+
+    #[test]
+    fn test_build_args_with_session_management() {
+        let options = ClaudeBuildOptions {
+            session_id: Some("123e4567-e89b-12d3-a456-426614174000".to_string()),
+            resume: Some("abc123".to_string()),
+            fork_session: true,
+            ..Default::default()
+        };
+        let args = build_args(&options);
+        assert!(args.contains(&"--session-id".to_string()));
+        assert!(args.contains(&"123e4567-e89b-12d3-a456-426614174000".to_string()));
+        assert!(args.contains(&"--resume".to_string()));
+        assert!(args.contains(&"abc123".to_string()));
+        assert!(args.contains(&"--fork-session".to_string()));
+    }
+
+    #[test]
+    fn test_build_args_with_verbose() {
+        let options = ClaudeBuildOptions {
+            verbose: true,
+            ..Default::default()
+        };
+        let args = build_args(&options);
+        assert!(args.contains(&"--verbose".to_string()));
+    }
+
+    #[test]
+    fn test_build_args_with_json_input() {
+        let options = ClaudeBuildOptions {
+            json_input: true,
+            ..Default::default()
+        };
+        let args = build_args(&options);
+        assert!(args.contains(&"--input-format".to_string()));
+        assert!(args.contains(&"stream-json".to_string()));
+    }
+
+    #[test]
+    fn test_build_args_with_replay_user_messages() {
+        let options = ClaudeBuildOptions {
+            replay_user_messages: true,
+            ..Default::default()
+        };
+        let args = build_args(&options);
+        assert!(args.contains(&"--replay-user-messages".to_string()));
+    }
+
+    #[test]
+    fn test_claude_tool_supports_new_capabilities() {
+        let tool = ClaudeTool::default();
+        assert!(tool.supports_json_input);
+        assert!(tool.supports_append_system_prompt);
+        assert!(tool.supports_fork_session);
+        assert!(tool.supports_session_id);
+        assert!(tool.supports_fallback_model);
+        assert!(tool.supports_verbose);
+        assert!(tool.supports_replay_user_messages);
     }
 }

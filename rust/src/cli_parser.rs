@@ -74,6 +74,14 @@ pub struct StartAgentOptions {
     pub working_directory: Option<String>,
     pub prompt: Option<String>,
     pub system_prompt: Option<String>,
+    pub append_system_prompt: Option<String>,
+    pub model: Option<String>,
+    pub fallback_model: Option<String>,
+    pub verbose: bool,
+    pub replay_user_messages: bool,
+    pub resume: Option<String>,
+    pub session_id: Option<String>,
+    pub fork_session: bool,
     pub isolation: String,
     pub screen_name: Option<String>,
     pub container_name: Option<String>,
@@ -114,6 +122,14 @@ pub fn parse_start_agent_args(args: &[String]) -> StartAgentOptions {
         working_directory: parsed.get("working-directory").cloned(),
         prompt: parsed.get("prompt").cloned(),
         system_prompt: parsed.get("system-prompt").cloned(),
+        append_system_prompt: parsed.get("append-system-prompt").cloned(),
+        model: parsed.get("model").cloned(),
+        fallback_model: parsed.get("fallback-model").cloned(),
+        verbose: parsed.get_bool("verbose"),
+        replay_user_messages: parsed.get_bool("replay-user-messages"),
+        resume: parsed.get("resume").cloned(),
+        session_id: parsed.get("session-id").cloned(),
+        fork_session: parsed.get_bool("fork-session"),
         isolation,
         screen_name: parsed.get("screen-name").cloned(),
         container_name: parsed.get("container-name").cloned(),
@@ -154,6 +170,14 @@ Options:
   --working-directory <path>       Working directory for the agent [required]
   --prompt <text>                  Prompt for the agent
   --system-prompt <text>           System prompt for the agent
+  --append-system-prompt <text>    Append to the default system prompt
+  --model <model>                  Model to use (e.g., 'sonnet', 'opus', 'haiku')
+  --fallback-model <model>         Fallback model when default is overloaded
+  --verbose                        Enable verbose mode
+  --resume <sessionId>             Resume a previous session by ID
+  --session-id <uuid>              Use a specific session ID (must be valid UUID)
+  --fork-session                   Create new session ID when resuming
+  --replay-user-messages           Re-emit user messages on stdout (streaming mode)
   --isolation <mode>               Isolation mode: none, screen, docker (default: none)
   --screen-name <name>             Screen session name (required for screen isolation)
   --container-name <name>          Container name (required for docker isolation)
@@ -164,6 +188,14 @@ Options:
 Examples:
   # Basic usage (no isolation)
   start-agent --tool claude --working-directory "/tmp/dir" --prompt "Hello"
+
+  # With model selection
+  start-agent --tool claude --working-directory "/tmp/dir" \
+    --prompt "Hello" --model opus --fallback-model sonnet
+
+  # Resume a session with fork
+  start-agent --tool claude --working-directory "/tmp/dir" \
+    --resume abc123 --fork-session
 
   # With screen isolation (detached)
   start-agent --tool claude --working-directory "/tmp/dir" \
