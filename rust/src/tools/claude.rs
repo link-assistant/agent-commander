@@ -284,10 +284,10 @@ impl Default for ClaudeTool {
             supports_system_prompt: true,
             supports_append_system_prompt: true, // Supports --append-system-prompt
             supports_resume: true,
-            supports_fork_session: true, // Supports --fork-session
-            supports_session_id: true, // Supports --session-id
+            supports_fork_session: true,   // Supports --fork-session
+            supports_session_id: true,     // Supports --session-id
             supports_fallback_model: true, // Supports --fallback-model
-            supports_verbose: true, // Supports --verbose
+            supports_verbose: true,        // Supports --verbose
             supports_replay_user_messages: true, // Supports --replay-user-messages
             default_model: "sonnet",
         }

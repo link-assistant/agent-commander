@@ -119,7 +119,9 @@ test('claudeTool - buildArgs with fallback model', () => {
 });
 
 test('claudeTool - buildArgs with append-system-prompt', () => {
-  const args = claudeTool.buildArgs({ appendSystemPrompt: 'Extra instructions' });
+  const args = claudeTool.buildArgs({
+    appendSystemPrompt: 'Extra instructions',
+  });
   assert.ok(args.includes('--append-system-prompt'));
   assert.ok(args.includes('Extra instructions'));
 });
