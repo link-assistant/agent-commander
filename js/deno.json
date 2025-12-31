@@ -1,6 +1,11 @@
 {
+  "nodeModulesDir": "auto",
   "tasks": {
-    "test": "deno test --allow-read --allow-run --allow-env js/test/**/*.test.mjs"
+    "test": "deno test --allow-read --allow-run --allow-env test/**/*.test.mjs"
+  },
+  "test": {
+    "include": ["test/"],
+    "exclude": ["examples/", "node_modules/"]
   },
   "compilerOptions": {
     "allowJs": true,
