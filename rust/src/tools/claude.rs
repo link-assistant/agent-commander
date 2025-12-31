@@ -47,16 +47,13 @@ pub struct ClaudeBuildOptions {
     pub resume: Option<String>,
     pub session_id: Option<String>,
     pub fork_session: bool,
-    pub dangerously_skip_permissions: bool,
+    // Note: dangerously_skip_permissions is always enabled and not configurable (per issue #3)
 }
 
 impl ClaudeBuildOptions {
-    /// Create new options with default dangerously_skip_permissions enabled
+    /// Create new options
     pub fn new() -> Self {
-        Self {
-            dangerously_skip_permissions: true, // Always enabled by default per issue #3
-            ..Default::default()
-        }
+        Self::default()
     }
 }
 
@@ -70,10 +67,8 @@ impl ClaudeBuildOptions {
 pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
     let mut args = Vec::new();
 
-    // Permission bypass - always first for security-related flags
-    if options.dangerously_skip_permissions {
-        args.push("--dangerously-skip-permissions".to_string());
-    }
+    // Permission bypass - always enabled, not configurable (per issue #3)
+    args.push("--dangerously-skip-permissions".to_string());
 
     if let Some(ref model) = options.model {
         let mapped_model = map_model_to_id(model);
@@ -353,16 +348,16 @@ mod tests {
 
     // New capability tests (issue #3)
     #[test]
-    fn test_build_options_new_default_has_skip_permissions() {
-        let options = ClaudeBuildOptions::new();
-        assert!(options.dangerously_skip_permissions);
-    }
-
-    #[test]
-    fn test_build_args_includes_dangerously_skip_permissions() {
+    fn test_build_args_always_includes_dangerously_skip_permissions() {
+        // dangerously_skip_permissions is always enabled and not configurable
         let options = ClaudeBuildOptions::new();
         let args = build_args(&options);
         assert!(args.contains(&"--dangerously-skip-permissions".to_string()));
+
+        // Even with default options, it should still be included
+        let default_options = ClaudeBuildOptions::default();
+        let default_args = build_args(&default_options);
+        assert!(default_args.contains(&"--dangerously-skip-permissions".to_string()));
     }
 
     #[test]

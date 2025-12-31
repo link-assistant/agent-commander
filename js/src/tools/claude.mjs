@@ -42,7 +42,6 @@ export function mapModelToId(options) {
  * @param {string} [options.resume] - Resume session ID
  * @param {string} [options.sessionId] - Use specific session ID (must be valid UUID)
  * @param {boolean} [options.forkSession] - Create new session ID when resuming
- * @param {boolean} [options.dangerouslySkipPermissions] - Bypass all permission checks (default: true)
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
@@ -60,15 +59,12 @@ export function buildArgs(options) {
     resume,
     sessionId,
     forkSession = false,
-    dangerouslySkipPermissions = true, // Always enabled by default per issue #3
   } = options;
 
   const args = [];
 
-  // Permission bypass - always first for security-related flags
-  if (dangerouslySkipPermissions) {
-    args.push('--dangerously-skip-permissions');
-  }
+  // Permission bypass - always enabled, not configurable (per issue #3)
+  args.push('--dangerously-skip-permissions');
 
   if (model) {
     const mappedModel = mapModelToId({ model });
@@ -148,7 +144,6 @@ export function buildArgs(options) {
  * @param {string} [options.resume] - Resume session ID
  * @param {string} [options.sessionId] - Use specific session ID (must be valid UUID)
  * @param {boolean} [options.forkSession] - Create new session ID when resuming
- * @param {boolean} [options.dangerouslySkipPermissions] - Bypass all permission checks (default: true)
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {

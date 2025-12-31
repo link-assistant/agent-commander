@@ -143,7 +143,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 session_id: None, // TODO: Add to AgentCommandOptions if needed
                 fork_session: false,
                 print: false,
-                dangerously_skip_permissions: true, // Always enabled per issue #3
+                // Note: dangerously_skip_permissions is always enabled, not configurable
             }),
             "codex" => codex::build_command(&CodexBuildOptions {
                 prompt: options.prompt.clone(),
