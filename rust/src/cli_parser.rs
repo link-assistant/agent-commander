@@ -104,7 +104,8 @@ pub fn parse_start_agent_args(args: &[String]) -> StartAgentOptions {
     let parsed = parse_args(args);
 
     let detached = parsed.get_bool("detached");
-    let isolation = parsed.get("isolation")
+    let isolation = parsed
+        .get("isolation")
         .cloned()
         .unwrap_or_else(|| "none".to_string());
 
@@ -144,7 +145,8 @@ pub fn parse_stop_agent_args(args: &[String]) -> StopAgentOptions {
 
 /// Show start-agent help message
 pub fn show_start_agent_help() {
-    println!(r#"
+    println!(
+        r#"
 Usage: start-agent [options]
 
 Options:
@@ -173,12 +175,14 @@ Examples:
 
   # Dry run
   start-agent --tool claude --working-directory "/tmp/dir" --dry-run
-"#);
+"#
+    );
 }
 
 /// Show stop-agent help message
 pub fn show_stop_agent_help() {
-    println!(r#"
+    println!(
+        r#"
 Usage: stop-agent [options]
 
 Options:
@@ -197,7 +201,8 @@ Examples:
 
   # Dry run
   stop-agent --isolation screen --screen-name my-agent --dry-run
-"#);
+"#
+    );
 }
 
 /// Validation result
@@ -302,9 +307,12 @@ mod tests {
     #[test]
     fn test_parse_start_agent_args_basic() {
         let args: Vec<String> = vec![
-            "--tool".into(), "claude".into(),
-            "--working-directory".into(), "/tmp/test".into(),
-            "--prompt".into(), "Hello".into(),
+            "--tool".into(),
+            "claude".into(),
+            "--working-directory".into(),
+            "/tmp/test".into(),
+            "--prompt".into(),
+            "Hello".into(),
         ];
         let result = parse_start_agent_args(&args);
 
@@ -317,10 +325,14 @@ mod tests {
     #[test]
     fn test_parse_start_agent_args_with_isolation() {
         let args: Vec<String> = vec![
-            "--tool".into(), "claude".into(),
-            "--working-directory".into(), "/tmp/test".into(),
-            "--isolation".into(), "screen".into(),
-            "--screen-name".into(), "my-session".into(),
+            "--tool".into(),
+            "claude".into(),
+            "--working-directory".into(),
+            "/tmp/test".into(),
+            "--isolation".into(),
+            "screen".into(),
+            "--screen-name".into(),
+            "my-session".into(),
         ];
         let result = parse_start_agent_args(&args);
 
@@ -331,8 +343,10 @@ mod tests {
     #[test]
     fn test_parse_start_agent_args_dry_run() {
         let args: Vec<String> = vec![
-            "--tool".into(), "claude".into(),
-            "--working-directory".into(), "/tmp/test".into(),
+            "--tool".into(),
+            "claude".into(),
+            "--working-directory".into(),
+            "/tmp/test".into(),
             "--dry-run".into(),
         ];
         let result = parse_start_agent_args(&args);
@@ -343,8 +357,10 @@ mod tests {
     #[test]
     fn test_parse_stop_agent_args_screen() {
         let args: Vec<String> = vec![
-            "--isolation".into(), "screen".into(),
-            "--screen-name".into(), "my-session".into(),
+            "--isolation".into(),
+            "screen".into(),
+            "--screen-name".into(),
+            "my-session".into(),
         ];
         let result = parse_stop_agent_args(&args);
 

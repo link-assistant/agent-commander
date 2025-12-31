@@ -16,31 +16,29 @@ pub mod tools;
 use serde_json::Value;
 
 pub use cli_parser::{
-    parse_args, parse_start_agent_args, parse_stop_agent_args,
-    show_start_agent_help, show_stop_agent_help,
-    validate_start_agent_options, validate_stop_agent_options,
+    parse_args, parse_start_agent_args, parse_stop_agent_args, show_start_agent_help,
+    show_stop_agent_help, validate_start_agent_options, validate_stop_agent_options,
     StartAgentOptions, StopAgentOptions, ValidationResult,
 };
 
 pub use command_builder::{
-    build_agent_command, build_screen_stop_command, build_docker_stop_command,
-    build_piped_command, AgentCommandOptions,
+    build_agent_command, build_docker_stop_command, build_piped_command, build_screen_stop_command,
+    AgentCommandOptions,
 };
 
 pub use executor::{
-    execute_command, execute_detached, start_command, setup_signal_handler,
-    ExecutionResult, ProcessHandle,
+    execute_command, execute_detached, setup_signal_handler, start_command, ExecutionResult,
+    ProcessHandle,
 };
 
 pub use streaming::{
-    create_input_stream, create_output_stream,
-    JsonInputStream, JsonOutputStream, ParseError,
-    parse_ndjson_line, stringify_ndjson_line, parse_ndjson, stringify_ndjson,
+    create_input_stream, create_output_stream, parse_ndjson, parse_ndjson_line, stringify_ndjson,
+    stringify_ndjson_line, JsonInputStream, JsonOutputStream, ParseError,
 };
 
 pub use tools::{
-    get_tool, list_tools, is_tool_supported, Tool, ToolRegistry,
-    ClaudeTool, CodexTool, OpencodeTool, AgentTool,
+    get_tool, is_tool_supported, list_tools, AgentTool, ClaudeTool, CodexTool, OpencodeTool, Tool,
+    ToolRegistry,
 };
 
 /// Agent options for creating a controller
@@ -211,11 +209,17 @@ impl Agent {
         // For isolation modes, send stop command
         if self.options.isolation == "screen" || self.options.isolation == "docker" {
             let stop_command = if self.options.isolation == "screen" {
-                let screen_name = self.options.screen_name.as_ref()
+                let screen_name = self
+                    .options
+                    .screen_name
+                    .as_ref()
                     .ok_or("screen_name is required to stop screen session")?;
                 build_screen_stop_command(screen_name)
             } else {
-                let container_name = self.options.container_name.as_ref()
+                let container_name = self
+                    .options
+                    .container_name
+                    .as_ref()
                     .ok_or("container_name is required to stop docker container")?;
                 build_docker_stop_command(container_name)
             };
@@ -240,13 +244,13 @@ impl Agent {
 
         // For no isolation, wait for process to complete and collect output
         if self.options.isolation == "none" || self.options.isolation.is_empty() {
-            let handle = self.process_handle.as_mut()
+            let handle = self
+                .process_handle
+                .as_mut()
                 .ok_or("Agent not started or already stopped")?;
 
             // Wait for the process to exit
-            let exit_code = handle.wait_for_exit()
-                .await
-                .map_err(|e| e.to_string())?;
+            let exit_code = handle.wait_for_exit().await.map_err(|e| e.to_string())?;
 
             let (stdout, stderr, _) = handle.get_output();
 
@@ -295,7 +299,10 @@ impl Agent {
             });
         }
 
-        Err(format!("Unsupported isolation mode: {}", self.options.isolation))
+        Err(format!(
+            "Unsupported isolation mode: {}",
+            self.options.isolation
+        ))
     }
 
     /// Get the current session ID (if available)

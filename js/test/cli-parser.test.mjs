@@ -63,7 +63,13 @@ test('parseStartAgentArgs - with isolation', () => {
 });
 
 test('parseStartAgentArgs - dry-run flag', () => {
-  const args = ['--tool', 'claude', '--working-directory', '/tmp/test', '--dry-run'];
+  const args = [
+    '--tool',
+    'claude',
+    '--working-directory',
+    '/tmp/test',
+    '--dry-run',
+  ];
   const result = parseStartAgentArgs(args);
 
   assert.strictEqual(result.dryRun, true);

@@ -16,7 +16,13 @@ import { getCommandStream } from './utils/loader.mjs';
  * @returns {Promise<{exitCode: number, stdout: string, stderr: string}>} Execution result
  */
 export async function executeCommand(command, options = {}) {
-  const { dryRun = false, attached = true, onStdout, onStderr, onExit } = options;
+  const {
+    dryRun = false,
+    attached = true,
+    onStdout,
+    onStderr,
+    onExit,
+  } = options;
 
   if (dryRun) {
     console.log('Dry run - command that would be executed:');
@@ -167,7 +173,8 @@ export async function executeDetached(command) {
 export function setupSignalHandler(cleanupFn) {
   // Detect runtime
   const isDeno = typeof Deno !== 'undefined';
-  const isNode = typeof process !== 'undefined' && process.versions && process.versions.node;
+  const isNode =
+    typeof process !== 'undefined' && process.versions && process.versions.node;
 
   if (isDeno) {
     // Deno signal handling

@@ -131,7 +131,7 @@ export class JsonOutputStream {
    */
   filterByType(options) {
     const { type } = options;
-    return this.messages.filter(msg => msg.type === type);
+    return this.messages.filter((msg) => msg.type === type);
   }
 
   /**

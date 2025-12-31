@@ -41,11 +41,7 @@ export function mapModelToId(options) {
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
-  const {
-    model,
-    json = true,
-    resume,
-  } = options;
+  const { model, json = true, resume } = options;
 
   const args = ['run'];
 
@@ -83,7 +79,9 @@ export function buildCommand(options) {
   const args = buildArgs(argOptions);
 
   // OpenCode expects prompt via stdin, combine system and user prompts
-  const combinedPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt || ''}` : (prompt || '');
+  const combinedPrompt = systemPrompt
+    ? `${systemPrompt}\n\n${prompt || ''}`
+    : prompt || '';
 
   // Build command with stdin piping
   const escapedPrompt = combinedPrompt.replace(/'/g, "'\\''");

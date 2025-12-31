@@ -50,13 +50,25 @@ test('getTool - throws for unknown tool', () => {
 
 // Claude tool tests
 test('claudeTool - mapModelToId with alias', () => {
-  assert.strictEqual(claudeTool.mapModelToId({ model: 'sonnet' }), 'claude-sonnet-4-5-20250929');
-  assert.strictEqual(claudeTool.mapModelToId({ model: 'opus' }), 'claude-opus-4-5-20251101');
-  assert.strictEqual(claudeTool.mapModelToId({ model: 'haiku' }), 'claude-haiku-4-5-20251001');
+  assert.strictEqual(
+    claudeTool.mapModelToId({ model: 'sonnet' }),
+    'claude-sonnet-4-5-20250929'
+  );
+  assert.strictEqual(
+    claudeTool.mapModelToId({ model: 'opus' }),
+    'claude-opus-4-5-20251101'
+  );
+  assert.strictEqual(
+    claudeTool.mapModelToId({ model: 'haiku' }),
+    'claude-haiku-4-5-20251001'
+  );
 });
 
 test('claudeTool - mapModelToId with full ID', () => {
-  assert.strictEqual(claudeTool.mapModelToId({ model: 'claude-3-opus-20240229' }), 'claude-3-opus-20240229');
+  assert.strictEqual(
+    claudeTool.mapModelToId({ model: 'claude-3-opus-20240229' }),
+    'claude-3-opus-20240229'
+  );
 });
 
 test('claudeTool - buildArgs with prompt', () => {
@@ -105,8 +117,14 @@ test('codexTool - extractSessionId with thread_id', () => {
 
 // OpenCode tool tests
 test('opencodeTool - mapModelToId with alias', () => {
-  assert.strictEqual(opencodeTool.mapModelToId({ model: 'grok' }), 'opencode/grok-code');
-  assert.strictEqual(opencodeTool.mapModelToId({ model: 'gemini' }), 'google/gemini-pro');
+  assert.strictEqual(
+    opencodeTool.mapModelToId({ model: 'grok' }),
+    'opencode/grok-code'
+  );
+  assert.strictEqual(
+    opencodeTool.mapModelToId({ model: 'gemini' }),
+    'google/gemini-pro'
+  );
 });
 
 test('opencodeTool - buildArgs includes run mode', () => {
@@ -118,8 +136,14 @@ test('opencodeTool - buildArgs includes run mode', () => {
 
 // Agent tool tests
 test('agentTool - mapModelToId with alias', () => {
-  assert.strictEqual(agentTool.mapModelToId({ model: 'grok' }), 'opencode/grok-code');
-  assert.strictEqual(agentTool.mapModelToId({ model: 'sonnet' }), 'anthropic/claude-3-5-sonnet');
+  assert.strictEqual(
+    agentTool.mapModelToId({ model: 'grok' }),
+    'opencode/grok-code'
+  );
+  assert.strictEqual(
+    agentTool.mapModelToId({ model: 'sonnet' }),
+    'anthropic/claude-3-5-sonnet'
+  );
 });
 
 test('agentTool - buildArgs with model', () => {

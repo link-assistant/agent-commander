@@ -1,8 +1,8 @@
 //! JSON Input Stream
 //! Creates NDJSON input for CLI tools
 
-use serde_json::{json, Value};
 use super::ndjson::stringify_ndjson_line;
+use serde_json::{json, Value};
 
 /// JSON Input Stream struct
 /// Builds NDJSON input for streaming to CLI tools
@@ -91,7 +91,8 @@ impl JsonInputStream {
 
     /// Convert the stream to NDJSON string
     pub fn to_string(&self) -> String {
-        self.messages.iter()
+        self.messages
+            .iter()
             .map(|msg| stringify_ndjson_line(msg, self.compact))
             .collect()
     }

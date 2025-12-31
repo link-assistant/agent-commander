@@ -28,7 +28,9 @@ export function getTool(options) {
   const { toolName } = options;
   const tool = tools[toolName];
   if (!tool) {
-    throw new Error(`Unknown tool: ${toolName}. Available tools: ${Object.keys(tools).join(', ')}`);
+    throw new Error(
+      `Unknown tool: ${toolName}. Available tools: ${Object.keys(tools).join(', ')}`
+    );
   }
   return tool;
 }

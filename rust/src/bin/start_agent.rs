@@ -2,8 +2,8 @@
 //! Start an agent with specified configuration
 
 use agent_commander::{
-    agent, AgentOptions, AgentStartOptions,
-    parse_start_agent_args, show_start_agent_help, validate_start_agent_options,
+    agent, parse_start_agent_args, show_start_agent_help, validate_start_agent_options,
+    AgentOptions, AgentStartOptions,
 };
 
 #[tokio::main]

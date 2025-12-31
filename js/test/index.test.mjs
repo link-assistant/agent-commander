@@ -73,12 +73,9 @@ test('agent - stop throws for no isolation without start', async () => {
     isolation: 'none',
   });
 
-  await assert.rejects(
-    async () => {
-      await controller.stop();
-    },
-    /Agent not started/
-  );
+  await assert.rejects(async () => {
+    await controller.stop();
+  }, /Agent not started/);
 });
 
 test('agent - stop in dry-run mode with screen', async () => {

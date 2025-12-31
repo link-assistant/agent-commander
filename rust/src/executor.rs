@@ -1,8 +1,8 @@
 //! Execute commands using tokio
 
 use std::process::Stdio;
-use tokio::process::{Command, Child};
 use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::{Child, Command};
 
 /// Command execution result
 #[derive(Debug, Clone, Default)]

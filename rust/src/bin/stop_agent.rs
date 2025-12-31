@@ -2,8 +2,8 @@
 //! Stop a detached agent
 
 use agent_commander::{
-    agent, AgentOptions, AgentStopOptions,
-    parse_stop_agent_args, show_stop_agent_help, validate_stop_agent_options,
+    agent, parse_stop_agent_args, show_stop_agent_help, validate_stop_agent_options, AgentOptions,
+    AgentStopOptions,
 };
 
 #[tokio::main]
@@ -30,7 +30,7 @@ async fn main() {
 
     // Create agent controller (minimal config needed for stop)
     let agent_options = AgentOptions {
-        tool: "dummy".to_string(), // Not used for stop
+        tool: "dummy".to_string(),             // Not used for stop
         working_directory: "/tmp".to_string(), // Not used for stop
         isolation: options.isolation.unwrap_or_default(),
         screen_name: options.screen_name,

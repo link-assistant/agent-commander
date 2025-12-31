@@ -84,7 +84,9 @@ export function buildCommand(options) {
   const args = buildArgs(argOptions);
 
   // Agent expects prompt via stdin, combine system and user prompts
-  const combinedPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt || ''}` : (prompt || '');
+  const combinedPrompt = systemPrompt
+    ? `${systemPrompt}\n\n${prompt || ''}`
+    : prompt || '';
 
   // Build command with stdin piping
   const escapedPrompt = combinedPrompt.replace(/'/g, "'\\''");

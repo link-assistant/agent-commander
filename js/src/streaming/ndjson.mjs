@@ -44,9 +44,7 @@ export function stringifyNdjsonLine(options) {
     return '';
   }
 
-  const json = compact
-    ? JSON.stringify(value)
-    : JSON.stringify(value, null, 2);
+  const json = compact ? JSON.stringify(value) : JSON.stringify(value, null, 2);
 
   return json + '\n';
 }
@@ -87,6 +85,6 @@ export function stringifyNdjson(options) {
   }
 
   return values
-    .map(value => stringifyNdjsonLine({ value, compact }))
+    .map((value) => stringifyNdjsonLine({ value, compact }))
     .join('');
 }

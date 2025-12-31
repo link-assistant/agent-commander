@@ -9,8 +9,17 @@
  * - agent: @link-assistant/agent (unrestricted OpenCode fork)
  */
 
-import { buildAgentCommand, buildScreenStopCommand, buildDockerStopCommand } from './command-builder.mjs';
-import { executeCommand, executeDetached, setupSignalHandler, startCommand } from './executor.mjs';
+import {
+  buildAgentCommand,
+  buildScreenStopCommand,
+  buildDockerStopCommand,
+} from './command-builder.mjs';
+import {
+  executeCommand,
+  executeDetached,
+  setupSignalHandler,
+  startCommand,
+} from './executor.mjs';
 import { getTool, isToolSupported } from './tools/index.mjs';
 import { createOutputStream, createInputStream } from './streaming/index.mjs';
 
@@ -106,7 +115,9 @@ export function agent(options) {
   }
 
   // Get tool configuration if available
-  const toolConfig = isToolSupported({ toolName: tool }) ? getTool({ toolName: tool }) : null;
+  const toolConfig = isToolSupported({ toolName: tool })
+    ? getTool({ toolName: tool })
+    : null;
 
   let processHandle = null;
   let removeSignalHandler = null;
@@ -240,7 +251,10 @@ export function agent(options) {
         return { exitCode: 0, output: { plain: '', parsed: null } };
       }
 
-      const result = await executeCommand(stopCommand, { dryRun, attached: true });
+      const result = await executeCommand(stopCommand, {
+        dryRun,
+        attached: true,
+      });
       return {
         exitCode: result.exitCode,
         output: {
@@ -273,7 +287,10 @@ export function agent(options) {
       if (outputStream && outputStream.getMessages().length > 0) {
         parsedOutput = outputStream.getMessages();
       } else {
-        parsedOutput = parseJsonMessages({ output: plainOutput, toolName: tool });
+        parsedOutput = parseJsonMessages({
+          output: plainOutput,
+          toolName: tool,
+        });
       }
 
       // Extract session ID if tool supports it
@@ -361,8 +378,16 @@ export function createJsonOutputStream(options = {}) {
 }
 
 // Export other utilities
-export { buildAgentCommand, buildScreenStopCommand, buildDockerStopCommand } from './command-builder.mjs';
-export { executeCommand, executeDetached, setupSignalHandler } from './executor.mjs';
+export {
+  buildAgentCommand,
+  buildScreenStopCommand,
+  buildDockerStopCommand,
+} from './command-builder.mjs';
+export {
+  executeCommand,
+  executeDetached,
+  setupSignalHandler,
+} from './executor.mjs';
 export { tools, getTool, listTools, isToolSupported } from './tools/index.mjs';
 export { JsonOutputStream, JsonInputStream } from './streaming/index.mjs';
 export { parseNdjsonLine, stringifyNdjsonLine } from './streaming/ndjson.mjs';

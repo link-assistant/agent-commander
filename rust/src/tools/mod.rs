@@ -1,17 +1,17 @@
 //! Tool configurations and utilities
 //! Provides configuration for different CLI agents: claude, codex, opencode, agent
 
+pub mod agent;
 pub mod claude;
 pub mod codex;
 pub mod opencode;
-pub mod agent;
 
 use std::collections::HashMap;
 
-pub use claude::{ClaudeTool, ClaudeBuildOptions, ClaudeUsage};
-pub use codex::{CodexTool, CodexBuildOptions, CodexUsage};
-pub use opencode::{OpencodeTool, OpencodeBuildOptions, OpencodeUsage};
-pub use agent::{AgentTool, AgentBuildOptions, AgentUsage, ErrorResult};
+pub use agent::{AgentBuildOptions, AgentTool, AgentUsage, ErrorResult};
+pub use claude::{ClaudeBuildOptions, ClaudeTool, ClaudeUsage};
+pub use codex::{CodexBuildOptions, CodexTool, CodexUsage};
+pub use opencode::{OpencodeBuildOptions, OpencodeTool, OpencodeUsage};
 
 /// Generic tool trait
 pub trait Tool {
@@ -26,47 +26,111 @@ pub trait Tool {
 }
 
 impl Tool for ClaudeTool {
-    fn name(&self) -> &'static str { self.name }
-    fn display_name(&self) -> &'static str { self.display_name }
-    fn executable(&self) -> &'static str { self.executable }
-    fn supports_json_output(&self) -> bool { self.supports_json_output }
-    fn supports_json_input(&self) -> bool { self.supports_json_input }
-    fn supports_system_prompt(&self) -> bool { self.supports_system_prompt }
-    fn supports_resume(&self) -> bool { self.supports_resume }
-    fn default_model(&self) -> &'static str { self.default_model }
+    fn name(&self) -> &'static str {
+        self.name
+    }
+    fn display_name(&self) -> &'static str {
+        self.display_name
+    }
+    fn executable(&self) -> &'static str {
+        self.executable
+    }
+    fn supports_json_output(&self) -> bool {
+        self.supports_json_output
+    }
+    fn supports_json_input(&self) -> bool {
+        self.supports_json_input
+    }
+    fn supports_system_prompt(&self) -> bool {
+        self.supports_system_prompt
+    }
+    fn supports_resume(&self) -> bool {
+        self.supports_resume
+    }
+    fn default_model(&self) -> &'static str {
+        self.default_model
+    }
 }
 
 impl Tool for CodexTool {
-    fn name(&self) -> &'static str { self.name }
-    fn display_name(&self) -> &'static str { self.display_name }
-    fn executable(&self) -> &'static str { self.executable }
-    fn supports_json_output(&self) -> bool { self.supports_json_output }
-    fn supports_json_input(&self) -> bool { self.supports_json_input }
-    fn supports_system_prompt(&self) -> bool { self.supports_system_prompt }
-    fn supports_resume(&self) -> bool { self.supports_resume }
-    fn default_model(&self) -> &'static str { self.default_model }
+    fn name(&self) -> &'static str {
+        self.name
+    }
+    fn display_name(&self) -> &'static str {
+        self.display_name
+    }
+    fn executable(&self) -> &'static str {
+        self.executable
+    }
+    fn supports_json_output(&self) -> bool {
+        self.supports_json_output
+    }
+    fn supports_json_input(&self) -> bool {
+        self.supports_json_input
+    }
+    fn supports_system_prompt(&self) -> bool {
+        self.supports_system_prompt
+    }
+    fn supports_resume(&self) -> bool {
+        self.supports_resume
+    }
+    fn default_model(&self) -> &'static str {
+        self.default_model
+    }
 }
 
 impl Tool for OpencodeTool {
-    fn name(&self) -> &'static str { self.name }
-    fn display_name(&self) -> &'static str { self.display_name }
-    fn executable(&self) -> &'static str { self.executable }
-    fn supports_json_output(&self) -> bool { self.supports_json_output }
-    fn supports_json_input(&self) -> bool { self.supports_json_input }
-    fn supports_system_prompt(&self) -> bool { self.supports_system_prompt }
-    fn supports_resume(&self) -> bool { self.supports_resume }
-    fn default_model(&self) -> &'static str { self.default_model }
+    fn name(&self) -> &'static str {
+        self.name
+    }
+    fn display_name(&self) -> &'static str {
+        self.display_name
+    }
+    fn executable(&self) -> &'static str {
+        self.executable
+    }
+    fn supports_json_output(&self) -> bool {
+        self.supports_json_output
+    }
+    fn supports_json_input(&self) -> bool {
+        self.supports_json_input
+    }
+    fn supports_system_prompt(&self) -> bool {
+        self.supports_system_prompt
+    }
+    fn supports_resume(&self) -> bool {
+        self.supports_resume
+    }
+    fn default_model(&self) -> &'static str {
+        self.default_model
+    }
 }
 
 impl Tool for AgentTool {
-    fn name(&self) -> &'static str { self.name }
-    fn display_name(&self) -> &'static str { self.display_name }
-    fn executable(&self) -> &'static str { self.executable }
-    fn supports_json_output(&self) -> bool { self.supports_json_output }
-    fn supports_json_input(&self) -> bool { self.supports_json_input }
-    fn supports_system_prompt(&self) -> bool { self.supports_system_prompt }
-    fn supports_resume(&self) -> bool { self.supports_resume }
-    fn default_model(&self) -> &'static str { self.default_model }
+    fn name(&self) -> &'static str {
+        self.name
+    }
+    fn display_name(&self) -> &'static str {
+        self.display_name
+    }
+    fn executable(&self) -> &'static str {
+        self.executable
+    }
+    fn supports_json_output(&self) -> bool {
+        self.supports_json_output
+    }
+    fn supports_json_input(&self) -> bool {
+        self.supports_json_input
+    }
+    fn supports_system_prompt(&self) -> bool {
+        self.supports_system_prompt
+    }
+    fn supports_resume(&self) -> bool {
+        self.supports_resume
+    }
+    fn default_model(&self) -> &'static str {
+        self.default_model
+    }
 }
 
 /// Tool registry for all supported tools

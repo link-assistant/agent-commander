@@ -88,7 +88,9 @@ export class JsonInputStream {
    */
   toString() {
     return this.messages
-      .map(message => stringifyNdjsonLine({ value: message, compact: this.compact }))
+      .map((message) =>
+        stringifyNdjsonLine({ value: message, compact: this.compact })
+      )
       .join('');
   }
 

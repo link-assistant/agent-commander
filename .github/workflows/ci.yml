@@ -204,7 +204,7 @@ jobs:
       - name: Run tests (Deno)
         if: matrix.runtime == 'deno'
         working-directory: js
-        run: deno test --allow-read --allow-run --allow-env test/**/*.test.mjs
+        run: deno test --allow-read --allow-run --allow-env --allow-net test/**/*.test.mjs
 
   # ==================== RUST JOBS ====================
 

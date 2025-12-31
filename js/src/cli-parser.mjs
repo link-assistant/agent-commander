@@ -161,7 +161,10 @@ export function validateStartAgentOptions(options) {
     errors.push('--container-name is required for docker isolation');
   }
 
-  if (options.isolation && !['none', 'screen', 'docker'].includes(options.isolation)) {
+  if (
+    options.isolation &&
+    !['none', 'screen', 'docker'].includes(options.isolation)
+  ) {
     errors.push('--isolation must be one of: none, screen, docker');
   }
 

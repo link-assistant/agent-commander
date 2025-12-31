@@ -209,8 +209,9 @@ test('JsonInputStream - toBuffer returns Buffer or Uint8Array', () => {
   assert.ok(isBuffer || isUint8Array, 'Should return Buffer or Uint8Array');
 
   // Convert to string for comparison
-  const str = typeof buffer.toString === 'function' && isBuffer
-    ? buffer.toString()
-    : new TextDecoder().decode(buffer);
+  const str =
+    typeof buffer.toString === 'function' && isBuffer
+      ? buffer.toString()
+      : new TextDecoder().decode(buffer);
   assert.strictEqual(str, '{"test":true}\n');
 });

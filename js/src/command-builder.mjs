@@ -148,7 +148,12 @@ function buildScreenCommand(options) {
  * @returns {string} Docker command
  */
 function buildDockerCommand(options) {
-  const { baseCommand, containerName, workingDirectory, detached = false } = options;
+  const {
+    baseCommand,
+    containerName,
+    workingDirectory,
+    detached = false,
+  } = options;
   const name = containerName || `agent-${Date.now()}`;
 
   let dockerCommand = 'docker run';

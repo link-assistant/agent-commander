@@ -1,9 +1,9 @@
 //! Codex CLI tool configuration
 //! Based on hive-mind's codex.lib.mjs implementation
 
-use std::collections::HashMap;
-use serde_json::Value;
 use crate::streaming::parse_ndjson;
+use serde_json::Value;
+use std::collections::HashMap;
 
 /// Get the Codex model map
 pub fn get_model_map() -> HashMap<&'static str, &'static str> {
@@ -29,7 +29,8 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
 /// Full model ID
 pub fn map_model_to_id(model: &str) -> String {
     let model_map = get_model_map();
-    model_map.get(model)
+    model_map
+        .get(model)
         .map(|s| s.to_string())
         .unwrap_or_else(|| model.to_string())
 }
@@ -79,8 +80,12 @@ pub fn build_args(options: &CodexBuildOptions) -> Vec<String> {
 
 /// Escape an argument for shell usage
 fn escape_arg(arg: &str) -> String {
-    if arg.contains('"') || arg.contains(char::is_whitespace) || arg.contains('$') ||
-       arg.contains('`') || arg.contains('\\') {
+    if arg.contains('"')
+        || arg.contains(char::is_whitespace)
+        || arg.contains('$')
+        || arg.contains('`')
+        || arg.contains('\\')
+    {
         let escaped = arg
             .replace('\\', "\\\\")
             .replace('"', "\\\"")
@@ -119,7 +124,13 @@ pub fn build_command(options: &CodexBuildOptions) -> String {
 
     // Build command with stdin piping
     let escaped_prompt = escape_single_quotes(&combined_prompt);
-    format!("printf '%s' '{}' | codex {}", escaped_prompt, args_str.join(" ")).trim().to_string()
+    format!(
+        "printf '%s' '{}' | codex {}",
+        escaped_prompt,
+        args_str.join(" ")
+    )
+    .trim()
+    .to_string()
 }
 
 /// Parse JSON messages from Codex output

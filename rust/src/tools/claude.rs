@@ -1,9 +1,9 @@
 //! Claude CLI tool configuration
 //! Based on hive-mind's claude.lib.mjs implementation
 
-use std::collections::HashMap;
-use serde_json::Value;
 use crate::streaming::parse_ndjson;
+use serde_json::Value;
+use std::collections::HashMap;
 
 /// Get the Claude model map
 pub fn get_model_map() -> HashMap<&'static str, &'static str> {
@@ -25,7 +25,8 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
 /// Full model ID
 pub fn map_model_to_id(model: &str) -> String {
     let model_map = get_model_map();
-    model_map.get(model)
+    model_map
+        .get(model)
         .map(|s| s.to_string())
         .unwrap_or_else(|| model.to_string())
 }
@@ -86,8 +87,12 @@ pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
 
 /// Escape an argument for shell usage
 fn escape_arg(arg: &str) -> String {
-    if arg.contains('"') || arg.contains(char::is_whitespace) || arg.contains('$') ||
-       arg.contains('`') || arg.contains('\\') {
+    if arg.contains('"')
+        || arg.contains(char::is_whitespace)
+        || arg.contains('$')
+        || arg.contains('`')
+        || arg.contains('\\')
+    {
         let escaped = arg
             .replace('\\', "\\\\")
             .replace('"', "\\\"")
@@ -171,10 +176,16 @@ pub fn extract_usage(output: &str) -> ClaudeUsage {
             if let Some(output) = msg_usage.get("output_tokens").and_then(|v| v.as_u64()) {
                 usage.output_tokens += output;
             }
-            if let Some(cache_creation) = msg_usage.get("cache_creation_input_tokens").and_then(|v| v.as_u64()) {
+            if let Some(cache_creation) = msg_usage
+                .get("cache_creation_input_tokens")
+                .and_then(|v| v.as_u64())
+            {
                 usage.cache_creation_tokens += cache_creation;
             }
-            if let Some(cache_read) = msg_usage.get("cache_read_input_tokens").and_then(|v| v.as_u64()) {
+            if let Some(cache_read) = msg_usage
+                .get("cache_read_input_tokens")
+                .and_then(|v| v.as_u64())
+            {
                 usage.cache_read_tokens += cache_read;
             }
         }
@@ -224,7 +235,10 @@ mod tests {
 
     #[test]
     fn test_map_model_to_id_with_full_id() {
-        assert_eq!(map_model_to_id("claude-3-opus-20240229"), "claude-3-opus-20240229");
+        assert_eq!(
+            map_model_to_id("claude-3-opus-20240229"),
+            "claude-3-opus-20240229"
+        );
     }
 
     #[test]

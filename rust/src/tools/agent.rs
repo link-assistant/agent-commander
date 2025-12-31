@@ -2,9 +2,9 @@
 //! Based on hive-mind's agent.lib.mjs implementation
 //! Agent is a fork of OpenCode with unrestricted permissions for autonomous execution
 
-use std::collections::HashMap;
-use serde_json::Value;
 use crate::streaming::parse_ndjson;
+use serde_json::Value;
+use std::collections::HashMap;
 
 /// Get the Agent model map
 /// Maps aliases to full model IDs (uses OpenCode's provider/model format)
@@ -31,7 +31,8 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
 /// Full model ID
 pub fn map_model_to_id(model: &str) -> String {
     let model_map = get_model_map();
-    model_map.get(model)
+    model_map
+        .get(model)
         .map(|s| s.to_string())
         .unwrap_or_else(|| model.to_string())
 }
@@ -75,8 +76,12 @@ pub fn build_args(options: &AgentBuildOptions) -> Vec<String> {
 
 /// Escape an argument for shell usage
 fn escape_arg(arg: &str) -> String {
-    if arg.contains('"') || arg.contains(char::is_whitespace) || arg.contains('$') ||
-       arg.contains('`') || arg.contains('\\') {
+    if arg.contains('"')
+        || arg.contains(char::is_whitespace)
+        || arg.contains('$')
+        || arg.contains('`')
+        || arg.contains('\\')
+    {
         let escaped = arg
             .replace('\\', "\\\\")
             .replace('"', "\\\"")
@@ -115,7 +120,13 @@ pub fn build_command(options: &AgentBuildOptions) -> String {
 
     // Build command with stdin piping
     let escaped_prompt = escape_single_quotes(&combined_prompt);
-    format!("printf '%s' '{}' | agent {}", escaped_prompt, args_str.join(" ")).trim().to_string()
+    format!(
+        "printf '%s' '{}' | agent {}",
+        escaped_prompt,
+        args_str.join(" ")
+    )
+    .trim()
+    .to_string()
 }
 
 /// Parse JSON messages from Agent output
@@ -237,7 +248,8 @@ pub fn detect_errors(output: &str) -> ErrorResult {
             return ErrorResult {
                 has_error: true,
                 error_type: msg_type.map(|s| s.to_string()),
-                message: msg.get("message")
+                message: msg
+                    .get("message")
                     .and_then(|m| m.as_str())
                     .map(|s| s.to_string())
                     .or_else(|| Some("Unknown error".to_string())),
@@ -270,7 +282,7 @@ impl Default for AgentTool {
             supports_json_output: true,
             supports_json_input: true, // Agent supports full JSON streaming input
             supports_system_prompt: false, // System prompt is combined with user prompt
-            supports_resume: false, // Agent doesn't have explicit resume like Claude
+            supports_resume: false,    // Agent doesn't have explicit resume like Claude
             default_model: "grok-code-fast-1",
         }
     }

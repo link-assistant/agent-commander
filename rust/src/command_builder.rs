@@ -1,11 +1,11 @@
 //! Build command strings for different agent tools
 
 use crate::tools::{
-    is_tool_supported,
+    agent::{self, AgentBuildOptions},
     claude::{self, ClaudeBuildOptions},
     codex::{self, CodexBuildOptions},
+    is_tool_supported,
     opencode::{self, OpencodeBuildOptions},
-    agent::{self, AgentBuildOptions},
 };
 
 /// Agent command build options
@@ -54,19 +54,30 @@ fn build_tool_command(tool: &str, prompt: Option<&str>, system_prompt: Option<&s
 
 /// Build screen isolation command
 fn build_screen_command(base_command: &str, screen_name: Option<&str>, detached: bool) -> String {
-    let session_name = screen_name
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| format!("agent-{}", std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis()));
+    let session_name = screen_name.map(|s| s.to_string()).unwrap_or_else(|| {
+        format!(
+            "agent-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis()
+        )
+    });
 
     if detached {
         // Start detached screen session
-        format!("screen -dmS \"{}\" bash -c '{}'", session_name, escape_quotes(base_command))
+        format!(
+            "screen -dmS \"{}\" bash -c '{}'",
+            session_name,
+            escape_quotes(base_command)
+        )
     } else {
         // Start attached screen session
-        format!("screen -S \"{}\" bash -c '{}'", session_name, escape_quotes(base_command))
+        format!(
+            "screen -S \"{}\" bash -c '{}'",
+            session_name,
+            escape_quotes(base_command)
+        )
     }
 }
 
@@ -77,12 +88,15 @@ fn build_docker_command(
     working_directory: &str,
     detached: bool,
 ) -> String {
-    let name = container_name
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| format!("agent-{}", std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis()));
+    let name = container_name.map(|s| s.to_string()).unwrap_or_else(|| {
+        format!(
+            "agent-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis()
+        )
+    });
 
     let mut command = "docker run".to_string();
 
@@ -93,7 +107,10 @@ fn build_docker_command(
     }
 
     command.push_str(&format!(" --name \"{}\"", name));
-    command.push_str(&format!(" -v \"{}:{}\"", working_directory, working_directory));
+    command.push_str(&format!(
+        " -v \"{}:{}\"",
+        working_directory, working_directory
+    ));
     command.push_str(&format!(" -w \"{}\"", working_directory));
     command.push_str(" node:18-slim");
     command.push_str(&format!(" bash -c '{}'", escape_quotes(base_command)));
@@ -112,43 +129,35 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
     // Build base command using tool-specific builder if available
     let base_command = if is_tool_supported(&options.tool) {
         match options.tool.as_str() {
-            "claude" => {
-                claude::build_command(&ClaudeBuildOptions {
-                    prompt: options.prompt.clone(),
-                    system_prompt: options.system_prompt.clone(),
-                    model: options.model.clone(),
-                    json: options.json,
-                    resume: options.resume.clone(),
-                    print: false,
-                })
-            }
-            "codex" => {
-                codex::build_command(&CodexBuildOptions {
-                    prompt: options.prompt.clone(),
-                    system_prompt: options.system_prompt.clone(),
-                    model: options.model.clone(),
-                    json: options.json,
-                    resume: options.resume.clone(),
-                })
-            }
-            "opencode" => {
-                opencode::build_command(&OpencodeBuildOptions {
-                    prompt: options.prompt.clone(),
-                    system_prompt: options.system_prompt.clone(),
-                    model: options.model.clone(),
-                    json: options.json,
-                    resume: options.resume.clone(),
-                })
-            }
-            "agent" => {
-                agent::build_command(&AgentBuildOptions {
-                    prompt: options.prompt.clone(),
-                    system_prompt: options.system_prompt.clone(),
-                    model: options.model.clone(),
-                    compact_json: false,
-                    use_existing_claude_oauth: false,
-                })
-            }
+            "claude" => claude::build_command(&ClaudeBuildOptions {
+                prompt: options.prompt.clone(),
+                system_prompt: options.system_prompt.clone(),
+                model: options.model.clone(),
+                json: options.json,
+                resume: options.resume.clone(),
+                print: false,
+            }),
+            "codex" => codex::build_command(&CodexBuildOptions {
+                prompt: options.prompt.clone(),
+                system_prompt: options.system_prompt.clone(),
+                model: options.model.clone(),
+                json: options.json,
+                resume: options.resume.clone(),
+            }),
+            "opencode" => opencode::build_command(&OpencodeBuildOptions {
+                prompt: options.prompt.clone(),
+                system_prompt: options.system_prompt.clone(),
+                model: options.model.clone(),
+                json: options.json,
+                resume: options.resume.clone(),
+            }),
+            "agent" => agent::build_command(&AgentBuildOptions {
+                prompt: options.prompt.clone(),
+                system_prompt: options.system_prompt.clone(),
+                model: options.model.clone(),
+                compact_json: false,
+                use_existing_claude_oauth: false,
+            }),
             _ => build_tool_command(
                 &options.tool,
                 options.prompt.as_deref(),
@@ -213,7 +222,10 @@ pub fn build_screen_stop_command(screen_name: &str) -> String {
 /// # Returns
 /// Stop command
 pub fn build_docker_stop_command(container_name: &str) -> String {
-    format!("docker stop \"{}\" && docker rm \"{}\"", container_name, container_name)
+    format!(
+        "docker stop \"{}\" && docker rm \"{}\"",
+        container_name, container_name
+    )
 }
 
 /// Build stdin piping command for tools that accept input via stdin

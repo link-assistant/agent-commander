@@ -70,7 +70,8 @@ pub fn parse_ndjson(data: &str) -> Vec<Value> {
 /// # Returns
 /// NDJSON string
 pub fn stringify_ndjson(values: &[Value], compact: bool) -> String {
-    values.iter()
+    values
+        .iter()
         .map(|v| stringify_ndjson_line(v, compact))
         .collect()
 }

@@ -1,12 +1,12 @@
 //! JSON Streaming utilities
 //! Support for NDJSON (Newline Delimited JSON) input and output
 
-pub mod ndjson;
 pub mod input_stream;
+pub mod ndjson;
 pub mod output_stream;
 
-pub use ndjson::{parse_ndjson_line, stringify_ndjson_line, parse_ndjson, stringify_ndjson};
 pub use input_stream::JsonInputStream;
+pub use ndjson::{parse_ndjson, parse_ndjson_line, stringify_ndjson, stringify_ndjson_line};
 pub use output_stream::{JsonOutputStream, ParseError};
 
 /// Create a JSON output stream processor

@@ -1,8 +1,8 @@
 //! JSON Output Stream processor
 //! Processes NDJSON output from CLI tools
 
-use serde_json::Value;
 use super::ndjson::parse_ndjson_line;
+use serde_json::Value;
 
 /// Error information for failed JSON parses
 #[derive(Debug, Clone)]
@@ -190,7 +190,8 @@ impl JsonOutputStream {
     /// # Arguments
     /// * `msg_type` - Message type to filter
     pub fn filter_by_type(&self, msg_type: &str) -> Vec<&Value> {
-        self.messages.iter()
+        self.messages
+            .iter()
             .filter(|msg| msg.get("type").and_then(|t| t.as_str()) == Some(msg_type))
             .collect()
     }
