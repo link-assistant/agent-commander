@@ -12,10 +12,10 @@
     "stop-agent": "./bin/stop-agent.mjs"
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs",
-    "test:node": "node --test test/*.test.mjs",
+    "test": "node --test --test-name-pattern=\".*\" test/",
+    "test:node": "node --test --test-name-pattern=\".*\" test/",
     "test:bun": "bun test",
-    "test:deno": "deno test --allow-read --allow-run --allow-env --allow-net test/*.test.mjs",
+    "test:deno": "deno test --allow-read --allow-run --allow-env --allow-net test/",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
