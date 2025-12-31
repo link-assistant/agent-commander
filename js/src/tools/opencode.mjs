@@ -114,7 +114,9 @@ export function parseOutput(options) {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed || !trimmed.startsWith('{')) continue;
+    if (!trimmed || !trimmed.startsWith('{')) {
+      continue;
+    }
 
     try {
       const parsed = JSON.parse(trimmed);
@@ -164,8 +166,12 @@ export function extractUsage(options) {
   for (const msg of messages) {
     if (msg.usage) {
       const u = msg.usage;
-      if (u.input_tokens) usage.inputTokens += u.input_tokens;
-      if (u.output_tokens) usage.outputTokens += u.output_tokens;
+      if (u.input_tokens) {
+        usage.inputTokens += u.input_tokens;
+      }
+      if (u.output_tokens) {
+        usage.outputTokens += u.output_tokens;
+      }
     }
   }
 

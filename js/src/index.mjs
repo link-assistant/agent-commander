@@ -275,7 +275,7 @@ export function agent(options) {
       const { stdout, stderr } = processHandle.getOutput();
 
       // Combine stdout and stderr for plain output
-      const plainOutput = stdout + (stderr ? '\n' + stderr : '');
+      const plainOutput = stdout + (stderr ? `\n${stderr}` : '');
 
       // Flush output stream if we have one
       if (outputStream) {

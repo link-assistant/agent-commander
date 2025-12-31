@@ -197,7 +197,9 @@ export function buildDockerStopCommand(containerName) {
  * @returns {string} Escaped string
  */
 function escapeQuotes(str) {
-  if (!str) return '';
+  if (!str) {
+    return '';
+  }
   return str.replace(/'/g, "'\\''");
 }
 
@@ -207,7 +209,9 @@ function escapeQuotes(str) {
  * @returns {string} Escaped string
  */
 function escapeForBashC(str) {
-  if (!str) return '';
+  if (!str) {
+    return '';
+  }
   // Escape backslashes first, then double quotes, dollar signs, and backticks
   return str
     .replace(/\\/g, '\\\\')

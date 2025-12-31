@@ -123,7 +123,9 @@ export function parseOutput(options) {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed || !trimmed.startsWith('{')) continue;
+    if (!trimmed || !trimmed.startsWith('{')) {
+      continue;
+    }
 
     try {
       const parsed = JSON.parse(trimmed);
@@ -175,12 +177,18 @@ export function extractUsage(options) {
   for (const msg of messages) {
     if (msg.message?.usage) {
       const u = msg.message.usage;
-      if (u.input_tokens) usage.inputTokens += u.input_tokens;
-      if (u.output_tokens) usage.outputTokens += u.output_tokens;
-      if (u.cache_creation_input_tokens)
+      if (u.input_tokens) {
+        usage.inputTokens += u.input_tokens;
+      }
+      if (u.output_tokens) {
+        usage.outputTokens += u.output_tokens;
+      }
+      if (u.cache_creation_input_tokens) {
         usage.cacheCreationTokens += u.cache_creation_input_tokens;
-      if (u.cache_read_input_tokens)
+      }
+      if (u.cache_read_input_tokens) {
         usage.cacheReadTokens += u.cache_read_input_tokens;
+      }
     }
   }
 

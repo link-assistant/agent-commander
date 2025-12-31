@@ -46,7 +46,7 @@ export function stringifyNdjsonLine(options) {
 
   const json = compact ? JSON.stringify(value) : JSON.stringify(value, null, 2);
 
-  return json + '\n';
+  return `${json}\n`;
 }
 
 /**

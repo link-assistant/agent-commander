@@ -119,7 +119,9 @@ export function parseOutput(options) {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed || !trimmed.startsWith('{')) continue;
+    if (!trimmed || !trimmed.startsWith('{')) {
+      continue;
+    }
 
     try {
       const parsed = JSON.parse(trimmed);
@@ -179,14 +181,24 @@ export function extractUsage(options) {
       usage.stepCount++;
 
       // Add token counts
-      if (tokens.input) usage.inputTokens += tokens.input;
-      if (tokens.output) usage.outputTokens += tokens.output;
-      if (tokens.reasoning) usage.reasoningTokens += tokens.reasoning;
+      if (tokens.input) {
+        usage.inputTokens += tokens.input;
+      }
+      if (tokens.output) {
+        usage.outputTokens += tokens.output;
+      }
+      if (tokens.reasoning) {
+        usage.reasoningTokens += tokens.reasoning;
+      }
 
       // Handle cache tokens
       if (tokens.cache) {
-        if (tokens.cache.read) usage.cacheReadTokens += tokens.cache.read;
-        if (tokens.cache.write) usage.cacheWriteTokens += tokens.cache.write;
+        if (tokens.cache.read) {
+          usage.cacheReadTokens += tokens.cache.read;
+        }
+        if (tokens.cache.write) {
+          usage.cacheWriteTokens += tokens.cache.write;
+        }
       }
 
       // Add cost from step_finish

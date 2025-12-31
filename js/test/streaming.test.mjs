@@ -113,7 +113,7 @@ test('JsonOutputStream - flush processes remaining buffer', () => {
   stream.process({ chunk: '{"type":"final"}' }); // No trailing newline
 
   // Buffer should have content
-  let messages = stream.getMessages();
+  const messages = stream.getMessages();
   assert.strictEqual(messages.length, 0);
 
   // Flush should process remaining
