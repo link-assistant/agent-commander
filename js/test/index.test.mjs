@@ -94,22 +94,28 @@ test('agent - stop in dry-run mode with screen', async () => {
   assert.ok(result.output.parsed !== undefined);
 });
 
-test('agent - start and stop with no isolation', async () => {
-  const controller = agent({
-    tool: 'echo',
-    workingDirectory: '/tmp',
-    prompt: 'Hello World',
-  });
+// Skip this test on Windows - uses bash-dependent command execution
+// and dynamic module loading that isn't available on Windows
+test(
+  'agent - start and stop with no isolation',
+  { skip: process.platform === 'win32' },
+  async () => {
+    const controller = agent({
+      tool: 'echo',
+      workingDirectory: '/tmp',
+      prompt: 'Hello World',
+    });
 
-  // Start should not wait for completion
-  await controller.start({ attached: false });
+    // Start should not wait for completion
+    await controller.start({ attached: false });
 
-  // Stop should wait and collect output
-  const result = await controller.stop();
+    // Stop should wait and collect output
+    const result = await controller.stop();
 
-  assert.ok(result.exitCode !== null);
-  assert.strictEqual(result.exitCode, 0);
-  assert.ok(result.output);
-  assert.ok(result.output.plain);
-  assert.ok(result.output.plain.includes('Hello World'));
-});
+    assert.ok(result.exitCode !== null);
+    assert.strictEqual(result.exitCode, 0);
+    assert.ok(result.output);
+    assert.ok(result.output.plain);
+    assert.ok(result.output.plain.includes('Hello World'));
+  }
+);
