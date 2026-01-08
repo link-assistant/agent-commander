@@ -17,6 +17,14 @@ on:
           - js
           - rust
           - both
+      release_mode:
+        description: 'Manual release mode'
+        required: true
+        type: choice
+        default: 'instant'
+        options:
+          - instant
+          - changelog-pr
       bump_type:
         description: 'Version bump type'
         required: true
@@ -37,6 +45,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -Dwarnings
+  CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
 
 jobs:
   # === DETECT CHANGES ===
@@ -268,6 +277,10 @@ jobs:
         working-directory: rust
         run: cargo clippy --all-targets --all-features
 
+      - name: Check file size limit
+        working-directory: rust
+        run: node ../scripts/rust/check-file-size.mjs
+
   # === RUST TEST ===
   rust-test:
     name: Rust Test (${{ matrix.os }})
@@ -459,17 +472,63 @@ jobs:
         working-directory: rust
         run: cargo build --release
 
+      - name: Publish to Crates.io
+        if: steps.check.outputs.should_release == 'true'
+        id: publish-crate
+        working-directory: rust
+        run: |
+          PACKAGE_NAME=$(grep '^name = ' Cargo.toml | head -1 | sed 's/name = "\(.*\)"/\1/')
+          PACKAGE_VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          echo "Package: $PACKAGE_NAME@$PACKAGE_VERSION"
+
+          echo "=== Attempting to publish to crates.io ==="
+
+          # Try to publish and capture the result
+          set +e  # Don't exit on error
+          cargo publish --token ${{ secrets.CARGO_TOKEN }} --allow-dirty 2>&1 | tee publish_output.txt
+          PUBLISH_EXIT_CODE=$?
+          set -e  # Re-enable exit on error
+
+          if [ $PUBLISH_EXIT_CODE -eq 0 ]; then
+            echo "Successfully published $PACKAGE_NAME@$PACKAGE_VERSION to crates.io"
+            echo "publish_result=success" >> $GITHUB_OUTPUT
+          elif grep -q "already uploaded" publish_output.txt || grep -q "already exists" publish_output.txt; then
+            echo "Version $PACKAGE_VERSION already exists on crates.io - this is OK"
+            echo "publish_result=already_exists" >> $GITHUB_OUTPUT
+          else
+            echo "Failed to publish for unknown reason"
+            cat publish_output.txt
+            echo "publish_result=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Report crates.io publish status
+        if: steps.check.outputs.should_release == 'true'
+        run: |
+          if [ "${{ steps.publish-crate.outputs.publish_result }}" = "success" ]; then
+            echo "Package was successfully published to crates.io"
+          elif [ "${{ steps.publish-crate.outputs.publish_result }}" = "already_exists" ]; then
+            echo "Package version already exists on crates.io - no action needed"
+          else
+            echo "Publishing to crates.io failed - please check the logs"
+          fi
+
       - name: Create GitHub Release
         if: steps.check.outputs.should_release == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: rust
-        run: node ../scripts/rust/create-github-release.mjs --release-version "${{ steps.current_version.outputs.version }}" --repository "${{ github.repository }}"
+        run: |
+          PACKAGE_NAME=$(grep '^name = ' Cargo.toml | head -1 | sed 's/name = "\(.*\)"/\1/')
+          node ../scripts/rust/create-github-release.mjs \
+            --release-version "${{ steps.current_version.outputs.version }}" \
+            --repository "${{ github.repository }}" \
+            --crates-io-url "https://crates.io/crates/$PACKAGE_NAME"
 
-  # === MANUAL RELEASE ===
+  # === MANUAL INSTANT RELEASE ===
   manual-release:
-    name: Manual Release (${{ github.event.inputs.release_target }})
-    if: github.event_name == 'workflow_dispatch'
+    name: Manual Instant Release (${{ github.event.inputs.release_target }})
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_mode == 'instant'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -522,6 +581,19 @@ jobs:
         run: node ../scripts/js/create-github-release.mjs --release-version "${{ steps.js_publish.outputs.published_version }}" --repository "${{ github.repository }}"
 
       # Rust Manual Release
+      - name: Rust Collect changelog fragments
+        if: github.event.inputs.release_target == 'rust' || github.event.inputs.release_target == 'both'
+        working-directory: rust
+        run: |
+          # Check if there are any fragments to collect
+          FRAGMENTS=$(find changelog.d -name "*.md" ! -name "README.md" 2>/dev/null | wc -l)
+          if [ "$FRAGMENTS" -gt 0 ]; then
+            echo "Found $FRAGMENTS changelog fragment(s), collecting..."
+            node ../scripts/rust/collect-changelog.mjs
+          else
+            echo "No changelog fragments found, skipping collection"
+          fi
+
       - name: Rust Version and commit
         if: github.event.inputs.release_target == 'rust' || github.event.inputs.release_target == 'both'
         id: rust_version
@@ -533,9 +605,168 @@ jobs:
         working-directory: rust
         run: cargo build --release
 
+      - name: Rust Publish to Crates.io
+        if: (github.event.inputs.release_target == 'rust' || github.event.inputs.release_target == 'both') && (steps.rust_version.outputs.version_committed == 'true' || steps.rust_version.outputs.already_released == 'true')
+        id: rust_publish_crate
+        working-directory: rust
+        run: |
+          PACKAGE_NAME=$(grep '^name = ' Cargo.toml | head -1 | sed 's/name = "\(.*\)"/\1/')
+          PACKAGE_VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          echo "Package: $PACKAGE_NAME@$PACKAGE_VERSION"
+
+          echo "=== Attempting to publish to crates.io ==="
+
+          # Try to publish and capture the result
+          set +e  # Don't exit on error
+          cargo publish --token ${{ secrets.CARGO_TOKEN }} --allow-dirty 2>&1 | tee publish_output.txt
+          PUBLISH_EXIT_CODE=$?
+          set -e  # Re-enable exit on error
+
+          if [ $PUBLISH_EXIT_CODE -eq 0 ]; then
+            echo "Successfully published $PACKAGE_NAME@$PACKAGE_VERSION to crates.io"
+            echo "publish_result=success" >> $GITHUB_OUTPUT
+          elif grep -q "already uploaded" publish_output.txt || grep -q "already exists" publish_output.txt; then
+            echo "Version $PACKAGE_VERSION already exists on crates.io - this is OK"
+            echo "publish_result=already_exists" >> $GITHUB_OUTPUT
+          else
+            echo "Failed to publish for unknown reason"
+            cat publish_output.txt
+            echo "publish_result=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Rust Report crates.io publish status
+        if: (github.event.inputs.release_target == 'rust' || github.event.inputs.release_target == 'both') && (steps.rust_version.outputs.version_committed == 'true' || steps.rust_version.outputs.already_released == 'true')
+        run: |
+          if [ "${{ steps.rust_publish_crate.outputs.publish_result }}" = "success" ]; then
+            echo "Package was successfully published to crates.io"
+          elif [ "${{ steps.rust_publish_crate.outputs.publish_result }}" = "already_exists" ]; then
+            echo "Package version already exists on crates.io - no action needed"
+          else
+            echo "Publishing to crates.io failed - please check the logs"
+          fi
+
       - name: Rust Create GitHub Release
         if: (github.event.inputs.release_target == 'rust' || github.event.inputs.release_target == 'both') && (steps.rust_version.outputs.version_committed == 'true' || steps.rust_version.outputs.already_released == 'true')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: rust
-        run: node ../scripts/rust/create-github-release.mjs --release-version "${{ steps.rust_version.outputs.new_version }}" --repository "${{ github.repository }}"
+        run: |
+          PACKAGE_NAME=$(grep '^name = ' Cargo.toml | head -1 | sed 's/name = "\(.*\)"/\1/')
+          node ../scripts/rust/create-github-release.mjs \
+            --release-version "${{ steps.rust_version.outputs.new_version }}" \
+            --repository "${{ github.repository }}" \
+            --crates-io-url "https://crates.io/crates/$PACKAGE_NAME"
+
+  # === MANUAL CHANGELOG PR ===
+  changelog-pr:
+    name: Create Changelog PR (${{ github.event.inputs.release_target }})
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_mode == 'changelog-pr'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Create JS changelog fragment
+        if: github.event.inputs.release_target == 'js' || github.event.inputs.release_target == 'both'
+        working-directory: js
+        run: |
+          BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+          DESCRIPTION="${{ github.event.inputs.description }}"
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          FRAGMENT_FILE=".changeset/${TIMESTAMP}-manual-${BUMP_TYPE}.md"
+
+          # Create changeset file
+          mkdir -p .changeset
+          cat > "$FRAGMENT_FILE" << EOF
+          ---
+          "agent-commander": $BUMP_TYPE
+          ---
+
+          EOF
+
+          if [ -n "$DESCRIPTION" ]; then
+            echo "${DESCRIPTION}" >> "$FRAGMENT_FILE"
+          else
+            echo "Manual ${BUMP_TYPE} release" >> "$FRAGMENT_FILE"
+          fi
+
+          echo "Created changeset fragment: $FRAGMENT_FILE"
+          cat "$FRAGMENT_FILE"
+
+      - name: Create Rust changelog fragment
+        if: github.event.inputs.release_target == 'rust' || github.event.inputs.release_target == 'both'
+        working-directory: rust
+        run: |
+          BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+          DESCRIPTION="${{ github.event.inputs.description }}"
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          FRAGMENT_FILE="changelog.d/${TIMESTAMP}-manual-${BUMP_TYPE}.md"
+
+          # Determine changelog category based on bump type
+          case "$BUMP_TYPE" in
+            major)
+              CATEGORY="### Breaking Changes"
+              ;;
+            minor)
+              CATEGORY="### Added"
+              ;;
+            patch)
+              CATEGORY="### Fixed"
+              ;;
+          esac
+
+          # Create changelog fragment with frontmatter
+          mkdir -p changelog.d
+          cat > "$FRAGMENT_FILE" << EOF
+          ---
+          bump: $BUMP_TYPE
+          ---
+
+          $CATEGORY
+
+          EOF
+
+          if [ -n "$DESCRIPTION" ]; then
+            echo "- ${DESCRIPTION}" >> "$FRAGMENT_FILE"
+          else
+            echo "- Manual ${BUMP_TYPE} release" >> "$FRAGMENT_FILE"
+          fi
+
+          echo "Created changelog fragment: $FRAGMENT_FILE"
+          cat "$FRAGMENT_FILE"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: add changelog for manual ${{ github.event.inputs.bump_type }} release (${{ github.event.inputs.release_target }})'
+          branch: changelog-manual-release-${{ github.run_id }}
+          delete-branch: true
+          title: 'chore: manual ${{ github.event.inputs.bump_type }} release (${{ github.event.inputs.release_target }})'
+          body: |
+            ## Manual Release Request
+
+            This PR was created by a manual workflow trigger to prepare a **${{ github.event.inputs.bump_type }}** release.
+
+            ### Release Details
+            - **Target:** ${{ github.event.inputs.release_target }}
+            - **Type:** ${{ github.event.inputs.bump_type }}
+            - **Description:** ${{ github.event.inputs.description || 'Manual release' }}
+            - **Triggered by:** @${{ github.actor }}
+
+            ### Next Steps
+            1. Review the changelog fragment(s) in this PR
+            2. Merge this PR to main
+            3. The automated release workflow will:
+               - For JS: Publish to npm and create a GitHub release
+               - For Rust: Publish to crates.io and create a GitHub release
