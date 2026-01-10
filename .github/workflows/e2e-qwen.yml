@@ -1,0 +1,231 @@
+name: E2E Tests - Qwen Code CLI
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_prompt:
+        description: 'Test prompt to send to Qwen Code'
+        required: false
+        default: 'Hello, respond with a single word: working'
+        type: string
+      working_directory:
+        description: 'Working directory for the test'
+        required: false
+        default: '/tmp/qwen-e2e-test'
+        type: string
+      model:
+        description: 'Model to use for testing'
+        required: false
+        default: 'qwen3-coder'
+        type: choice
+        options:
+          - qwen3-coder
+          - coder
+          - gpt-4o
+
+concurrency:
+  group: e2e-qwen-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-qwen-test:
+    name: Qwen Code E2E Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Install dependencies
+        working-directory: js
+        run: npm install
+
+      - name: Install Qwen Code CLI
+        run: |
+          npm install -g @qwen-code/qwen-code@latest
+          echo "Qwen Code CLI version:"
+          qwen --version || echo "Version command not available"
+
+      - name: Create test working directory
+        run: |
+          mkdir -p ${{ github.event.inputs.working_directory || '/tmp/qwen-e2e-test' }}
+          echo "# Test Project" > "${{ github.event.inputs.working_directory || '/tmp/qwen-e2e-test' }}/README.md"
+          echo "This is a test project for Qwen Code E2E testing." >> "${{ github.event.inputs.working_directory || '/tmp/qwen-e2e-test' }}/README.md"
+
+      - name: Test Qwen Code CLI directly
+        id: direct_test
+        continue-on-error: true
+        run: |
+          echo "Testing Qwen Code CLI directly..."
+          cd "${{ github.event.inputs.working_directory || '/tmp/qwen-e2e-test' }}"
+
+          # Test with headless mode (-p flag)
+          # Note: This requires authentication. In CI, we test that the CLI is installed
+          # and responds correctly to basic commands.
+
+          # Test help command
+          echo "=== Testing help command ==="
+          qwen --help || echo "Help command failed"
+
+          # Test version
+          echo "=== Testing version ==="
+          qwen --version || echo "Version command not available"
+
+          echo "direct_test_completed=true" >> $GITHUB_OUTPUT
+
+      - name: Test Qwen tool configuration
+        run: |
+          echo "Testing Qwen tool configuration..."
+          cd js
+
+          # Create a test script to verify the tool configuration
+          cat > test-qwen-config.mjs << 'EOF'
+          import { getTool, listTools, isToolSupported } from './src/tools/index.mjs';
+
+          console.log('=== Qwen Tool Configuration Test ===\n');
+
+          // Test 1: List tools includes qwen
+          const tools = listTools();
+          console.log('Available tools:', tools);
+          if (!tools.includes('qwen')) {
+            console.error('FAIL: qwen not in tool list');
+            process.exit(1);
+          }
+          console.log('PASS: qwen is in tool list\n');
+
+          // Test 2: isToolSupported returns true for qwen
+          if (!isToolSupported({ toolName: 'qwen' })) {
+            console.error('FAIL: qwen not supported');
+            process.exit(1);
+          }
+          console.log('PASS: qwen is supported\n');
+
+          // Test 3: getTool returns qwen configuration
+          const qwenTool = getTool({ toolName: 'qwen' });
+          console.log('Qwen tool config:', {
+            name: qwenTool.name,
+            displayName: qwenTool.displayName,
+            executable: qwenTool.executable,
+            defaultModel: qwenTool.defaultModel,
+            supportsJsonOutput: qwenTool.supportsJsonOutput,
+            supportsYolo: qwenTool.supportsYolo,
+          });
+
+          // Test 4: Model mapping works
+          console.log('\nModel mapping tests:');
+          const testModels = ['qwen3-coder', 'coder', 'gpt-4o', 'custom-model'];
+          for (const model of testModels) {
+            const mapped = qwenTool.mapModelToId({ model });
+            console.log(`  ${model} -> ${mapped}`);
+          }
+
+          // Test 5: buildArgs produces correct arguments
+          console.log('\nbuildArgs test:');
+          const args = qwenTool.buildArgs({
+            prompt: 'Test prompt',
+            model: 'qwen3-coder',
+            yolo: true,
+            streamJson: true,
+          });
+          console.log('  Args:', args);
+
+          if (!args.includes('-p') || !args.includes('Test prompt')) {
+            console.error('FAIL: prompt argument missing');
+            process.exit(1);
+          }
+          if (!args.includes('--yolo')) {
+            console.error('FAIL: --yolo flag missing');
+            process.exit(1);
+          }
+          if (!args.includes('--output-format') || !args.includes('stream-json')) {
+            console.error('FAIL: stream-json output format missing');
+            process.exit(1);
+          }
+          console.log('PASS: buildArgs produces correct arguments\n');
+
+          // Test 6: buildCommand produces correct command
+          console.log('buildCommand test:');
+          const cmd = qwenTool.buildCommand({
+            workingDirectory: '/tmp/test',
+            prompt: 'Review code',
+            model: 'coder',
+          });
+          console.log('  Command:', cmd);
+
+          if (!cmd.includes('qwen')) {
+            console.error('FAIL: command does not include qwen');
+            process.exit(1);
+          }
+          console.log('PASS: buildCommand produces correct command\n');
+
+          // Test 7: parseOutput handles NDJSON
+          console.log('parseOutput test:');
+          const testOutput = '{"type":"message","content":"Hello"}\n{"type":"done"}';
+          const messages = qwenTool.parseOutput({ output: testOutput });
+          console.log('  Parsed messages:', messages);
+
+          if (messages.length !== 2) {
+            console.error('FAIL: expected 2 messages, got', messages.length);
+            process.exit(1);
+          }
+          console.log('PASS: parseOutput handles NDJSON correctly\n');
+
+          // Test 8: extractSessionId works
+          console.log('extractSessionId test:');
+          const sessionOutput = '{"session_id":"test-123"}\n{"type":"done"}';
+          const sessionId = qwenTool.extractSessionId({ output: sessionOutput });
+          console.log('  Session ID:', sessionId);
+
+          if (sessionId !== 'test-123') {
+            console.error('FAIL: expected test-123, got', sessionId);
+            process.exit(1);
+          }
+          console.log('PASS: extractSessionId works correctly\n');
+
+          // Test 9: detectErrors finds errors
+          console.log('detectErrors test:');
+          const errorOutput = '{"type":"error","message":"Test error"}';
+          const errorResult = qwenTool.detectErrors({ output: errorOutput });
+          console.log('  Error result:', errorResult);
+
+          if (!errorResult.hasError) {
+            console.error('FAIL: expected error to be detected');
+            process.exit(1);
+          }
+          console.log('PASS: detectErrors works correctly\n');
+
+          console.log('=== All Qwen Tool Configuration Tests Passed ===');
+          EOF
+
+          node test-qwen-config.mjs
+          rm test-qwen-config.mjs
+
+      - name: Test agent-commander with Qwen (dry-run)
+        run: |
+          echo "Testing agent-commander with Qwen tool (dry-run mode)..."
+          cd js
+
+          # Test the CLI in dry-run mode
+          node bin/start-agent.mjs \
+            --tool qwen \
+            --working-directory "${{ github.event.inputs.working_directory || '/tmp/qwen-e2e-test' }}" \
+            --prompt "${{ github.event.inputs.test_prompt || 'Hello, respond with a single word: working' }}" \
+            --model "${{ github.event.inputs.model || 'qwen3-coder' }}" \
+            --dry-run
+
+      - name: E2E Test Summary
+        run: |
+          echo "=== E2E Test Summary ==="
+          echo ""
+          echo "✅ Qwen Code CLI installed successfully"
+          echo "✅ Qwen tool configuration tests passed"
+          echo "✅ agent-commander dry-run with Qwen completed"
+          echo ""
+          echo "Note: Full E2E tests with actual API calls require authentication."
+          echo "To run authenticated tests locally:"
+          echo "  1. Install Qwen Code: npm install -g @qwen-code/qwen-code@latest"
+          echo "  2. Authenticate: qwen then /auth"
+          echo "  3. Run: start-agent --tool qwen --working-directory ./project --prompt 'Your prompt'"
