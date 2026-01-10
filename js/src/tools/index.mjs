@@ -1,12 +1,13 @@
 /**
  * Tool configurations and utilities
- * Provides configuration for different CLI agents: claude, codex, opencode, agent
+ * Provides configuration for different CLI agents: claude, codex, opencode, agent, gemini
  */
 
 import { claudeTool } from './claude.mjs';
 import { codexTool } from './codex.mjs';
 import { opencodeTool } from './opencode.mjs';
 import { agentTool } from './agent.mjs';
+import { geminiTool } from './gemini.mjs';
 
 /**
  * Available tool configurations
@@ -16,6 +17,7 @@ export const tools = {
   codex: codexTool,
   opencode: opencodeTool,
   agent: agentTool,
+  gemini: geminiTool,
 };
 
 /**
@@ -54,4 +56,4 @@ export function isToolSupported(options) {
   return toolName in tools;
 }
 
-export { claudeTool, codexTool, opencodeTool, agentTool };
+export { claudeTool, codexTool, opencodeTool, agentTool, geminiTool };
