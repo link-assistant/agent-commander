@@ -1,5 +1,5 @@
 ---
-"agent-commander": minor
+'agent-commander': minor
 ---
 
 Add Qwen Code CLI support
