@@ -12,6 +12,7 @@ import {
   codexTool,
   opencodeTool,
   agentTool,
+  qwenTool,
 } from '../src/tools/index.mjs';
 
 test('listTools - returns all available tools', () => {
@@ -21,6 +22,7 @@ test('listTools - returns all available tools', () => {
   assert.ok(toolList.includes('codex'));
   assert.ok(toolList.includes('opencode'));
   assert.ok(toolList.includes('agent'));
+  assert.ok(toolList.includes('qwen'));
 });
 
 test('isToolSupported - returns true for supported tools', () => {
@@ -28,6 +30,7 @@ test('isToolSupported - returns true for supported tools', () => {
   assert.strictEqual(isToolSupported({ toolName: 'codex' }), true);
   assert.strictEqual(isToolSupported({ toolName: 'opencode' }), true);
   assert.strictEqual(isToolSupported({ toolName: 'agent' }), true);
+  assert.strictEqual(isToolSupported({ toolName: 'qwen' }), true);
 });
 
 test('isToolSupported - returns false for unsupported tools', () => {
@@ -252,4 +255,178 @@ test('agentTool - detectErrors returns false for normal output', () => {
   const output = '{"type":"step_finish","part":{}}';
   const result = agentTool.detectErrors({ output });
   assert.strictEqual(result.hasError, false);
+});
+
+// Qwen tool tests
+test('qwenTool - mapModelToId with alias', () => {
+  assert.strictEqual(
+    qwenTool.mapModelToId({ model: 'qwen3-coder' }),
+    'qwen3-coder-480a35'
+  );
+  assert.strictEqual(
+    qwenTool.mapModelToId({ model: 'coder' }),
+    'qwen3-coder-480a35'
+  );
+  assert.strictEqual(qwenTool.mapModelToId({ model: 'gpt-4o' }), 'gpt-4o');
+});
+
+test('qwenTool - mapModelToId with full ID', () => {
+  assert.strictEqual(
+    qwenTool.mapModelToId({ model: 'custom-model' }),
+    'custom-model'
+  );
+});
+
+test('qwenTool - buildArgs with prompt', () => {
+  const args = qwenTool.buildArgs({ prompt: 'Hello' });
+  assert.ok(args.includes('-p'));
+  assert.ok(args.includes('Hello'));
+});
+
+test('qwenTool - buildArgs with model', () => {
+  const args = qwenTool.buildArgs({ model: 'qwen3-coder' });
+  assert.ok(args.includes('--model'));
+  assert.ok(args.includes('qwen3-coder-480a35'));
+});
+
+test('qwenTool - buildArgs uses stream-json output format by default', () => {
+  const args = qwenTool.buildArgs({});
+  assert.ok(args.includes('--output-format'));
+  assert.ok(args.includes('stream-json'));
+});
+
+test('qwenTool - buildArgs with json output format', () => {
+  const args = qwenTool.buildArgs({ streamJson: false, json: true });
+  assert.ok(args.includes('--output-format'));
+  assert.ok(args.includes('json'));
+  assert.ok(!args.includes('stream-json'));
+});
+
+test('qwenTool - buildArgs includes --yolo by default', () => {
+  const args = qwenTool.buildArgs({});
+  assert.ok(args.includes('--yolo'));
+});
+
+test('qwenTool - buildArgs with --resume', () => {
+  const args = qwenTool.buildArgs({ resume: 'session123' });
+  assert.ok(args.includes('--resume'));
+  assert.ok(args.includes('session123'));
+});
+
+test('qwenTool - buildArgs with --continue', () => {
+  const args = qwenTool.buildArgs({ continueSession: true });
+  assert.ok(args.includes('--continue'));
+});
+
+test('qwenTool - buildArgs with --all-files', () => {
+  const args = qwenTool.buildArgs({ allFiles: true });
+  assert.ok(args.includes('--all-files'));
+});
+
+test('qwenTool - buildArgs with --include-directories', () => {
+  const args = qwenTool.buildArgs({ includeDirectories: ['src', 'lib'] });
+  const dirIndex = args.indexOf('--include-directories');
+  assert.ok(dirIndex !== -1);
+  assert.ok(args.includes('src'));
+  assert.ok(args.includes('lib'));
+});
+
+test('qwenTool - buildArgs with --include-partial-messages', () => {
+  const args = qwenTool.buildArgs({
+    streamJson: true,
+    includePartialMessages: true,
+  });
+  assert.ok(args.includes('--include-partial-messages'));
+});
+
+test('qwenTool - parseOutput with NDJSON', () => {
+  const output = '{"type":"message","content":"Hello"}\n{"type":"done"}';
+  const messages = qwenTool.parseOutput({ output });
+  assert.strictEqual(messages.length, 2);
+  assert.strictEqual(messages[0].type, 'message');
+  assert.strictEqual(messages[1].type, 'done');
+});
+
+test('qwenTool - extractSessionId', () => {
+  const output = '{"session_id":"abc123"}\n{"type":"done"}';
+  const sessionId = qwenTool.extractSessionId({ output });
+  assert.strictEqual(sessionId, 'abc123');
+});
+
+test('qwenTool - extractSessionId with sessionId format', () => {
+  const output = '{"sessionId":"xyz789"}\n{"type":"done"}';
+  const sessionId = qwenTool.extractSessionId({ output });
+  assert.strictEqual(sessionId, 'xyz789');
+});
+
+test('qwenTool - extractUsage from output', () => {
+  const output = `{"usage":{"input_tokens":100,"output_tokens":50,"total_tokens":150}}
+{"usage":{"input_tokens":200,"output_tokens":75}}`;
+  const usage = qwenTool.extractUsage({ output });
+  assert.strictEqual(usage.inputTokens, 300);
+  assert.strictEqual(usage.outputTokens, 125);
+  assert.strictEqual(usage.totalTokens, 150); // First message had explicit total
+});
+
+test('qwenTool - extractUsage calculates total if not provided', () => {
+  const output = '{"usage":{"input_tokens":100,"output_tokens":50}}';
+  const usage = qwenTool.extractUsage({ output });
+  assert.strictEqual(usage.inputTokens, 100);
+  assert.strictEqual(usage.outputTokens, 50);
+  assert.strictEqual(usage.totalTokens, 150); // Calculated from input + output
+});
+
+test('qwenTool - detectErrors finds error messages', () => {
+  const output = '{"type":"error","message":"Something went wrong"}';
+  const result = qwenTool.detectErrors({ output });
+  assert.ok(result.hasError);
+  assert.strictEqual(result.errorType, 'error');
+  assert.strictEqual(result.message, 'Something went wrong');
+});
+
+test('qwenTool - detectErrors with error field', () => {
+  const output = '{"error":"API rate limit exceeded"}';
+  const result = qwenTool.detectErrors({ output });
+  assert.ok(result.hasError);
+  assert.strictEqual(result.message, 'API rate limit exceeded');
+});
+
+test('qwenTool - detectErrors returns false for normal output', () => {
+  const output = '{"type":"message","content":"Hello"}';
+  const result = qwenTool.detectErrors({ output });
+  assert.strictEqual(result.hasError, false);
+});
+
+test('qwenTool - capability flags are correct', () => {
+  assert.strictEqual(qwenTool.supportsJsonOutput, true);
+  assert.strictEqual(qwenTool.supportsJsonInput, true);
+  assert.strictEqual(qwenTool.supportsResume, true);
+  assert.strictEqual(qwenTool.supportsContinueSession, true);
+  assert.strictEqual(qwenTool.supportsYolo, true);
+  assert.strictEqual(qwenTool.supportsAllFiles, true);
+  assert.strictEqual(qwenTool.supportsIncludeDirectories, true);
+  assert.strictEqual(qwenTool.supportsIncludePartialMessages, true);
+});
+
+test('qwenTool - buildCommand constructs correct command', () => {
+  const cmd = qwenTool.buildCommand({
+    workingDirectory: '/tmp/project',
+    prompt: 'Review code',
+    model: 'qwen3-coder',
+  });
+  assert.ok(cmd.includes('qwen'));
+  assert.ok(cmd.includes('-p'));
+  assert.ok(cmd.includes('Review code'));
+  assert.ok(cmd.includes('--model'));
+  assert.ok(cmd.includes('qwen3-coder-480a35'));
+});
+
+test('qwenTool - buildCommand combines system and user prompt', () => {
+  const cmd = qwenTool.buildCommand({
+    workingDirectory: '/tmp/project',
+    prompt: 'Review code',
+    systemPrompt: 'You are helpful',
+  });
+  assert.ok(cmd.includes('You are helpful'));
+  assert.ok(cmd.includes('Review code'));
 });
