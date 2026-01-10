@@ -8,11 +8,17 @@ use std::collections::HashMap;
 /// Get the Gemini model map
 pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     let mut map = HashMap::new();
+    // Gemini 2.5 models (current stable)
     map.insert("flash", "gemini-2.5-flash");
     map.insert("2.5-flash", "gemini-2.5-flash");
     map.insert("pro", "gemini-2.5-pro");
     map.insert("2.5-pro", "gemini-2.5-pro");
-    map.insert("3-flash", "gemini-3-flash");
+    map.insert("lite", "gemini-2.5-flash-lite");
+    map.insert("2.5-lite", "gemini-2.5-flash-lite");
+    // Gemini 3 models (latest generation)
+    map.insert("3-flash", "gemini-3-flash-preview");
+    map.insert("3-pro", "gemini-3-pro-preview");
+    // Legacy aliases
     map.insert("gemini-flash", "gemini-2.5-flash");
     map.insert("gemini-pro", "gemini-2.5-pro");
     map
@@ -358,7 +364,9 @@ mod tests {
     fn test_map_model_to_id_with_alias() {
         assert_eq!(map_model_to_id("flash"), "gemini-2.5-flash");
         assert_eq!(map_model_to_id("pro"), "gemini-2.5-pro");
-        assert_eq!(map_model_to_id("3-flash"), "gemini-3-flash");
+        assert_eq!(map_model_to_id("3-flash"), "gemini-3-flash-preview");
+        assert_eq!(map_model_to_id("lite"), "gemini-2.5-flash-lite");
+        assert_eq!(map_model_to_id("3-pro"), "gemini-3-pro-preview");
     }
 
     #[test]

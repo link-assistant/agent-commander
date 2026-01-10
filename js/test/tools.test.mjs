@@ -269,7 +269,15 @@ test('geminiTool - mapModelToId with alias', () => {
   );
   assert.strictEqual(
     geminiTool.mapModelToId({ model: '3-flash' }),
-    'gemini-3-flash'
+    'gemini-3-flash-preview'
+  );
+  assert.strictEqual(
+    geminiTool.mapModelToId({ model: 'lite' }),
+    'gemini-2.5-flash-lite'
+  );
+  assert.strictEqual(
+    geminiTool.mapModelToId({ model: '3-pro' }),
+    'gemini-3-pro-preview'
   );
 });
 

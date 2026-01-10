@@ -8,11 +8,17 @@
  * Maps aliases to full model IDs
  */
 export const modelMap = {
+  // Gemini 2.5 models (current stable)
   flash: 'gemini-2.5-flash',
   '2.5-flash': 'gemini-2.5-flash',
   pro: 'gemini-2.5-pro',
   '2.5-pro': 'gemini-2.5-pro',
-  '3-flash': 'gemini-3-flash',
+  lite: 'gemini-2.5-flash-lite',
+  '2.5-lite': 'gemini-2.5-flash-lite',
+  // Gemini 3 models (latest generation)
+  '3-flash': 'gemini-3-flash-preview',
+  '3-pro': 'gemini-3-pro-preview',
+  // Legacy aliases
   'gemini-flash': 'gemini-2.5-flash',
   'gemini-pro': 'gemini-2.5-pro',
 };
