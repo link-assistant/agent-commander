@@ -13,10 +13,7 @@ fn test_map_model_to_id_with_alias() {
 
 #[test]
 fn test_map_model_to_id_with_full_id() {
-    assert_eq!(
-        map_model_to_id("custom/model-name"),
-        "custom/model-name"
-    );
+    assert_eq!(map_model_to_id("custom/model-name"), "custom/model-name");
 }
 
 #[test]
@@ -62,8 +59,7 @@ fn test_extract_usage_from_step_finish() {
 
 #[test]
 fn test_extract_usage_with_reasoning_tokens() {
-    let output =
-        r#"{"type":"step_finish","part":{"tokens":{"input":100,"output":50,"reasoning":25},"cost":0}}"#;
+    let output = r#"{"type":"step_finish","part":{"tokens":{"input":100,"output":50,"reasoning":25},"cost":0}}"#;
     let usage = extract_usage(output);
     assert_eq!(usage.input_tokens, 100);
     assert_eq!(usage.output_tokens, 50);
@@ -72,8 +68,7 @@ fn test_extract_usage_with_reasoning_tokens() {
 
 #[test]
 fn test_extract_usage_with_cache_tokens() {
-    let output =
-        r#"{"type":"step_finish","part":{"tokens":{"input":100,"output":50,"cache":{"read":20,"write":10}},"cost":0}}"#;
+    let output = r#"{"type":"step_finish","part":{"tokens":{"input":100,"output":50,"cache":{"read":20,"write":10}},"cost":0}}"#;
     let usage = extract_usage(output);
     assert_eq!(usage.input_tokens, 100);
     assert_eq!(usage.output_tokens, 50);
@@ -83,7 +78,8 @@ fn test_extract_usage_with_cache_tokens() {
 
 #[test]
 fn test_extract_usage_with_cost() {
-    let output = r#"{"type":"step_finish","part":{"tokens":{"input":100,"output":50},"cost":0.005}}"#;
+    let output =
+        r#"{"type":"step_finish","part":{"tokens":{"input":100,"output":50},"cost":0.005}}"#;
     let usage = extract_usage(output);
     assert!((usage.total_cost - 0.005).abs() < f64::EPSILON);
 }
