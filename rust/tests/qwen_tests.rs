@@ -108,13 +108,7 @@ fn test_build_args_with_include_directories() {
         ..QwenBuildOptions::new()
     };
     let args = build_args(&options);
-    let dir_indices: Vec<usize> = args
-        .iter()
-        .enumerate()
-        .filter(|(_, a)| *a == "--include-directories")
-        .map(|(i, _)| i)
-        .collect();
-    assert!(!dir_indices.is_empty());
+    assert!(args.iter().any(|a| a == "--include-directories"));
     assert!(args.contains(&"src".to_string()));
     assert!(args.contains(&"lib".to_string()));
 }

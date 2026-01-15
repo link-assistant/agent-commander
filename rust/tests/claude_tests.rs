@@ -67,7 +67,7 @@ fn test_build_args_uses_stream_json_format() {
     assert!(args.contains(&"stream-json".to_string()));
     assert!(!args
         .iter()
-        .filter(|a| *a != &"stream-json")
+        .filter(|a| *a != "stream-json")
         .any(|a| a == "json"));
 }
 
