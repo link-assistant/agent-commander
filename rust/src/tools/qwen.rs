@@ -268,21 +268,11 @@ pub fn extract_usage(output: &str) -> QwenUsage {
 }
 
 /// Error detection result
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct QwenErrorResult {
     pub has_error: bool,
     pub error_type: Option<String>,
     pub message: Option<String>,
-}
-
-impl Default for QwenErrorResult {
-    fn default() -> Self {
-        Self {
-            has_error: false,
-            error_type: None,
-            message: None,
-        }
-    }
 }
 
 /// Detect errors in Qwen Code output
