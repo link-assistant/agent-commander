@@ -15,7 +15,10 @@ fn test_map_model_to_id_with_alias() {
 
 #[test]
 fn test_map_model_to_id_with_full_id() {
-    assert_eq!(map_model_to_id("custom-provider/model"), "custom-provider/model");
+    assert_eq!(
+        map_model_to_id("custom-provider/model"),
+        "custom-provider/model"
+    );
 }
 
 // Build args tests

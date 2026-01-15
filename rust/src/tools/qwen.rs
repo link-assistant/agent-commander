@@ -352,10 +352,10 @@ impl Default for QwenTool {
             supports_json_output: true,
             supports_json_input: true, // Qwen Code supports stream-json input format
             supports_system_prompt: false, // System prompt is combined with user prompt
-            supports_resume: true,         // Supports --resume and --continue
+            supports_resume: true,     // Supports --resume and --continue
             supports_continue_session: true, // Supports --continue for most recent session
-            supports_yolo: true,           // Supports --yolo for auto-approval
-            supports_all_files: true,      // Supports --all-files
+            supports_yolo: true,       // Supports --yolo for auto-approval
+            supports_all_files: true,  // Supports --all-files
             supports_include_directories: true, // Supports --include-directories
             supports_include_partial_messages: true, // Supports --include-partial-messages
             default_model: "qwen3-coder-480a35",

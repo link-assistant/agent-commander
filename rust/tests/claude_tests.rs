@@ -16,7 +16,10 @@ fn test_map_model_to_id_with_alias() {
 
 #[test]
 fn test_map_model_to_id_with_full_id() {
-    assert_eq!(map_model_to_id("claude-3-opus-20240229"), "claude-3-opus-20240229");
+    assert_eq!(
+        map_model_to_id("claude-3-opus-20240229"),
+        "claude-3-opus-20240229"
+    );
 }
 
 // Build args tests
@@ -62,7 +65,10 @@ fn test_build_args_uses_stream_json_format() {
     let args = build_args(&options);
     assert!(args.contains(&"--output-format".to_string()));
     assert!(args.contains(&"stream-json".to_string()));
-    assert!(!args.iter().filter(|a| *a != &"stream-json").any(|a| a == "json"));
+    assert!(!args
+        .iter()
+        .filter(|a| *a != &"stream-json")
+        .any(|a| a == "json"));
 }
 
 #[test]
