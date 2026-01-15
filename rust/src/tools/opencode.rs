@@ -221,31 +221,4 @@ impl Default for OpencodeTool {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_map_model_to_id_with_alias() {
-        assert_eq!(map_model_to_id("grok"), "opencode/grok-code");
-        assert_eq!(map_model_to_id("gemini"), "google/gemini-pro");
-    }
-
-    #[test]
-    fn test_build_args_includes_run() {
-        let options = OpencodeBuildOptions::default();
-        let args = build_args(&options);
-        assert!(args.contains(&"run".to_string()));
-    }
-
-    #[test]
-    fn test_build_args_with_json() {
-        let options = OpencodeBuildOptions {
-            json: true,
-            ..Default::default()
-        };
-        let args = build_args(&options);
-        assert!(args.contains(&"--format".to_string()));
-        assert!(args.contains(&"json".to_string()));
-    }
-}
+// Tests are in rust/tests/opencode_tests.rs
