@@ -23,7 +23,6 @@ test('listTools - returns all available tools', () => {
   assert.ok(toolList.includes('codex'));
   assert.ok(toolList.includes('opencode'));
   assert.ok(toolList.includes('agent'));
-  assert.ok(toolList.includes('gemini'));
   assert.ok(toolList.includes('qwen'));
 });
 
@@ -32,7 +31,6 @@ test('isToolSupported - returns true for supported tools', () => {
   assert.strictEqual(isToolSupported({ toolName: 'codex' }), true);
   assert.strictEqual(isToolSupported({ toolName: 'opencode' }), true);
   assert.strictEqual(isToolSupported({ toolName: 'agent' }), true);
-  assert.strictEqual(isToolSupported({ toolName: 'gemini' }), true);
   assert.strictEqual(isToolSupported({ toolName: 'qwen' }), true);
 });
 
@@ -260,7 +258,6 @@ test('agentTool - detectErrors returns false for normal output', () => {
   assert.strictEqual(result.hasError, false);
 });
 
-<<<<<<< HEAD
 // Qwen tool tests
 test('qwenTool - mapModelToId with alias', () => {
   assert.strictEqual(
@@ -283,46 +280,10 @@ test('qwenTool - mapModelToId with full ID', () => {
 
 test('qwenTool - buildArgs with prompt', () => {
   const args = qwenTool.buildArgs({ prompt: 'Hello' });
-=======
-// Gemini tool tests
-test('geminiTool - mapModelToId with alias', () => {
-  assert.strictEqual(
-    geminiTool.mapModelToId({ model: 'flash' }),
-    'gemini-2.5-flash'
-  );
-  assert.strictEqual(
-    geminiTool.mapModelToId({ model: 'pro' }),
-    'gemini-2.5-pro'
-  );
-  assert.strictEqual(
-    geminiTool.mapModelToId({ model: '3-flash' }),
-    'gemini-3-flash-preview'
-  );
-  assert.strictEqual(
-    geminiTool.mapModelToId({ model: 'lite' }),
-    'gemini-2.5-flash-lite'
-  );
-  assert.strictEqual(
-    geminiTool.mapModelToId({ model: '3-pro' }),
-    'gemini-3-pro-preview'
-  );
-});
-
-test('geminiTool - mapModelToId with full ID', () => {
-  assert.strictEqual(
-    geminiTool.mapModelToId({ model: 'gemini-2.0-flash' }),
-    'gemini-2.0-flash'
-  );
-});
-
-test('geminiTool - buildArgs with prompt', () => {
-  const args = geminiTool.buildArgs({ prompt: 'Hello', yolo: false });
->>>>>>> origin/main
   assert.ok(args.includes('-p'));
   assert.ok(args.includes('Hello'));
 });
 
-<<<<<<< HEAD
 test('qwenTool - buildArgs with model', () => {
   const args = qwenTool.buildArgs({ model: 'qwen3-coder' });
   assert.ok(args.includes('--model'));
@@ -331,31 +292,10 @@ test('qwenTool - buildArgs with model', () => {
 
 test('qwenTool - buildArgs uses stream-json output format by default', () => {
   const args = qwenTool.buildArgs({});
-=======
-test('geminiTool - buildArgs with model', () => {
-  const args = geminiTool.buildArgs({ model: 'flash', yolo: false });
-  assert.ok(args.includes('-m'));
-  assert.ok(args.includes('gemini-2.5-flash'));
-});
-
-test('geminiTool - buildArgs with yolo mode', () => {
-  const args = geminiTool.buildArgs({ yolo: true });
-  assert.ok(args.includes('--yolo'));
-});
-
-test('geminiTool - buildArgs with sandbox mode', () => {
-  const args = geminiTool.buildArgs({ sandbox: true, yolo: false });
-  assert.ok(args.includes('--sandbox'));
-});
-
-test('geminiTool - buildArgs with json output', () => {
-  const args = geminiTool.buildArgs({ json: true, yolo: false });
->>>>>>> origin/main
   assert.ok(args.includes('--output-format'));
   assert.ok(args.includes('stream-json'));
 });
 
-<<<<<<< HEAD
 test('qwenTool - buildArgs with json output format', () => {
   const args = qwenTool.buildArgs({ streamJson: false, json: true });
   assert.ok(args.includes('--output-format'));
@@ -403,38 +343,11 @@ test('qwenTool - buildArgs with --include-partial-messages', () => {
 test('qwenTool - parseOutput with NDJSON', () => {
   const output = '{"type":"message","content":"Hello"}\n{"type":"done"}';
   const messages = qwenTool.parseOutput({ output });
-=======
-test('geminiTool - buildArgs with debug mode', () => {
-  const args = geminiTool.buildArgs({ debug: true, yolo: false });
-  assert.ok(args.includes('-d'));
-});
-
-test('geminiTool - buildArgs with checkpointing', () => {
-  const args = geminiTool.buildArgs({ checkpointing: true, yolo: false });
-  assert.ok(args.includes('--checkpointing'));
-});
-
-test('geminiTool - buildArgs with interactive mode', () => {
-  const args = geminiTool.buildArgs({
-    prompt: 'Hello',
-    interactive: true,
-    yolo: false,
-  });
-  assert.ok(args.includes('-i'));
-  assert.ok(args.includes('Hello'));
-  assert.ok(!args.includes('-p'));
-});
-
-test('geminiTool - parseOutput with NDJSON', () => {
-  const output = '{"type":"message","content":"Hello"}\n{"type":"done"}';
-  const messages = geminiTool.parseOutput({ output });
->>>>>>> origin/main
   assert.strictEqual(messages.length, 2);
   assert.strictEqual(messages[0].type, 'message');
   assert.strictEqual(messages[1].type, 'done');
 });
 
-<<<<<<< HEAD
 test('qwenTool - extractSessionId', () => {
   const output = '{"session_id":"abc123"}\n{"type":"done"}';
   const sessionId = qwenTool.extractSessionId({ output });
@@ -467,46 +380,11 @@ test('qwenTool - extractUsage calculates total if not provided', () => {
 test('qwenTool - detectErrors finds error messages', () => {
   const output = '{"type":"error","message":"Something went wrong"}';
   const result = qwenTool.detectErrors({ output });
-=======
-test('geminiTool - extractSessionId', () => {
-  const output = '{"session_id":"abc123"}\n{"type":"done"}';
-  const sessionId = geminiTool.extractSessionId({ output });
-  assert.strictEqual(sessionId, 'abc123');
-});
-
-test('geminiTool - extractSessionId with conversation_id', () => {
-  const output = '{"conversation_id":"conv456"}\n{"type":"done"}';
-  const sessionId = geminiTool.extractSessionId({ output });
-  assert.strictEqual(sessionId, 'conv456');
-});
-
-test('geminiTool - extractUsage with standard format', () => {
-  const output = '{"usage":{"input_tokens":100,"output_tokens":50}}';
-  const usage = geminiTool.extractUsage({ output });
-  assert.strictEqual(usage.inputTokens, 100);
-  assert.strictEqual(usage.outputTokens, 50);
-  assert.strictEqual(usage.totalTokens, 150);
-});
-
-test('geminiTool - extractUsage with Gemini format', () => {
-  const output =
-    '{"usageMetadata":{"promptTokenCount":100,"candidatesTokenCount":50,"totalTokenCount":150}}';
-  const usage = geminiTool.extractUsage({ output });
-  assert.strictEqual(usage.inputTokens, 100);
-  assert.strictEqual(usage.outputTokens, 50);
-  assert.strictEqual(usage.totalTokens, 150);
-});
-
-test('geminiTool - detectErrors with error', () => {
-  const output = '{"type":"error","message":"Something went wrong"}';
-  const result = geminiTool.detectErrors({ output });
->>>>>>> origin/main
   assert.ok(result.hasError);
   assert.strictEqual(result.errorType, 'error');
   assert.strictEqual(result.message, 'Something went wrong');
 });
 
-<<<<<<< HEAD
 test('qwenTool - detectErrors with error field', () => {
   const output = '{"error":"API rate limit exceeded"}';
   const result = qwenTool.detectErrors({ output });
@@ -552,7 +430,132 @@ test('qwenTool - buildCommand combines system and user prompt', () => {
   });
   assert.ok(cmd.includes('You are helpful'));
   assert.ok(cmd.includes('Review code'));
-=======
+});
+// Gemini tool tests
+test('geminiTool - mapModelToId with alias', () => {
+  assert.strictEqual(
+    geminiTool.mapModelToId({ model: 'flash' }),
+    'gemini-2.5-flash'
+  );
+  assert.strictEqual(
+    geminiTool.mapModelToId({ model: 'pro' }),
+    'gemini-2.5-pro'
+  );
+  assert.strictEqual(
+    geminiTool.mapModelToId({ model: '3-flash' }),
+    'gemini-3-flash-preview'
+  );
+  assert.strictEqual(
+    geminiTool.mapModelToId({ model: 'lite' }),
+    'gemini-2.5-flash-lite'
+  );
+  assert.strictEqual(
+    geminiTool.mapModelToId({ model: '3-pro' }),
+    'gemini-3-pro-preview'
+  );
+});
+
+test('geminiTool - mapModelToId with full ID', () => {
+  assert.strictEqual(
+    geminiTool.mapModelToId({ model: 'gemini-2.0-flash' }),
+    'gemini-2.0-flash'
+  );
+});
+
+test('geminiTool - buildArgs with prompt', () => {
+  const args = geminiTool.buildArgs({ prompt: 'Hello', yolo: false });
+  assert.ok(args.includes('-p'));
+  assert.ok(args.includes('Hello'));
+});
+
+test('geminiTool - buildArgs with model', () => {
+  const args = geminiTool.buildArgs({ model: 'flash', yolo: false });
+  assert.ok(args.includes('-m'));
+  assert.ok(args.includes('gemini-2.5-flash'));
+});
+
+test('geminiTool - buildArgs with yolo mode', () => {
+  const args = geminiTool.buildArgs({ yolo: true });
+  assert.ok(args.includes('--yolo'));
+});
+
+test('geminiTool - buildArgs with sandbox mode', () => {
+  const args = geminiTool.buildArgs({ sandbox: true, yolo: false });
+  assert.ok(args.includes('--sandbox'));
+});
+
+test('geminiTool - buildArgs with json output', () => {
+  const args = geminiTool.buildArgs({ json: true, yolo: false });
+  assert.ok(args.includes('--output-format'));
+  assert.ok(args.includes('stream-json'));
+});
+
+test('geminiTool - buildArgs with debug mode', () => {
+  const args = geminiTool.buildArgs({ debug: true, yolo: false });
+  assert.ok(args.includes('-d'));
+});
+
+test('geminiTool - buildArgs with checkpointing', () => {
+  const args = geminiTool.buildArgs({ checkpointing: true, yolo: false });
+  assert.ok(args.includes('--checkpointing'));
+});
+
+test('geminiTool - buildArgs with interactive mode', () => {
+  const args = geminiTool.buildArgs({
+    prompt: 'Hello',
+    interactive: true,
+    yolo: false,
+  });
+  assert.ok(args.includes('-i'));
+  assert.ok(args.includes('Hello'));
+  assert.ok(!args.includes('-p'));
+});
+
+test('geminiTool - parseOutput with NDJSON', () => {
+  const output = '{"type":"message","content":"Hello"}\n{"type":"done"}';
+  const messages = geminiTool.parseOutput({ output });
+  assert.strictEqual(messages.length, 2);
+  assert.strictEqual(messages[0].type, 'message');
+  assert.strictEqual(messages[1].type, 'done');
+});
+
+test('geminiTool - extractSessionId', () => {
+  const output = '{"session_id":"abc123"}\n{"type":"done"}';
+  const sessionId = geminiTool.extractSessionId({ output });
+  assert.strictEqual(sessionId, 'abc123');
+});
+
+test('geminiTool - extractSessionId with conversation_id', () => {
+  const output = '{"conversation_id":"conv456"}\n{"type":"done"}';
+  const sessionId = geminiTool.extractSessionId({ output });
+  assert.strictEqual(sessionId, 'conv456');
+});
+
+test('geminiTool - extractUsage with standard format', () => {
+  const output = '{"usage":{"input_tokens":100,"output_tokens":50}}';
+  const usage = geminiTool.extractUsage({ output });
+  assert.strictEqual(usage.inputTokens, 100);
+  assert.strictEqual(usage.outputTokens, 50);
+  assert.strictEqual(usage.totalTokens, 150);
+});
+
+test('geminiTool - extractUsage with Gemini format', () => {
+  const output =
+    '{"usageMetadata":{"promptTokenCount":100,"candidatesTokenCount":50,"totalTokenCount":150}}';
+  const usage = geminiTool.extractUsage({ output });
+  assert.strictEqual(usage.inputTokens, 100);
+  assert.strictEqual(usage.outputTokens, 50);
+  assert.strictEqual(usage.totalTokens, 150);
+});
+
+test('geminiTool - detectErrors with error', () => {
+  const output = '{"type":"error","message":"Something went wrong"}';
+  const result = geminiTool.detectErrors({ output });
+  assert.ok(result.hasError);
+  assert.strictEqual(result.errorType, 'error');
+  assert.strictEqual(result.message, 'Something went wrong');
+});
+
 test('geminiTool - detectErrors returns false for normal output', () => {
   const output = '{"type":"message","content":"Hello"}';
   const result = geminiTool.detectErrors({ output });
@@ -577,5 +580,4 @@ test('geminiTool - supportsDebug is true', () => {
 
 test('geminiTool - default model is gemini-2.5-flash', () => {
   assert.strictEqual(geminiTool.defaultModel, 'gemini-2.5-flash');
->>>>>>> origin/main
 });
