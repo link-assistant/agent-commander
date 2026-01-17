@@ -22,19 +22,4 @@ pub fn create_input_stream(compact: bool) -> JsonInputStream {
     JsonInputStream::new(compact)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_create_output_stream() {
-        let stream = create_output_stream();
-        assert_eq!(stream.get_messages().len(), 0);
-    }
-
-    #[test]
-    fn test_create_input_stream() {
-        let stream = create_input_stream(true);
-        assert_eq!(stream.size(), 0);
-    }
-}
+// Tests are in rust/tests/streaming_tests.rs
