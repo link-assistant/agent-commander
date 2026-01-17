@@ -228,37 +228,4 @@ impl Default for CodexTool {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_map_model_to_id_with_alias() {
-        assert_eq!(map_model_to_id("gpt5"), "gpt-5");
-        assert_eq!(map_model_to_id("o3"), "o3");
-    }
-
-    #[test]
-    fn test_build_args_includes_exec() {
-        let options = CodexBuildOptions::default();
-        let args = build_args(&options);
-        assert!(args.contains(&"exec".to_string()));
-    }
-
-    #[test]
-    fn test_build_args_with_json() {
-        let options = CodexBuildOptions {
-            json: true,
-            ..Default::default()
-        };
-        let args = build_args(&options);
-        assert!(args.contains(&"--json".to_string()));
-    }
-
-    #[test]
-    fn test_extract_session_id_with_thread_id() {
-        let output = "{\"thread_id\":\"thread-123\"}\n{\"type\":\"done\"}";
-        let session_id = extract_session_id(output);
-        assert_eq!(session_id, Some("thread-123".to_string()));
-    }
-}
+// Tests are in rust/tests/codex_tests.rs
