@@ -1,6 +1,6 @@
 # agent-commander
 
-A JavaScript library to control agents enclosed in CLI commands like Anthropic Claude Code CLI, OpenAI Codex, OpenCode, Qwen Code, and @link-assistant/agent.
+A JavaScript library to control agents enclosed in CLI commands like Anthropic Claude Code CLI, OpenAI Codex, OpenCode, Qwen Code, Gemini CLI, and @link-assistant/agent.
 
 Built on the success of [hive-mind](https://github.com/link-assistant/hive-mind), `agent-commander` provides a flexible JavaScript interface and CLI tools for managing agent processes with various isolation levels.
 
@@ -12,6 +12,7 @@ Built on the success of [hive-mind](https://github.com/link-assistant/hive-mind)
   - `codex` - OpenAI Codex CLI
   - `opencode` - OpenCode CLI
   - `qwen` - Qwen Code CLI (Alibaba's AI coding agent)
+  - `gemini` - Gemini CLI (Google's AI coding agent)
   - `agent` - @link-assistant/agent (unrestricted OpenCode fork)
 - **Multiple Isolation Modes**:
   - No isolation (direct execution)
@@ -58,7 +59,8 @@ bun add agent-commander
 | `codex` | OpenAI Codex CLI | ✅ | ❌ | `gpt5`, `o3`, `gpt4o` |
 | `opencode` | OpenCode CLI | ✅ | ❌ | `grok`, `gemini`, `sonnet` |
 | `qwen` | Qwen Code CLI | ✅ (stream-json) | ✅ (stream-json) | `qwen3-coder`, `coder`, `gpt-4o` |
-| `agent` | @link-assistant/agent | ✅ | ❌ | `grok`, `sonnet`, `haiku` |
+| `gemini` | Gemini CLI | ✅ (stream-json) | ❌ | `flash`, `pro`, `lite` |
+| `agent` | @link-assistant/agent | ✅ | ✅ | `grok`, `sonnet`, `haiku` |
 
 ### Claude-specific Features
 
@@ -83,6 +85,28 @@ The [Qwen Code CLI](https://github.com/QwenLM/qwen-code) supports additional fea
 - **Partial messages**: Use `--include-partial-messages` with stream-json for real-time UI updates
 - **Model flexibility**: Supports Qwen3-Coder models plus OpenAI-compatible models via API
 
+### Gemini-specific Features
+
+The [Gemini CLI](https://github.com/google-gemini/gemini-cli) supports additional features:
+
+- **Stream JSON format**: Uses `--output-format stream-json` for real-time NDJSON streaming
+- **Auto-approval mode**: Use `--yolo` flag for automatic action approval (enabled by default)
+- **Sandbox mode**: Use `--sandbox` flag for secure tool execution in isolated environment
+- **Checkpointing**: Use `--checkpointing` to save project snapshots before file modifications
+- **Debug output**: Use `-d` flag for detailed debug output
+- **Model selection**: Use `-m` flag to select model (e.g., `gemini-2.5-flash`, `gemini-2.5-pro`)
+- **Interactive mode**: Use `-i` flag with prompt to start interactive session
+
+### Agent-specific Features
+
+The [@link-assistant/agent](https://github.com/link-assistant/agent) supports additional features:
+
+- **JSON Input/Output**: Accepts JSON via stdin, outputs JSON event streams (OpenCode-compatible)
+- **Unrestricted access**: No sandbox, no permissions system - full autonomous execution
+- **13 built-in tools**: Including websearch, codesearch, batch - all enabled by default
+- **MCP support**: Model Context Protocol for extending functionality with MCP servers
+- **OpenCode compatibility**: 100% compatible with OpenCode's JSON event streaming format
+
 ## CLI Usage
 
 ### start-agent
@@ -95,7 +119,7 @@ start-agent --tool claude --working-directory "/tmp/dir" --prompt "Solve the iss
 
 #### Options
 
-- `--tool <name>` - CLI tool to use (e.g., 'claude', 'codex', 'opencode', 'qwen', 'agent') [required]
+- `--tool <name>` - CLI tool to use (e.g., 'claude', 'codex', 'opencode', 'qwen', 'gemini', 'agent') [required]
 - `--working-directory <path>` - Working directory for the agent [required]
 - `--prompt <text>` - Prompt for the agent
 - `--system-prompt <text>` - System prompt for the agent
@@ -134,6 +158,11 @@ start-agent --tool agent --working-directory "/tmp/dir" --prompt "Analyze code" 
 **Using Qwen Code**
 ```bash
 start-agent --tool qwen --working-directory "/tmp/dir" --prompt "Review this code" --model qwen3-coder
+```
+
+**Using Gemini**
+```bash
+start-agent --tool gemini --working-directory "/tmp/dir" --prompt "Explain this code" --model flash
 ```
 
 **With model fallback (Claude)**
@@ -259,6 +288,14 @@ const qwenAgent = agent({
   prompt: 'Review this code',
   model: 'qwen3-coder',
 });
+
+// Using Gemini CLI
+const geminiAgent = agent({
+  tool: 'gemini',
+  workingDirectory: '/tmp/project',
+  prompt: 'Explain this code',
+  model: 'flash',
+});
 ```
 
 ### Streaming JSON Messages
@@ -373,7 +410,7 @@ await myAgent.start({ dryRun: true });
 import { getTool, listTools, isToolSupported } from 'agent-commander';
 
 // List all available tools
-console.log(listTools()); // ['claude', 'codex', 'opencode', 'agent', 'qwen']
+console.log(listTools()); // ['claude', 'codex', 'opencode', 'agent', 'gemini', 'qwen']
 
 // Check if a tool is supported
 console.log(isToolSupported({ toolName: 'claude' })); // true
@@ -394,7 +431,7 @@ console.log(fullId); // 'claude-opus-4-5-20251101'
 Creates an agent controller.
 
 **Parameters:**
-- `options.tool` (string, required) - CLI tool to use ('claude', 'codex', 'opencode', 'qwen', 'agent')
+- `options.tool` (string, required) - CLI tool to use ('claude', 'codex', 'opencode', 'qwen', 'gemini', 'agent')
 - `options.workingDirectory` (string, required) - Working directory
 - `options.prompt` (string, optional) - Prompt for the agent
 - `options.systemPrompt` (string, optional) - System prompt
@@ -562,6 +599,7 @@ agent-commander/
 │   │   ├── codex.mjs          # Codex CLI config
 │   │   ├── opencode.mjs       # OpenCode CLI config
 │   │   ├── qwen.mjs           # Qwen Code CLI config
+│   │   ├── gemini.mjs         # Gemini CLI config
 │   │   └── agent.mjs          # @link-assistant/agent config
 │   ├── streaming/             # JSON streaming utilities
 │   │   ├── index.mjs          # Stream exports
