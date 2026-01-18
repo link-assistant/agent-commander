@@ -1,6 +1,6 @@
 # agent-commander
 
-A JavaScript library to control agents enclosed in CLI commands like Anthropic Claude Code CLI, OpenAI Codex, OpenCode, and @link-assistant/agent.
+A JavaScript library to control agents enclosed in CLI commands like Anthropic Claude Code CLI, OpenAI Codex, OpenCode, Qwen Code, and @link-assistant/agent.
 
 Built on the success of [hive-mind](https://github.com/link-assistant/hive-mind), `agent-commander` provides a flexible JavaScript interface and CLI tools for managing agent processes with various isolation levels.
 
@@ -11,6 +11,7 @@ Built on the success of [hive-mind](https://github.com/link-assistant/hive-mind)
   - `claude` - Anthropic Claude Code CLI
   - `codex` - OpenAI Codex CLI
   - `opencode` - OpenCode CLI
+  - `qwen` - Qwen Code CLI (Alibaba's AI coding agent)
   - `agent` - @link-assistant/agent (unrestricted OpenCode fork)
 - **Multiple Isolation Modes**:
   - No isolation (direct execution)
@@ -56,6 +57,7 @@ bun add agent-commander
 | `claude` | Anthropic Claude Code CLI | ✅ (stream-json) | ✅ (stream-json) | `sonnet`, `opus`, `haiku` |
 | `codex` | OpenAI Codex CLI | ✅ | ❌ | `gpt5`, `o3`, `gpt4o` |
 | `opencode` | OpenCode CLI | ✅ | ❌ | `grok`, `gemini`, `sonnet` |
+| `qwen` | Qwen Code CLI | ✅ (stream-json) | ✅ (stream-json) | `qwen3-coder`, `coder`, `gpt-4o` |
 | `agent` | @link-assistant/agent | ✅ | ❌ | `grok`, `sonnet`, `haiku` |
 
 ### Claude-specific Features
@@ -70,6 +72,17 @@ The Claude Code CLI supports additional features:
 - **Verbose mode**: Enable with `--verbose` for detailed output
 - **User message replay**: Use `--replay-user-messages` for streaming acknowledgment
 
+### Qwen-specific Features
+
+The [Qwen Code CLI](https://github.com/QwenLM/qwen-code) supports additional features:
+
+- **Stream JSON format**: Uses `--output-format stream-json` for real-time NDJSON streaming
+- **Auto-approval mode**: Use `--yolo` flag for automatic action approval (enabled by default)
+- **Session management**: Support for `--resume <sessionId>` and `--continue` for most recent session
+- **Context options**: Use `--all-files` to include all files, `--include-directories` for specific dirs
+- **Partial messages**: Use `--include-partial-messages` with stream-json for real-time UI updates
+- **Model flexibility**: Supports Qwen3-Coder models plus OpenAI-compatible models via API
+
 ## CLI Usage
 
 ### start-agent
@@ -82,7 +95,7 @@ start-agent --tool claude --working-directory "/tmp/dir" --prompt "Solve the iss
 
 #### Options
 
-- `--tool <name>` - CLI tool to use (e.g., 'claude', 'codex', 'opencode', 'agent') [required]
+- `--tool <name>` - CLI tool to use (e.g., 'claude', 'codex', 'opencode', 'qwen', 'agent') [required]
 - `--working-directory <path>` - Working directory for the agent [required]
 - `--prompt <text>` - Prompt for the agent
 - `--system-prompt <text>` - System prompt for the agent
@@ -116,6 +129,11 @@ start-agent --tool codex --working-directory "/tmp/dir" --prompt "Fix the bug" -
 **Using @link-assistant/agent with Grok**
 ```bash
 start-agent --tool agent --working-directory "/tmp/dir" --prompt "Analyze code" --model grok
+```
+
+**Using Qwen Code**
+```bash
+start-agent --tool qwen --working-directory "/tmp/dir" --prompt "Review this code" --model qwen3-coder
 ```
 
 **With model fallback (Claude)**
@@ -233,6 +251,14 @@ const linkAgent = agent({
   prompt: 'Implement feature',
   model: 'grok',
 });
+
+// Using Qwen Code
+const qwenAgent = agent({
+  tool: 'qwen',
+  workingDirectory: '/tmp/project',
+  prompt: 'Review this code',
+  model: 'qwen3-coder',
+});
 ```
 
 ### Streaming JSON Messages
@@ -347,7 +373,7 @@ await myAgent.start({ dryRun: true });
 import { getTool, listTools, isToolSupported } from 'agent-commander';
 
 // List all available tools
-console.log(listTools()); // ['claude', 'codex', 'opencode', 'agent']
+console.log(listTools()); // ['claude', 'codex', 'opencode', 'agent', 'qwen']
 
 // Check if a tool is supported
 console.log(isToolSupported({ toolName: 'claude' })); // true
@@ -368,7 +394,7 @@ console.log(fullId); // 'claude-opus-4-5-20251101'
 Creates an agent controller.
 
 **Parameters:**
-- `options.tool` (string, required) - CLI tool to use ('claude', 'codex', 'opencode', 'agent')
+- `options.tool` (string, required) - CLI tool to use ('claude', 'codex', 'opencode', 'qwen', 'agent')
 - `options.workingDirectory` (string, required) - Working directory
 - `options.prompt` (string, optional) - Prompt for the agent
 - `options.systemPrompt` (string, optional) - System prompt
@@ -535,6 +561,7 @@ agent-commander/
 │   │   ├── claude.mjs         # Claude Code CLI config
 │   │   ├── codex.mjs          # Codex CLI config
 │   │   ├── opencode.mjs       # OpenCode CLI config
+│   │   ├── qwen.mjs           # Qwen Code CLI config
 │   │   └── agent.mjs          # @link-assistant/agent config
 │   ├── streaming/             # JSON streaming utilities
 │   │   ├── index.mjs          # Stream exports
