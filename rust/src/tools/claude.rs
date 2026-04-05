@@ -14,7 +14,7 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("haiku-3-5", "claude-3-5-haiku-20241022");
     map.insert("haiku-3", "claude-3-haiku-20240307");
     map.insert("opusplan", "opusplan"); // Special mode: Opus for planning, Sonnet for execution
-    // Shorter version aliases
+                                        // Shorter version aliases
     map.insert("sonnet-4-6", "claude-sonnet-4-6");
     map.insert("opus-4-6", "claude-opus-4-6");
     map.insert("opus-4-5", "claude-opus-4-5-20251101");

@@ -6,8 +6,8 @@ use agent_commander::tools::claude::{
 
 #[test]
 fn test_map_model_to_id_with_alias() {
-    assert_eq!(map_model_to_id("sonnet"), "claude-sonnet-4-5-20250929");
-    assert_eq!(map_model_to_id("opus"), "claude-opus-4-5-20251101");
+    assert_eq!(map_model_to_id("sonnet"), "claude-sonnet-4-6");
+    assert_eq!(map_model_to_id("opus"), "claude-opus-4-6");
     assert_eq!(map_model_to_id("haiku"), "claude-haiku-4-5-20251001");
 }
 
@@ -38,7 +38,7 @@ fn test_build_args_with_model() {
     };
     let args = build_args(&options);
     assert!(args.contains(&"--model".to_string()));
-    assert!(args.contains(&"claude-sonnet-4-5-20250929".to_string()));
+    assert!(args.contains(&"claude-sonnet-4-6".to_string()));
 }
 
 #[test]
@@ -92,9 +92,9 @@ fn test_build_args_with_fallback_model() {
     };
     let args = build_args(&options);
     assert!(args.contains(&"--model".to_string()));
-    assert!(args.contains(&"claude-opus-4-5-20251101".to_string()));
+    assert!(args.contains(&"claude-opus-4-6".to_string()));
     assert!(args.contains(&"--fallback-model".to_string()));
-    assert!(args.contains(&"claude-sonnet-4-5-20250929".to_string()));
+    assert!(args.contains(&"claude-sonnet-4-6".to_string()));
 }
 
 #[test]

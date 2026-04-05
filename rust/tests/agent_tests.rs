@@ -123,7 +123,7 @@ fn test_agent_tool_default() {
     assert!(tool.supports_json_input);
     assert!(!tool.supports_system_prompt);
     assert!(!tool.supports_resume);
-    assert_eq!(tool.default_model, "grok-code-fast-1");
+    assert_eq!(tool.default_model, "minimax-m2.5-free");
 }
 
 #[test]
@@ -150,5 +150,5 @@ fn test_map_model_to_id_anthropic_models() {
 #[test]
 fn test_map_model_to_id_other_providers() {
     assert_eq!(map_model_to_id("gemini-3-pro"), "google/gemini-3-pro");
-    assert_eq!(map_model_to_id("gpt-5-nano"), "openai/gpt-5-nano");
+    assert_eq!(map_model_to_id("gpt-5-nano"), "opencode/gpt-5-nano");
 }

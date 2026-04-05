@@ -56,11 +56,11 @@ test('getTool - throws for unknown tool', () => {
 test('claudeTool - mapModelToId with alias', () => {
   assert.strictEqual(
     claudeTool.mapModelToId({ model: 'sonnet' }),
-    'claude-sonnet-4-5-20250929'
+    'claude-sonnet-4-6'
   );
   assert.strictEqual(
     claudeTool.mapModelToId({ model: 'opus' }),
-    'claude-opus-4-5-20251101'
+    'claude-opus-4-6'
   );
   assert.strictEqual(
     claudeTool.mapModelToId({ model: 'haiku' }),
@@ -84,7 +84,7 @@ test('claudeTool - buildArgs with prompt', () => {
 test('claudeTool - buildArgs with model', () => {
   const args = claudeTool.buildArgs({ model: 'sonnet' });
   assert.ok(args.includes('--model'));
-  assert.ok(args.includes('claude-sonnet-4-5-20250929'));
+  assert.ok(args.includes('claude-sonnet-4-6'));
 });
 
 test('claudeTool - parseOutput with NDJSON', () => {
@@ -117,9 +117,9 @@ test('claudeTool - buildArgs uses stream-json output format', () => {
 test('claudeTool - buildArgs with fallback model', () => {
   const args = claudeTool.buildArgs({ model: 'opus', fallbackModel: 'sonnet' });
   assert.ok(args.includes('--model'));
-  assert.ok(args.includes('claude-opus-4-5-20251101'));
+  assert.ok(args.includes('claude-opus-4-6'));
   assert.ok(args.includes('--fallback-model'));
-  assert.ok(args.includes('claude-sonnet-4-5-20250929'));
+  assert.ok(args.includes('claude-sonnet-4-6'));
 });
 
 test('claudeTool - buildArgs with append-system-prompt', () => {
