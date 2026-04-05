@@ -352,7 +352,7 @@ mod tests {
 
         let command = build_agent_command(&options);
         assert!(command.contains("--model"));
-        assert!(command.contains("claude-opus-4-5-20251101"));
+        assert!(command.contains("claude-opus-4-6"));
     }
 
     #[test]
