@@ -10,11 +10,24 @@ use std::collections::HashMap;
 /// Maps aliases to full model IDs (uses OpenCode's provider/model format)
 pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     let mut map = HashMap::new();
+    // OpenCode Zen free models (current)
     map.insert("grok", "opencode/grok-code");
     map.insert("grok-code", "opencode/grok-code");
     map.insert("grok-code-fast-1", "opencode/grok-code");
     map.insert("big-pickle", "opencode/big-pickle");
-    map.insert("gpt-5-nano", "openai/gpt-5-nano");
+    map.insert("gpt-5-nano", "opencode/gpt-5-nano");
+    map.insert("minimax-m2.5-free", "opencode/minimax-m2.5-free");
+    // Kilo Gateway free models
+    map.insert("glm-5-free", "kilo/glm-5-free");
+    map.insert("glm-4.5-air-free", "kilo/glm-4.5-air-free");
+    map.insert("deepseek-r1-free", "kilo/deepseek-r1-free");
+    map.insert("giga-potato-free", "kilo/giga-potato-free");
+    map.insert("trinity-large-preview", "kilo/trinity-large-preview");
+    // Deprecated free models (kept for backward compatibility)
+    map.insert("kimi-k2.5-free", "opencode/kimi-k2.5-free");
+    map.insert("glm-4.7-free", "opencode/glm-4.7-free");
+    map.insert("minimax-m2.1-free", "opencode/minimax-m2.1-free");
+    // Premium models
     map.insert("sonnet", "anthropic/claude-3-5-sonnet");
     map.insert("haiku", "anthropic/claude-3-5-haiku");
     map.insert("opus", "anthropic/claude-3-opus");
@@ -283,7 +296,7 @@ impl Default for AgentTool {
             supports_json_input: true, // Agent supports full JSON streaming input
             supports_system_prompt: false, // System prompt is combined with user prompt
             supports_resume: false,    // Agent doesn't have explicit resume like Claude
-            default_model: "grok-code-fast-1",
+            default_model: "minimax-m2.5-free",
         }
     }
 }
