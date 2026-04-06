@@ -9,11 +9,34 @@
  * Maps aliases to full model IDs (uses OpenCode's provider/model format)
  */
 export const modelMap = {
+  // OpenCode Zen free models (current)
   grok: 'opencode/grok-code',
   'grok-code': 'opencode/grok-code',
   'grok-code-fast-1': 'opencode/grok-code',
   'big-pickle': 'opencode/big-pickle',
-  'gpt-5-nano': 'openai/gpt-5-nano',
+  'gpt-5-nano': 'opencode/gpt-5-nano',
+  'minimax-m2.5-free': 'opencode/minimax-m2.5-free',
+  // Kilo Gateway free models
+  'glm-5-free': 'kilo/glm-5-free',
+  'glm-4.5-air-free': 'kilo/glm-4.5-air-free',
+  'deepseek-r1-free': 'kilo/deepseek-r1-free',
+  'giga-potato-free': 'kilo/giga-potato-free',
+  'trinity-large-preview': 'kilo/trinity-large-preview',
+  // Full names with kilo/ prefix
+  'kilo/glm-5-free': 'kilo/glm-5-free',
+  'kilo/glm-4.5-air-free': 'kilo/glm-4.5-air-free',
+  'kilo/minimax-m2.5-free': 'kilo/minimax-m2.5-free',
+  'kilo/deepseek-r1-free': 'kilo/deepseek-r1-free',
+  'kilo/giga-potato-free': 'kilo/giga-potato-free',
+  'kilo/trinity-large-preview': 'kilo/trinity-large-preview',
+  // Deprecated free models (kept for backward compatibility)
+  'kimi-k2.5-free': 'opencode/kimi-k2.5-free',
+  'glm-4.7-free': 'opencode/glm-4.7-free',
+  'minimax-m2.1-free': 'opencode/minimax-m2.1-free',
+  'kilo/glm-4.7-free': 'kilo/glm-4.7-free',
+  'kilo/kimi-k2.5-free': 'kilo/kimi-k2.5-free',
+  'kilo/minimax-m2.1-free': 'kilo/minimax-m2.1-free',
+  // Premium models
   sonnet: 'anthropic/claude-3-5-sonnet',
   haiku: 'anthropic/claude-3-5-haiku',
   opus: 'anthropic/claude-3-opus',
@@ -246,7 +269,7 @@ export const agentTool = {
   supportsJsonInput: true, // Agent supports full JSON streaming input
   supportsSystemPrompt: false, // System prompt is combined with user prompt
   supportsResume: false, // Agent doesn't have explicit resume like Claude
-  defaultModel: 'grok-code-fast-1',
+  defaultModel: 'minimax-m2.5-free',
   modelMap,
   mapModelToId,
   buildArgs,
