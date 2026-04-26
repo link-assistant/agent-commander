@@ -205,12 +205,39 @@ test('parseStartAgentArgs - with verbose and replay-user-messages', () => {
   assert.strictEqual(result.replayUserMessages, true);
 });
 
+test('parseStartAgentArgs - with read-only flag', () => {
+  const args = [
+    '--tool',
+    'claude',
+    '--working-directory',
+    '/tmp/test',
+    '--read-only',
+  ];
+  const result = parseStartAgentArgs(args);
+
+  assert.strictEqual(result.readOnly, true);
+});
+
+test('parseStartAgentArgs - plan-only aliases read-only', () => {
+  const args = [
+    '--tool',
+    'claude',
+    '--working-directory',
+    '/tmp/test',
+    '--plan-only',
+  ];
+  const result = parseStartAgentArgs(args);
+
+  assert.strictEqual(result.readOnly, true);
+});
+
 test('parseStartAgentArgs - defaults for new options', () => {
   const args = ['--tool', 'claude', '--working-directory', '/tmp/test'];
   const result = parseStartAgentArgs(args);
 
   assert.strictEqual(result.verbose, false);
   assert.strictEqual(result.replayUserMessages, false);
+  assert.strictEqual(result.readOnly, false);
   assert.strictEqual(result.forkSession, false);
   assert.strictEqual(result.model, undefined);
   assert.strictEqual(result.fallbackModel, undefined);

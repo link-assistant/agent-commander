@@ -18,6 +18,7 @@ import { isToolSupported, getTool } from './tools/index.mjs';
  * @param {string} [options.screenName] - Screen session name (for screen isolation)
  * @param {string} [options.containerName] - Container name (for docker isolation)
  * @param {boolean} [options.detached] - Run in detached mode
+ * @param {boolean} [options.readOnly] - Enforce native read-only/planning mode
  * @returns {string} The command string
  */
 export function buildAgentCommand(options) {
@@ -33,6 +34,7 @@ export function buildAgentCommand(options) {
     screenName,
     containerName,
     detached = false,
+    readOnly = false,
     ...toolOptions
   } = options;
 
@@ -41,6 +43,9 @@ export function buildAgentCommand(options) {
 
   if (isToolSupported({ toolName: tool })) {
     const toolConfig = getTool({ toolName: tool });
+    if (readOnly && !toolConfig.supportsReadOnly) {
+      throw new Error(readOnlyUnsupportedError(tool));
+    }
     if (toolConfig.buildCommand) {
       // Use tool-specific command builder
       baseCommand = toolConfig.buildCommand({
@@ -50,6 +55,7 @@ export function buildAgentCommand(options) {
         model,
         json,
         resume,
+        readOnly,
         ...toolOptions,
       });
     } else {
@@ -62,6 +68,9 @@ export function buildAgentCommand(options) {
       });
     }
   } else {
+    if (readOnly) {
+      throw new Error(readOnlyUnsupportedError(tool));
+    }
     // Unknown tool, use generic command builder
     baseCommand = buildToolCommand({
       tool,
@@ -91,6 +100,15 @@ export function buildAgentCommand(options) {
   }
 
   return fullCommand;
+}
+
+/**
+ * Build the standard error for tools without enforceable read-only mode.
+ * @param {string} tool - Tool name
+ * @returns {string} Error message
+ */
+function readOnlyUnsupportedError(tool) {
+  return `Tool "${tool}" does not support enforceable read-only mode. Choose one of: claude, codex, opencode, gemini, qwen; or run without --read-only.`;
 }
 
 /**

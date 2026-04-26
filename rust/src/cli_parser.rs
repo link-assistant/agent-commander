@@ -79,6 +79,7 @@ pub struct StartAgentOptions {
     pub fallback_model: Option<String>,
     pub verbose: bool,
     pub replay_user_messages: bool,
+    pub read_only: bool,
     pub resume: Option<String>,
     pub session_id: Option<String>,
     pub fork_session: bool,
@@ -127,6 +128,7 @@ pub fn parse_start_agent_args(args: &[String]) -> StartAgentOptions {
         fallback_model: parsed.get("fallback-model").cloned(),
         verbose: parsed.get_bool("verbose"),
         replay_user_messages: parsed.get_bool("replay-user-messages"),
+        read_only: parsed.get_bool("read-only") || parsed.get_bool("plan-only"),
         resume: parsed.get("resume").cloned(),
         session_id: parsed.get("session-id").cloned(),
         fork_session: parsed.get_bool("fork-session"),
@@ -174,6 +176,8 @@ Options:
   --model <model>                  Model to use (e.g., 'sonnet', 'opus', 'haiku')
   --fallback-model <model>         Fallback model when default is overloaded
   --verbose                        Enable verbose mode
+  --read-only                      Enforce native read-only/planning mode
+  --plan-only                      Alias for --read-only
   --resume <sessionId>             Resume a previous session by ID
   --session-id <uuid>              Use a specific session ID (must be valid UUID)
   --fork-session                   Create new session ID when resuming
@@ -196,6 +200,10 @@ Examples:
   # Resume a session with fork
   start-agent --tool claude --working-directory "/tmp/dir" \
     --resume abc123 --fork-session
+
+  # Read-only planning mode
+  start-agent --tool claude --working-directory "/tmp/dir" \
+    --prompt "Inspect this project" --read-only
 
   # With screen isolation (detached)
   start-agent --tool claude --working-directory "/tmp/dir" \
@@ -384,6 +392,34 @@ mod tests {
         let result = parse_start_agent_args(&args);
 
         assert!(result.dry_run);
+    }
+
+    #[test]
+    fn test_parse_start_agent_args_read_only() {
+        let args: Vec<String> = vec![
+            "--tool".into(),
+            "claude".into(),
+            "--working-directory".into(),
+            "/tmp/test".into(),
+            "--read-only".into(),
+        ];
+        let result = parse_start_agent_args(&args);
+
+        assert!(result.read_only);
+    }
+
+    #[test]
+    fn test_parse_start_agent_args_plan_only_alias() {
+        let args: Vec<String> = vec![
+            "--tool".into(),
+            "claude".into(),
+            "--working-directory".into(),
+            "/tmp/test".into(),
+            "--plan-only".into(),
+        ];
+        let result = parse_start_agent_args(&args);
+
+        assert!(result.read_only);
     }
 
     #[test]

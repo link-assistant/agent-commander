@@ -283,6 +283,7 @@ pub struct AgentTool {
     pub supports_json_input: bool,
     pub supports_system_prompt: bool,
     pub supports_resume: bool,
+    pub supports_read_only: bool,
     pub default_model: &'static str,
 }
 
@@ -296,6 +297,7 @@ impl Default for AgentTool {
             supports_json_input: true, // Agent supports full JSON streaming input
             supports_system_prompt: false, // System prompt is combined with user prompt
             supports_resume: false,    // Agent doesn't have explicit resume like Claude
+            supports_read_only: false, // No native enforceable read-only mode
             default_model: "minimax-m2.5-free",
         }
     }

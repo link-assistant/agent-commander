@@ -60,7 +60,7 @@ pub struct ClaudeBuildOptions {
     pub resume: Option<String>,
     pub session_id: Option<String>,
     pub fork_session: bool,
-    // Note: dangerously_skip_permissions is always enabled and not configurable (per issue #3)
+    pub read_only: bool,
 }
 
 impl ClaudeBuildOptions {
@@ -80,8 +80,13 @@ impl ClaudeBuildOptions {
 pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
     let mut args = Vec::new();
 
-    // Permission bypass - always enabled, not configurable (per issue #3)
-    args.push("--dangerously-skip-permissions".to_string());
+    if options.read_only {
+        args.push("--permission-mode".to_string());
+        args.push("plan".to_string());
+    } else {
+        // Permission bypass is enabled by default for autonomous execution.
+        args.push("--dangerously-skip-permissions".to_string());
+    }
 
     if let Some(ref model) = options.model {
         let mapped_model = map_model_to_id(model);
@@ -278,6 +283,7 @@ pub struct ClaudeTool {
     pub supports_fallback_model: bool,
     pub supports_verbose: bool,
     pub supports_replay_user_messages: bool,
+    pub supports_read_only: bool,
     pub default_model: &'static str,
 }
 
@@ -297,6 +303,7 @@ impl Default for ClaudeTool {
             supports_fallback_model: true, // Supports --fallback-model
             supports_verbose: true,        // Supports --verbose
             supports_replay_user_messages: true, // Supports --replay-user-messages
+            supports_read_only: true,      // Supports --permission-mode plan
             default_model: "sonnet",
         }
     }

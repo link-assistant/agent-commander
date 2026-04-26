@@ -137,6 +137,76 @@ test('buildAgentCommand - with opencode tool', () => {
   assert.ok(command.includes('--format'));
 });
 
+test('buildAgentCommand - claude read-only uses plan permission mode', () => {
+  const command = buildAgentCommand({
+    tool: 'claude',
+    workingDirectory: '/tmp/test',
+    prompt: 'Plan only',
+    readOnly: true,
+    isolation: 'none',
+  });
+
+  assert.ok(command.includes('--permission-mode'));
+  assert.ok(command.includes('plan'));
+  assert.ok(!command.includes('--dangerously-skip-permissions'));
+});
+
+test('buildAgentCommand - codex read-only uses sandbox and no approvals', () => {
+  const command = buildAgentCommand({
+    tool: 'codex',
+    workingDirectory: '/tmp/test',
+    prompt: 'Plan only',
+    readOnly: true,
+    isolation: 'none',
+  });
+
+  assert.ok(command.includes('codex --ask-for-approval never exec'));
+  assert.ok(command.includes('--sandbox'));
+  assert.ok(command.includes('read-only'));
+  assert.ok(!command.includes('--dangerously-bypass-approvals-and-sandbox'));
+});
+
+test('buildAgentCommand - opencode read-only denies shell and edits', () => {
+  const command = buildAgentCommand({
+    tool: 'opencode',
+    workingDirectory: '/tmp/test',
+    prompt: 'Plan only',
+    readOnly: true,
+    isolation: 'none',
+  });
+
+  assert.ok(command.includes('OPENCODE_PERMISSION='));
+  assert.ok(command.includes('\\"bash\\":\\"deny\\"'));
+  assert.ok(command.includes('\\"edit\\":\\"deny\\"'));
+});
+
+test('buildAgentCommand - read-only still works with screen isolation', () => {
+  const command = buildAgentCommand({
+    tool: 'claude',
+    workingDirectory: '/tmp/test',
+    readOnly: true,
+    isolation: 'screen',
+    screenName: 'planning-session',
+    detached: true,
+  });
+
+  assert.ok(command.includes('screen'));
+  assert.ok(command.includes('planning-session'));
+  assert.ok(command.includes('--permission-mode'));
+  assert.ok(command.includes('plan'));
+});
+
+test('buildAgentCommand - read-only rejects unsupported agent tool', () => {
+  assert.throws(() => {
+    buildAgentCommand({
+      tool: 'agent',
+      workingDirectory: '/tmp/test',
+      readOnly: true,
+      isolation: 'none',
+    });
+  }, /does not support enforceable read-only mode/);
+});
+
 test('buildScreenStopCommand', () => {
   const command = buildScreenStopCommand('my-session');
   assert.ok(command.includes('screen'));

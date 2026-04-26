@@ -45,6 +45,7 @@ pub struct QwenBuildOptions {
     pub stream_json: bool,
     pub include_partial_messages: bool,
     pub yolo: bool,
+    pub read_only: bool,
     pub resume: Option<String>,
     pub continue_session: bool,
     pub all_files: bool,
@@ -99,8 +100,11 @@ pub fn build_args(options: &QwenBuildOptions) -> Vec<String> {
         args.push("--include-partial-messages".to_string());
     }
 
-    // Auto-approve all actions for autonomous execution
-    if options.yolo {
+    if options.read_only {
+        args.push("--approval-mode".to_string());
+        args.push("plan".to_string());
+    } else if options.yolo {
+        // Auto-approve all actions for autonomous execution
         args.push("--yolo".to_string());
     }
 
@@ -330,6 +334,7 @@ pub struct QwenTool {
     pub supports_all_files: bool,
     pub supports_include_directories: bool,
     pub supports_include_partial_messages: bool,
+    pub supports_read_only: bool,
     pub default_model: &'static str,
 }
 
@@ -348,6 +353,7 @@ impl Default for QwenTool {
             supports_all_files: true,  // Supports --all-files
             supports_include_directories: true, // Supports --include-directories
             supports_include_partial_messages: true, // Supports --include-partial-messages
+            supports_read_only: true,  // Supports --approval-mode plan
             default_model: "qwen3-coder-480a35",
         }
     }

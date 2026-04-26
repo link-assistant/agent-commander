@@ -4,8 +4,10 @@ use crate::tools::{
     agent::{self, AgentBuildOptions},
     claude::{self, ClaudeBuildOptions},
     codex::{self, CodexBuildOptions},
+    gemini::{self, GeminiBuildOptions},
     is_tool_supported,
     opencode::{self, OpencodeBuildOptions},
+    qwen::{self, QwenBuildOptions},
 };
 
 /// Agent command build options
@@ -18,10 +20,24 @@ pub struct AgentCommandOptions {
     pub model: Option<String>,
     pub json: bool,
     pub resume: Option<String>,
+    pub read_only: bool,
     pub isolation: String,
     pub screen_name: Option<String>,
     pub container_name: Option<String>,
     pub detached: bool,
+}
+
+/// Check whether a tool has an enforceable native read-only/planning mode.
+pub fn supports_read_only(tool: &str) -> bool {
+    matches!(tool, "claude" | "codex" | "opencode" | "gemini" | "qwen")
+}
+
+/// Build the standard error for tools without enforceable read-only mode.
+pub fn read_only_unsupported_error(tool: &str) -> String {
+    format!(
+        "Tool \"{}\" does not support enforceable read-only mode. Choose one of: claude, codex, opencode, gemini, qwen; or run without --read-only.",
+        tool
+    )
 }
 
 /// Escape quotes in strings for shell commands (single quotes)
@@ -126,6 +142,12 @@ fn build_docker_command(
 /// # Returns
 /// The command string
 pub fn build_agent_command(options: &AgentCommandOptions) -> String {
+    assert!(
+        !(options.read_only && !supports_read_only(&options.tool)),
+        "{}",
+        read_only_unsupported_error(&options.tool)
+    );
+
     // Build base command using tool-specific builder if available
     let base_command = if is_tool_supported(&options.tool) {
         match options.tool.as_str() {
@@ -143,7 +165,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 session_id: None, // TODO: Add to AgentCommandOptions if needed
                 fork_session: false,
                 print: false,
-                // Note: dangerously_skip_permissions is always enabled, not configurable
+                read_only: options.read_only,
             }),
             "codex" => codex::build_command(&CodexBuildOptions {
                 prompt: options.prompt.clone(),
@@ -151,6 +173,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 model: options.model.clone(),
                 json: options.json,
                 resume: options.resume.clone(),
+                read_only: options.read_only,
             }),
             "opencode" => opencode::build_command(&OpencodeBuildOptions {
                 prompt: options.prompt.clone(),
@@ -158,6 +181,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 model: options.model.clone(),
                 json: options.json,
                 resume: options.resume.clone(),
+                read_only: options.read_only,
             }),
             "agent" => agent::build_command(&AgentBuildOptions {
                 prompt: options.prompt.clone(),
@@ -166,6 +190,29 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 compact_json: false,
                 use_existing_claude_oauth: false,
             }),
+            "gemini" => {
+                let options = GeminiBuildOptions {
+                    prompt: options.prompt.clone(),
+                    system_prompt: options.system_prompt.clone(),
+                    model: options.model.clone(),
+                    json: options.json,
+                    read_only: options.read_only,
+                    ..GeminiBuildOptions::new()
+                };
+                gemini::build_command(&options)
+            }
+            "qwen" => {
+                let options = QwenBuildOptions {
+                    prompt: options.prompt.clone(),
+                    system_prompt: options.system_prompt.clone(),
+                    model: options.model.clone(),
+                    json: options.json,
+                    resume: options.resume.clone(),
+                    read_only: options.read_only,
+                    ..QwenBuildOptions::new()
+                };
+                qwen::build_command(&options)
+            }
             _ => build_tool_command(
                 &options.tool,
                 options.prompt.as_deref(),
@@ -403,6 +450,72 @@ mod tests {
         assert!(command.contains("agent"));
         assert!(command.contains("--model"));
         assert!(command.contains("opencode/grok-code"));
+    }
+
+    #[test]
+    fn test_build_agent_command_claude_read_only() {
+        let options = AgentCommandOptions {
+            tool: "claude".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            prompt: Some("Plan only".to_string()),
+            read_only: true,
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("--permission-mode"));
+        assert!(command.contains("plan"));
+        assert!(!command.contains("--dangerously-skip-permissions"));
+    }
+
+    #[test]
+    fn test_build_agent_command_codex_read_only() {
+        let options = AgentCommandOptions {
+            tool: "codex".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            prompt: Some("Plan only".to_string()),
+            read_only: true,
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("codex --ask-for-approval never exec"));
+        assert!(command.contains("--sandbox"));
+        assert!(command.contains("read-only"));
+        assert!(!command.contains("--dangerously-bypass-approvals-and-sandbox"));
+    }
+
+    #[test]
+    fn test_build_agent_command_opencode_read_only() {
+        let options = AgentCommandOptions {
+            tool: "opencode".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            prompt: Some("Plan only".to_string()),
+            read_only: true,
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("OPENCODE_PERMISSION="));
+        assert!(command.contains("\\\"bash\\\":\\\"deny\\\""));
+        assert!(command.contains("\\\"edit\\\":\\\"deny\\\""));
+    }
+
+    #[test]
+    #[should_panic(expected = "does not support enforceable read-only mode")]
+    fn test_build_agent_command_read_only_rejects_agent_tool() {
+        let options = AgentCommandOptions {
+            tool: "agent".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            read_only: true,
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let _command = build_agent_command(&options);
     }
 
     #[test]

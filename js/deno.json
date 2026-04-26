@@ -1,5 +1,5 @@
 {
-  "nodeModulesDir": "auto",
+  "nodeModulesDir": "none",
   "tasks": {
     "test": "deno test --allow-read --allow-run --allow-env test/**/*.test.mjs"
   },

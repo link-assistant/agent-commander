@@ -168,6 +168,14 @@ test('claudeTool - buildArgs always includes dangerously-skip-permissions (not c
   assert.ok(argsWithAnyOption.includes('--dangerously-skip-permissions'));
 });
 
+test('claudeTool - read-only uses plan mode without permission bypass', () => {
+  const args = claudeTool.buildArgs({ readOnly: true });
+
+  assert.ok(args.includes('--permission-mode'));
+  assert.ok(args.includes('plan'));
+  assert.ok(!args.includes('--dangerously-skip-permissions'));
+});
+
 test('claudeTool - supportsJsonInput is true', () => {
   assert.strictEqual(claudeTool.supportsJsonInput, true);
 });
@@ -191,6 +199,14 @@ test('codexTool - buildArgs includes exec mode', () => {
   const args = codexTool.buildArgs({});
   assert.ok(args.includes('exec'));
   assert.ok(args.includes('--json'));
+});
+
+test('codexTool - read-only uses sandbox without bypass', () => {
+  const args = codexTool.buildArgs({ readOnly: true });
+
+  assert.ok(args.includes('--sandbox'));
+  assert.ok(args.includes('read-only'));
+  assert.ok(!args.includes('--dangerously-bypass-approvals-and-sandbox'));
 });
 
 test('codexTool - extractSessionId with thread_id', () => {

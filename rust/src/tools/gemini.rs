@@ -47,6 +47,7 @@ pub struct GeminiBuildOptions {
     pub model: Option<String>,
     pub json: bool,
     pub yolo: bool,
+    pub read_only: bool,
     pub sandbox: bool,
     pub debug: bool,
     pub checkpointing: bool,
@@ -79,8 +80,11 @@ pub fn build_args(options: &GeminiBuildOptions) -> Vec<String> {
         args.push(mapped_model);
     }
 
-    // Enable yolo mode for autonomous execution (auto-approve all tool calls)
-    if options.yolo {
+    if options.read_only {
+        args.push("--approval-mode".to_string());
+        args.push("plan".to_string());
+    } else if options.yolo {
+        // Enable yolo mode for autonomous execution (auto-approve all tool calls)
         args.push("--yolo".to_string());
     }
 
@@ -334,6 +338,7 @@ pub struct GeminiTool {
     pub supports_sandbox: bool,
     pub supports_checkpointing: bool,
     pub supports_debug: bool,
+    pub supports_read_only: bool,
     pub default_model: &'static str,
 }
 
@@ -351,6 +356,7 @@ impl Default for GeminiTool {
             supports_sandbox: true,     // Supports --sandbox for secure execution
             supports_checkpointing: true, // Supports --checkpointing
             supports_debug: true,       // Supports -d for debug output
+            supports_read_only: true,   // Supports --approval-mode plan
             default_model: "gemini-2.5-flash",
         }
     }
