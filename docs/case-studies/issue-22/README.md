@@ -110,8 +110,8 @@ The non-sync part of the issue (bidirectional JSON I/O for non-Claude tools) is 
 
 ### 2. File issues for missing bidirectional I/O
 
-- Open an issue against `link-assistant/agent` requesting `--input-format stream-json` parity with Claude (referencing hive-mind PR #843 and `bidirectional-interactive.lib.mjs`).
-- Note in this case study that Codex bidirectional support requires upstream OpenAI work — the hive-mind file already says "Currently only supported for Claude due to `--input-format stream-json` support".
+- Filed [link-assistant/agent#268](https://github.com/link-assistant/agent/issues/268): "Add bidirectional NDJSON I/O via `--input-format stream-json` (parity with Claude Code)". This includes the proposed input-frame contract, references to hive-mind's bidirectional driver, and a test plan.
+- Codex bidirectional support requires upstream OpenAI work — the hive-mind driver itself says "Currently only supported for Claude due to `--input-format stream-json` support". No agent-commander-side work needed until OpenAI exposes the input format. (We could file a feature request against openai/codex if/when that becomes a priority for hive-mind.)
 
 ### 3. Future-sync candidates (not in this PR)
 
