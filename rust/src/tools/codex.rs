@@ -9,11 +9,30 @@ use std::collections::HashMap;
 pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     let mut map = HashMap::new();
     map.insert("gpt5", "gpt-5");
+    map.insert("gpt-5", "gpt-5");
     map.insert("gpt5-codex", "gpt-5-codex");
+    // GPT-5.5 family (hive-mind PR #1657, default)
+    map.insert("gpt-5.5", "gpt-5.5");
+    map.insert("gpt-5.5-mini", "gpt-5.5-mini");
+    map.insert("gpt-5.5-nano", "gpt-5.5-nano");
+    // GPT-5.4 family
+    map.insert("gpt-5.4", "gpt-5.4");
+    map.insert("gpt-5.4-mini", "gpt-5.4-mini");
+    map.insert("gpt-5.4-nano", "gpt-5.4-nano");
+    // GPT-5.3 family (codex variants)
+    map.insert("gpt-5.3-codex", "gpt-5.3-codex");
+    map.insert("gpt-5.3-codex-spark", "gpt-5.3-codex-spark");
+    // GPT-5.2 family
+    map.insert("gpt-5.2", "gpt-5.2");
+    map.insert("gpt-5.2-codex", "gpt-5.2-codex");
+    // GPT-5.1 family
+    map.insert("gpt-5.1-codex-max", "gpt-5.1-codex-max");
     map.insert("o3", "o3");
     map.insert("o3-mini", "o3-mini");
     map.insert("gpt4", "gpt-4");
+    map.insert("gpt-4", "gpt-4");
     map.insert("gpt4o", "gpt-4o");
+    map.insert("gpt-4o", "gpt-4o");
     map.insert("claude", "claude-3-5-sonnet");
     map.insert("sonnet", "claude-3-5-sonnet");
     map.insert("opus", "claude-3-opus");
@@ -238,7 +257,7 @@ impl Default for CodexTool {
             supports_system_prompt: false, // System prompt is combined with user prompt
             supports_resume: true,
             supports_read_only: true, // Supports --sandbox read-only
-            default_model: "gpt-5",
+            default_model: "gpt-5.5", // hive-mind PR #1657
         }
     }
 }

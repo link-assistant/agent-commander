@@ -123,7 +123,24 @@ fn test_agent_tool_default() {
     assert!(tool.supports_json_input);
     assert!(!tool.supports_system_prompt);
     assert!(!tool.supports_resume);
-    assert_eq!(tool.default_model, "minimax-m2.5-free");
+    assert_eq!(tool.default_model, "nemotron-3-super-free");
+}
+
+#[test]
+fn test_map_model_to_id_nemotron_3_super_free() {
+    assert_eq!(
+        map_model_to_id("nemotron-3-super-free"),
+        "opencode/nemotron-3-super-free"
+    );
+}
+
+#[test]
+fn test_map_model_to_id_keeps_deprecated_qwen() {
+    // Deprecated but kept for backward compatibility
+    assert_eq!(
+        map_model_to_id("qwen3.6-plus-free"),
+        "opencode/qwen3.6-plus-free"
+    );
 }
 
 #[test]

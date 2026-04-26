@@ -93,7 +93,18 @@ fn test_codex_tool_default() {
     assert!(tool.supports_json_input);
     assert!(!tool.supports_system_prompt);
     assert!(tool.supports_resume);
-    assert_eq!(tool.default_model, "gpt-5");
+    assert_eq!(tool.default_model, "gpt-5.5");
+}
+
+#[test]
+fn test_map_model_to_id_gpt_5_5_family() {
+    assert_eq!(map_model_to_id("gpt-5.5"), "gpt-5.5");
+    assert_eq!(map_model_to_id("gpt-5.5-mini"), "gpt-5.5-mini");
+    assert_eq!(map_model_to_id("gpt-5.5-nano"), "gpt-5.5-nano");
+    assert_eq!(map_model_to_id("gpt-5.4"), "gpt-5.4");
+    assert_eq!(map_model_to_id("gpt-5.3-codex"), "gpt-5.3-codex");
+    assert_eq!(map_model_to_id("gpt-5.2-codex"), "gpt-5.2-codex");
+    assert_eq!(map_model_to_id("gpt-5.1-codex-max"), "gpt-5.1-codex-max");
 }
 
 #[test]
