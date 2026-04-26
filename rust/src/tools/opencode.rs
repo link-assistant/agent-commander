@@ -5,6 +5,9 @@ use crate::streaming::parse_ndjson;
 use serde_json::Value;
 use std::collections::HashMap;
 
+/// OpenCode permission policy used for read-only planning mode.
+pub const READ_ONLY_PERMISSION: &str = r#"{"edit":"deny","bash":"deny","task":"deny"}"#;
+
 /// Get the OpenCode model map
 pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     let mut map = HashMap::new();
@@ -43,6 +46,7 @@ pub struct OpencodeBuildOptions {
     pub model: Option<String>,
     pub json: bool,
     pub resume: Option<String>,
+    pub read_only: bool,
 }
 
 /// Build command line arguments for OpenCode
@@ -121,9 +125,16 @@ pub fn build_command(options: &OpencodeBuildOptions) -> String {
 
     // Build command with stdin piping
     let escaped_prompt = escape_single_quotes(&combined_prompt);
+    let executable = if options.read_only {
+        format!("OPENCODE_PERMISSION='{}' opencode", READ_ONLY_PERMISSION)
+    } else {
+        "opencode".to_string()
+    };
+
     format!(
-        "printf '%s' '{}' | opencode {}",
+        "printf '%s' '{}' | {} {}",
         escaped_prompt,
+        executable,
         args_str.join(" ")
     )
     .trim()
@@ -203,6 +214,7 @@ pub struct OpencodeTool {
     pub supports_json_input: bool,
     pub supports_system_prompt: bool,
     pub supports_resume: bool,
+    pub supports_read_only: bool,
     pub default_model: &'static str,
 }
 
@@ -216,6 +228,7 @@ impl Default for OpencodeTool {
             supports_json_input: true, // OpenCode can accept JSON input via stdin
             supports_system_prompt: false, // System prompt is combined with user prompt
             supports_resume: true,
+            supports_read_only: true, // Supports OPENCODE_PERMISSION
             default_model: "grok-code-fast-1",
         }
     }

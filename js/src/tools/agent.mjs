@@ -269,6 +269,7 @@ export const agentTool = {
   supportsJsonInput: true, // Agent supports full JSON streaming input
   supportsSystemPrompt: false, // System prompt is combined with user prompt
   supportsResume: false, // Agent doesn't have explicit resume like Claude
+  supportsReadOnly: false, // No native enforceable read-only mode
   defaultModel: 'minimax-m2.5-free',
   modelMap,
   mapModelToId,

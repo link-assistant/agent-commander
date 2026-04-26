@@ -38,13 +38,24 @@ async function main() {
       workingDirectory: options.workingDirectory,
       prompt: options.prompt,
       systemPrompt: options.systemPrompt,
+      model: options.model,
+      resume: options.resume,
+      readOnly: options.readOnly,
       isolation: options.isolation,
       screenName: options.screenName,
       containerName: options.containerName,
+      toolOptions: {
+        appendSystemPrompt: options.appendSystemPrompt,
+        fallbackModel: options.fallbackModel,
+        verbose: options.verbose,
+        replayUserMessages: options.replayUserMessages,
+        sessionId: options.sessionId,
+        forkSession: options.forkSession,
+      },
     });
 
     // Start the agent
-    const result = await agentController.start({
+    await agentController.start({
       dryRun: options.dryRun,
       detached: options.detached,
       attached: options.attached,
@@ -52,6 +63,7 @@ async function main() {
 
     // Exit with the agent's exit code
     if (!options.detached && !options.dryRun) {
+      const result = await agentController.stop();
       process.exit(result.exitCode);
     }
   } catch (error) {

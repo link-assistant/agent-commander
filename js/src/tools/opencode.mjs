@@ -71,11 +71,11 @@ export function buildArgs(options) {
  * @param {string} [options.model] - Model to use
  * @param {boolean} [options.json] - JSON output mode
  * @param {string} [options.resume] - Resume session ID
+ * @param {boolean} [options.readOnly] - Deny OpenCode edit, bash, and task permissions
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {
-  // eslint-disable-next-line no-unused-vars
-  const { workingDirectory, prompt, systemPrompt, ...argOptions } = options;
+  const { prompt, systemPrompt, readOnly = false, ...argOptions } = options;
   const args = buildArgs(argOptions);
 
   // OpenCode expects prompt via stdin, combine system and user prompts
@@ -85,7 +85,10 @@ export function buildCommand(options) {
 
   // Build command with stdin piping
   const escapedPrompt = combinedPrompt.replace(/'/g, "'\\''");
-  return `printf '%s' '${escapedPrompt}' | opencode ${args.map(escapeArg).join(' ')}`.trim();
+  const executable = readOnly
+    ? `OPENCODE_PERMISSION='{"edit":"deny","bash":"deny","task":"deny"}' opencode`
+    : 'opencode';
+  return `printf '%s' '${escapedPrompt}' | ${executable} ${args.map(escapeArg).join(' ')}`.trim();
 }
 
 /**
@@ -189,6 +192,7 @@ export const opencodeTool = {
   supportsJsonInput: true, // OpenCode can accept JSON input via stdin
   supportsSystemPrompt: false, // System prompt is combined with user prompt
   supportsResume: true,
+  supportsReadOnly: true, // Supports OPENCODE_PERMISSION
   defaultModel: 'grok-code-fast-1',
   modelMap,
   mapModelToId,

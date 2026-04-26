@@ -1,8 +1,6 @@
 /**
- * Execute commands using command-stream
+ * Execute commands using the runtime's Node-compatible child_process API.
  */
-
-import { getCommandStream } from './utils/loader.mjs';
 
 /**
  * Execute a command and return the result
@@ -30,42 +28,16 @@ export async function executeCommand(command, options = {}) {
     return { exitCode: 0, stdout: '', stderr: '', command };
   }
 
-  const { $ } = await getCommandStream();
-  const commandStream = $`${command}`;
+  const handle = await startCommand(command, {
+    attached,
+    onStdout,
+    onStderr,
+  });
+  const exitCode = await handle.waitForExit();
+  const { stdout, stderr } = handle.getOutput();
 
-  let stdout = '';
-  let stderr = '';
-  let exitCode = 0;
-
-  try {
-    for await (const chunk of commandStream.stream()) {
-      if (chunk.type === 'stdout') {
-        stdout += chunk.data;
-        if (attached) {
-          process.stdout.write(chunk.data);
-        }
-        if (onStdout) {
-          onStdout(chunk.data);
-        }
-      } else if (chunk.type === 'stderr') {
-        stderr += chunk.data;
-        if (attached) {
-          process.stderr.write(chunk.data);
-        }
-        if (onStderr) {
-          onStderr(chunk.data);
-        }
-      } else if (chunk.type === 'exit') {
-        exitCode = chunk.code;
-        if (onExit) {
-          onExit(chunk.code);
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Command execution failed:', error.message);
-    exitCode = 1;
-    stderr += error.message;
+  if (onExit) {
+    onExit(exitCode);
   }
 
   return { exitCode, stdout, stderr, command };
@@ -79,10 +51,8 @@ export async function executeCommand(command, options = {}) {
  * @returns {Promise<Object>} Process handle with methods to interact with the process
  */
 export async function startCommand(command, options = {}) {
-  const { attached = true } = options;
-
-  const { $ } = await getCommandStream();
-  const commandStream = $`${command}`;
+  const { attached = true, onStdout, onStderr } = options;
+  const { spawn } = await import('node:child_process');
 
   let stdout = '';
   let stderr = '';
@@ -94,41 +64,51 @@ export async function startCommand(command, options = {}) {
     resolveExit = resolve;
   });
 
-  // Start processing the stream in the background
-  (async () => {
-    try {
-      for await (const chunk of commandStream.stream()) {
-        if (chunk.type === 'stdout') {
-          stdout += chunk.data;
-          if (attached) {
-            process.stdout.write(chunk.data);
-          }
-        } else if (chunk.type === 'stderr') {
-          stderr += chunk.data;
-          if (attached) {
-            process.stderr.write(chunk.data);
-          }
-        } else if (chunk.type === 'exit') {
-          exitCode = chunk.code;
-          hasExited = true;
-          resolveExit(chunk.code);
-          return;
-        }
-      }
-      // If we reach here without exit event, resolve with error
-      if (!hasExited) {
-        exitCode = 0;
-        hasExited = true;
-        resolveExit(0);
-      }
-    } catch (error) {
-      console.error('Command execution failed:', error.message);
-      exitCode = 1;
+  const child = spawn('bash', ['-c', command], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  child.stdout.on('data', (chunk) => {
+    const data = chunk.toString();
+    stdout += data;
+    if (attached) {
+      process.stdout.write(data);
+    }
+    if (onStdout) {
+      onStdout(data);
+    }
+  });
+
+  child.stderr.on('data', (chunk) => {
+    const data = chunk.toString();
+    stderr += data;
+    if (attached) {
+      process.stderr.write(data);
+    }
+    if (onStderr) {
+      onStderr(data);
+    }
+  });
+
+  child.on('error', (error) => {
+    if (!hasExited) {
       stderr += error.message;
+      if (attached) {
+        process.stderr.write(error.message);
+      }
+      exitCode = 1;
       hasExited = true;
       resolveExit(1);
     }
-  })();
+  });
+
+  child.on('close', (code) => {
+    if (!hasExited) {
+      exitCode = code ?? 0;
+      hasExited = true;
+      resolveExit(exitCode);
+    }
+  });
 
   // Give the stream a moment to start
   await Promise.resolve();
@@ -137,7 +117,7 @@ export async function startCommand(command, options = {}) {
     command,
     waitForExit: () => exitPromise,
     getOutput: () => ({ stdout, stderr, exitCode, hasExited }),
-    commandStream,
+    process: child,
   };
 }
 
@@ -147,7 +127,7 @@ export async function startCommand(command, options = {}) {
  * @returns {Promise<{pid: number|null}>} Process information
  */
 export async function executeDetached(command) {
-  const { spawn } = await import('child_process');
+  const { spawn } = await import('node:child_process');
 
   return new Promise((resolve, reject) => {
     try {

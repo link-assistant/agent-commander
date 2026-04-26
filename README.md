@@ -24,6 +24,7 @@ Built on the success of [hive-mind](https://github.com/link-assistant/hive-mind)
 - **Graceful Shutdown**: CTRL+C handling with proper cleanup
 - **Dry Run Mode**: Preview commands before execution
 - **Attached/Detached Modes**: Monitor output in real-time or run in background
+- **Read-only Planning Mode**: Enforce native no-shell/no-write restrictions for supported tools
 
 ## Installation
 
@@ -53,14 +54,14 @@ bun add agent-commander
 
 ## Supported Tools
 
-| Tool | Description | JSON Output | JSON Input | Model Aliases |
-|------|-------------|-------------|------------|---------------|
-| `claude` | Anthropic Claude Code CLI | ✅ (stream-json) | ✅ (stream-json) | `sonnet`, `opus`, `haiku` |
-| `codex` | OpenAI Codex CLI | ✅ | ❌ | `gpt5`, `o3`, `gpt4o` |
-| `opencode` | OpenCode CLI | ✅ | ❌ | `grok`, `gemini`, `sonnet` |
-| `qwen` | Qwen Code CLI | ✅ (stream-json) | ✅ (stream-json) | `qwen3-coder`, `coder`, `gpt-4o` |
-| `gemini` | Gemini CLI | ✅ (stream-json) | ❌ | `flash`, `pro`, `lite` |
-| `agent` | @link-assistant/agent | ✅ | ✅ | `grok`, `sonnet`, `haiku` |
+| Tool | Description | JSON Output | JSON Input | Read-only Mode | Model Aliases |
+|------|-------------|-------------|------------|----------------|---------------|
+| `claude` | Anthropic Claude Code CLI | ✅ (stream-json) | ✅ (stream-json) | ✅ `--permission-mode plan` | `sonnet`, `opus`, `haiku` |
+| `codex` | OpenAI Codex CLI | ✅ | ❌ | ✅ `--sandbox read-only` | `gpt5`, `o3`, `gpt4o` |
+| `opencode` | OpenCode CLI | ✅ | ❌ | ✅ `OPENCODE_PERMISSION` deny rules | `grok`, `gemini`, `sonnet` |
+| `qwen` | Qwen Code CLI | ✅ (stream-json) | ✅ (stream-json) | ✅ `--approval-mode plan` | `qwen3-coder`, `coder`, `gpt-4o` |
+| `gemini` | Gemini CLI | ✅ (stream-json) | ❌ | ✅ `--approval-mode plan` | `flash`, `pro`, `lite` |
+| `agent` | @link-assistant/agent | ✅ | ✅ | ❌ not enforceable | `grok`, `sonnet`, `haiku` |
 
 ### Claude-specific Features
 
@@ -107,6 +108,18 @@ The [@link-assistant/agent](https://github.com/link-assistant/agent) supports ad
 - **MCP support**: Model Context Protocol for extending functionality with MCP servers
 - **OpenCode compatibility**: 100% compatible with OpenCode's JSON event streaming format
 
+### Read-only Planning Mode
+
+Use `--read-only` or `--plan-only` when the selected agent should inspect and plan without shell execution or file mutation. The command builder maps the request to the safest native restriction available for each supported tool:
+
+- `claude`: `--permission-mode plan`
+- `codex`: `--ask-for-approval never exec --sandbox read-only`
+- `opencode`: `OPENCODE_PERMISSION='{"edit":"deny","bash":"deny","task":"deny"}'`
+- `qwen`: `--approval-mode plan`
+- `gemini`: `--approval-mode plan`
+
+If a tool cannot enforce the requested restrictions, `start-agent` fails before starting the agent. For example, `--tool agent --read-only` is rejected because @link-assistant/agent has no native permission system.
+
 ## CLI Usage
 
 ### start-agent
@@ -127,6 +140,8 @@ start-agent --tool claude --working-directory "/tmp/dir" --prompt "Solve the iss
 - `--model <name>` - Model to use (e.g., 'sonnet', 'opus', 'grok')
 - `--fallback-model <name>` - Fallback model when default is overloaded (Claude only)
 - `--verbose` - Enable verbose mode (Claude only)
+- `--read-only` - Enforce native read-only/planning mode for supported tools
+- `--plan-only` - Alias for `--read-only`
 - `--resume <sessionId>` - Resume a previous session by ID
 - `--session-id <uuid>` - Use a specific session ID (Claude only, must be valid UUID)
 - `--fork-session` - Create new session ID when resuming (Claude only)
@@ -175,6 +190,19 @@ start-agent --tool claude --working-directory "/tmp/dir" \
 ```bash
 start-agent --tool claude --working-directory "/tmp/dir" \
   --resume abc123 --fork-session
+```
+
+**Read-only planning mode**
+```bash
+start-agent --tool claude --working-directory "/tmp/dir" \
+  --prompt "Return a JSON implementation plan" --read-only
+```
+
+**Read-only planning mode with screen isolation**
+```bash
+start-agent --tool codex --working-directory "/tmp/dir" \
+  --prompt "Inspect and plan only" --read-only \
+  --isolation screen --screen-name planning-agent --detached
 ```
 
 **With screen isolation (detached)**
@@ -296,6 +324,21 @@ const geminiAgent = agent({
   prompt: 'Explain this code',
   model: 'flash',
 });
+```
+
+### Read-only Planning
+
+```javascript
+import { agent } from 'agent-commander';
+
+const planner = agent({
+  tool: 'claude',
+  workingDirectory: '/tmp/project',
+  prompt: 'Inspect the codebase and return a task split plan',
+  readOnly: true,
+});
+
+await planner.start({ dryRun: true });
 ```
 
 ### Streaming JSON Messages
@@ -438,6 +481,7 @@ Creates an agent controller.
 - `options.model` (string, optional) - Model alias or full ID
 - `options.json` (boolean, optional) - Enable JSON output mode
 - `options.resume` (string, optional) - Resume session ID (tool-specific)
+- `options.readOnly` (boolean, optional) - Enforce native read-only/planning mode
 - `options.isolation` (string, optional) - 'none', 'screen', or 'docker' (default: 'none')
 - `options.screenName` (string, optional) - Screen session name (required for screen isolation)
 - `options.containerName` (string, optional) - Container name (required for docker isolation)

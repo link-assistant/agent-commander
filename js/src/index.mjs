@@ -82,6 +82,7 @@ function parseJsonMessages(options) {
  * @param {string} [options.containerName] - Container name (for docker isolation)
  * @param {boolean} [options.json=false] - Enable JSON output mode
  * @param {string} [options.resume] - Resume a previous session (tool-specific)
+ * @param {boolean} [options.readOnly=false] - Enforce native read-only/planning mode
  * @param {Object} [options.toolOptions] - Additional tool-specific options
  * @returns {Object} Agent controller with start, stop, and utility methods
  */
@@ -97,6 +98,7 @@ export function agent(options) {
     containerName,
     json = false,
     resume,
+    readOnly = false,
     toolOptions = {},
   } = options;
 
@@ -161,6 +163,7 @@ export function agent(options) {
       screenName,
       containerName,
       detached,
+      readOnly,
     };
 
     // Add tool-specific options if tool is known

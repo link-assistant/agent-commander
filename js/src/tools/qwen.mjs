@@ -40,6 +40,7 @@ export function mapModelToId(options) {
  * @param {boolean} [options.streamJson] - Stream JSON output mode (NDJSON)
  * @param {boolean} [options.includePartialMessages] - Include partial messages in stream-json
  * @param {boolean} [options.yolo] - Auto-approve all actions
+ * @param {boolean} [options.readOnly] - Use Qwen plan approval mode
  * @param {string} [options.resume] - Resume session ID
  * @param {boolean} [options.continueSession] - Continue most recent session
  * @param {boolean} [options.allFiles] - Include all files in context
@@ -54,6 +55,7 @@ export function buildArgs(options) {
     streamJson = true,
     includePartialMessages = false,
     yolo = true,
+    readOnly = false,
     resume,
     continueSession = false,
     allFiles = false,
@@ -85,8 +87,10 @@ export function buildArgs(options) {
     args.push('--include-partial-messages');
   }
 
-  // Auto-approve all actions for autonomous execution
-  if (yolo) {
+  if (readOnly) {
+    args.push('--approval-mode', 'plan');
+  } else if (yolo) {
+    // Auto-approve all actions for autonomous execution
     args.push('--yolo');
   }
 
@@ -122,6 +126,7 @@ export function buildArgs(options) {
  * @param {boolean} [options.streamJson] - Stream JSON output mode (NDJSON)
  * @param {boolean} [options.includePartialMessages] - Include partial messages
  * @param {boolean} [options.yolo] - Auto-approve all actions
+ * @param {boolean} [options.readOnly] - Use Qwen plan approval mode
  * @param {string} [options.resume] - Resume session ID
  * @param {boolean} [options.continueSession] - Continue most recent session
  * @param {boolean} [options.allFiles] - Include all files in context
@@ -303,6 +308,7 @@ export const qwenTool = {
   supportsAllFiles: true, // Supports --all-files
   supportsIncludeDirectories: true, // Supports --include-directories
   supportsIncludePartialMessages: true, // Supports --include-partial-messages
+  supportsReadOnly: true, // Supports --approval-mode plan
   defaultModel: 'qwen3-coder-480a35',
   modelMap,
   mapModelToId,

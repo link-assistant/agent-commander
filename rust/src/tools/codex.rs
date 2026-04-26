@@ -43,6 +43,7 @@ pub struct CodexBuildOptions {
     pub model: Option<String>,
     pub json: bool,
     pub resume: Option<String>,
+    pub read_only: bool,
 }
 
 /// Build command line arguments for Codex
@@ -73,7 +74,12 @@ pub fn build_args(options: &CodexBuildOptions) -> Vec<String> {
 
     // Codex-specific flags for autonomous execution
     args.push("--skip-git-repo-check".to_string());
-    args.push("--dangerously-bypass-approvals-and-sandbox".to_string());
+    if options.read_only {
+        args.push("--sandbox".to_string());
+        args.push("read-only".to_string());
+    } else {
+        args.push("--dangerously-bypass-approvals-and-sandbox".to_string());
+    }
 
     args
 }
@@ -124,9 +130,16 @@ pub fn build_command(options: &CodexBuildOptions) -> String {
 
     // Build command with stdin piping
     let escaped_prompt = escape_single_quotes(&combined_prompt);
+    let executable = if options.read_only {
+        "codex --ask-for-approval never"
+    } else {
+        "codex"
+    };
+
     format!(
-        "printf '%s' '{}' | codex {}",
+        "printf '%s' '{}' | {} {}",
         escaped_prompt,
+        executable,
         args_str.join(" ")
     )
     .trim()
@@ -210,6 +223,7 @@ pub struct CodexTool {
     pub supports_json_input: bool,
     pub supports_system_prompt: bool,
     pub supports_resume: bool,
+    pub supports_read_only: bool,
     pub default_model: &'static str,
 }
 
@@ -223,6 +237,7 @@ impl Default for CodexTool {
             supports_json_input: true, // Codex can accept JSON input via stdin
             supports_system_prompt: false, // System prompt is combined with user prompt
             supports_resume: true,
+            supports_read_only: true, // Supports --sandbox read-only
             default_model: "gpt-5",
         }
     }

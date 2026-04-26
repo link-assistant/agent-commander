@@ -42,6 +42,7 @@ export function mapModelToId(options) {
  * @param {string} [options.model] - Model to use
  * @param {boolean} [options.json] - JSON output mode (stream-json format)
  * @param {boolean} [options.yolo] - Auto-approve all tool calls (autonomous mode)
+ * @param {boolean} [options.readOnly] - Use Gemini plan approval mode
  * @param {boolean} [options.sandbox] - Run tools in secure sandbox
  * @param {boolean} [options.debug] - Enable debug output
  * @param {boolean} [options.checkpointing] - Save project snapshot before file modifications
@@ -54,6 +55,7 @@ export function buildArgs(options) {
     model,
     json = false,
     yolo = true, // Enable autonomous mode by default for agent use
+    readOnly = false,
     sandbox = false,
     debug = false,
     checkpointing = false,
@@ -67,8 +69,10 @@ export function buildArgs(options) {
     args.push('-m', mappedModel);
   }
 
-  // Enable yolo mode for autonomous execution (auto-approve all tool calls)
-  if (yolo) {
+  if (readOnly) {
+    args.push('--approval-mode', 'plan');
+  } else if (yolo) {
+    // Enable yolo mode for autonomous execution (auto-approve all tool calls)
     args.push('--yolo');
   }
 
@@ -113,6 +117,7 @@ export function buildArgs(options) {
  * @param {string} [options.model] - Model to use
  * @param {boolean} [options.json] - JSON output mode
  * @param {boolean} [options.yolo] - Auto-approve all tool calls
+ * @param {boolean} [options.readOnly] - Use Gemini plan approval mode
  * @param {boolean} [options.sandbox] - Run tools in secure sandbox
  * @param {boolean} [options.debug] - Enable debug output
  * @param {boolean} [options.checkpointing] - Save project snapshot
@@ -305,6 +310,7 @@ export const geminiTool = {
   supportsSandbox: true, // Supports --sandbox for secure execution
   supportsCheckpointing: true, // Supports --checkpointing
   supportsDebug: true, // Supports -d for debug output
+  supportsReadOnly: true, // Supports --approval-mode plan
   defaultModel: 'gemini-2.5-flash',
   modelMap,
   mapModelToId,

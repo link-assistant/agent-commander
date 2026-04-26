@@ -38,10 +38,11 @@ export function mapModelToId(options) {
  * @param {string} [options.model] - Model to use
  * @param {boolean} [options.json] - JSON output mode
  * @param {string} [options.resume] - Resume session/thread ID
+ * @param {boolean} [options.readOnly] - Use Codex read-only sandbox
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
-  const { model, json = true, resume } = options;
+  const { model, json = true, resume, readOnly = false } = options;
 
   const args = ['exec'];
 
@@ -60,7 +61,11 @@ export function buildArgs(options) {
 
   // Codex-specific flags for autonomous execution
   args.push('--skip-git-repo-check');
-  args.push('--dangerously-bypass-approvals-and-sandbox');
+  if (readOnly) {
+    args.push('--sandbox', 'read-only');
+  } else {
+    args.push('--dangerously-bypass-approvals-and-sandbox');
+  }
 
   return args;
 }
@@ -75,6 +80,7 @@ export function buildArgs(options) {
  * @param {string} [options.model] - Model to use
  * @param {boolean} [options.json] - JSON output mode
  * @param {string} [options.resume] - Resume session ID
+ * @param {boolean} [options.readOnly] - Use Codex read-only sandbox
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {
@@ -89,7 +95,10 @@ export function buildCommand(options) {
 
   // Build command with stdin piping
   const escapedPrompt = combinedPrompt.replace(/'/g, "'\\''");
-  return `printf '%s' '${escapedPrompt}' | codex ${args.map(escapeArg).join(' ')}`.trim();
+  const executable = argOptions.readOnly
+    ? 'codex --ask-for-approval never'
+    : 'codex';
+  return `printf '%s' '${escapedPrompt}' | ${executable} ${args.map(escapeArg).join(' ')}`.trim();
 }
 
 /**
@@ -197,6 +206,7 @@ export const codexTool = {
   supportsJsonInput: true, // Codex can accept JSON input via stdin
   supportsSystemPrompt: false, // System prompt is combined with user prompt
   supportsResume: true,
+  supportsReadOnly: true, // Supports --sandbox read-only
   defaultModel: 'gpt-5',
   modelMap,
   mapModelToId,

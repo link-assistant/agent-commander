@@ -55,6 +55,7 @@ export function mapModelToId(options) {
  * @param {string} [options.resume] - Resume session ID
  * @param {string} [options.sessionId] - Use specific session ID (must be valid UUID)
  * @param {boolean} [options.forkSession] - Create new session ID when resuming
+ * @param {boolean} [options.readOnly] - Use Claude plan permission mode
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
@@ -72,12 +73,17 @@ export function buildArgs(options) {
     resume,
     sessionId,
     forkSession = false,
+    readOnly = false,
   } = options;
 
   const args = [];
 
-  // Permission bypass - always enabled, not configurable (per issue #3)
-  args.push('--dangerously-skip-permissions');
+  if (readOnly) {
+    args.push('--permission-mode', 'plan');
+  } else {
+    // Permission bypass - enabled by default for autonomous execution
+    args.push('--dangerously-skip-permissions');
+  }
 
   if (model) {
     const mappedModel = mapModelToId({ model });
@@ -157,6 +163,7 @@ export function buildArgs(options) {
  * @param {string} [options.resume] - Resume session ID
  * @param {string} [options.sessionId] - Use specific session ID (must be valid UUID)
  * @param {boolean} [options.forkSession] - Create new session ID when resuming
+ * @param {boolean} [options.readOnly] - Use Claude plan permission mode
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {
@@ -282,6 +289,7 @@ export const claudeTool = {
   supportsFallbackModel: true, // Supports --fallback-model
   supportsVerbose: true, // Supports --verbose
   supportsReplayUserMessages: true, // Supports --replay-user-messages
+  supportsReadOnly: true, // Supports --permission-mode plan
   defaultModel: 'sonnet',
   modelMap,
   mapModelToId,

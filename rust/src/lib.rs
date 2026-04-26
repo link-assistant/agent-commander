@@ -23,7 +23,7 @@ pub use cli_parser::{
 
 pub use command_builder::{
     build_agent_command, build_docker_stop_command, build_piped_command, build_screen_stop_command,
-    AgentCommandOptions,
+    read_only_unsupported_error, supports_read_only, AgentCommandOptions,
 };
 
 pub use executor::{
@@ -64,6 +64,8 @@ pub struct AgentOptions {
     pub json: bool,
     /// Resume a previous session (tool-specific)
     pub resume: Option<String>,
+    /// Enforce native read-only/planning mode
+    pub read_only: bool,
 }
 
 /// Agent result from stop()
@@ -127,6 +129,9 @@ impl Agent {
         if options.isolation == "docker" && options.container_name.is_none() {
             return Err("container_name is required for docker isolation".to_string());
         }
+        if options.read_only && !supports_read_only(&options.tool) {
+            return Err(read_only_unsupported_error(&options.tool));
+        }
 
         Ok(Self {
             options,
@@ -158,6 +163,7 @@ impl Agent {
             model: self.options.model.clone(),
             json: self.options.json,
             resume: self.options.resume.clone(),
+            read_only: self.options.read_only,
             isolation: self.options.isolation.clone(),
             screen_name: self.options.screen_name.clone(),
             container_name: self.options.container_name.clone(),
