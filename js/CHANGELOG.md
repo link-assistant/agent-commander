@@ -1,5 +1,11 @@
 # agent-commander
 
+## 0.3.0
+
+### Minor Changes
+
+- 921bcd6: Add enforceable read-only planning mode for supported tools and reject unsupported tools.
+
 ## 0.2.0
 
 ### Minor Changes
