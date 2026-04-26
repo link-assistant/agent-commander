@@ -9,11 +9,30 @@
  */
 export const modelMap = {
   gpt5: 'gpt-5',
+  'gpt-5': 'gpt-5',
   'gpt5-codex': 'gpt-5-codex',
+  // GPT-5.5 family (hive-mind PR #1657, default)
+  'gpt-5.5': 'gpt-5.5',
+  'gpt-5.5-mini': 'gpt-5.5-mini',
+  'gpt-5.5-nano': 'gpt-5.5-nano',
+  // GPT-5.4 family
+  'gpt-5.4': 'gpt-5.4',
+  'gpt-5.4-mini': 'gpt-5.4-mini',
+  'gpt-5.4-nano': 'gpt-5.4-nano',
+  // GPT-5.3 family (codex variants)
+  'gpt-5.3-codex': 'gpt-5.3-codex',
+  'gpt-5.3-codex-spark': 'gpt-5.3-codex-spark',
+  // GPT-5.2 family
+  'gpt-5.2': 'gpt-5.2',
+  'gpt-5.2-codex': 'gpt-5.2-codex',
+  // GPT-5.1 family
+  'gpt-5.1-codex-max': 'gpt-5.1-codex-max',
   o3: 'o3',
   'o3-mini': 'o3-mini',
   gpt4: 'gpt-4',
+  'gpt-4': 'gpt-4',
   gpt4o: 'gpt-4o',
+  'gpt-4o': 'gpt-4o',
   claude: 'claude-3-5-sonnet',
   sonnet: 'claude-3-5-sonnet',
   opus: 'claude-3-opus',
@@ -207,7 +226,7 @@ export const codexTool = {
   supportsSystemPrompt: false, // System prompt is combined with user prompt
   supportsResume: true,
   supportsReadOnly: true, // Supports --sandbox read-only
-  defaultModel: 'gpt-5',
+  defaultModel: 'gpt-5.5', // hive-mind PR #1657
   modelMap,
   mapModelToId,
   buildArgs,

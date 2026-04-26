@@ -60,11 +60,27 @@ test('claudeTool - mapModelToId with alias', () => {
   );
   assert.strictEqual(
     claudeTool.mapModelToId({ model: 'opus' }),
-    'claude-opus-4-6'
+    'claude-opus-4-7'
   );
   assert.strictEqual(
     claudeTool.mapModelToId({ model: 'haiku' }),
     'claude-haiku-4-5-20251001'
+  );
+});
+
+test('claudeTool - mapModelToId with new opus 4.7 alias', () => {
+  assert.strictEqual(
+    claudeTool.mapModelToId({ model: 'opus-4-7' }),
+    'claude-opus-4-7'
+  );
+  assert.strictEqual(
+    claudeTool.mapModelToId({ model: 'claude-opus-4-7' }),
+    'claude-opus-4-7'
+  );
+  // Backward compatibility - opus-4-6 still maps explicitly
+  assert.strictEqual(
+    claudeTool.mapModelToId({ model: 'opus-4-6' }),
+    'claude-opus-4-6'
   );
 });
 
@@ -117,7 +133,7 @@ test('claudeTool - buildArgs uses stream-json output format', () => {
 test('claudeTool - buildArgs with fallback model', () => {
   const args = claudeTool.buildArgs({ model: 'opus', fallbackModel: 'sonnet' });
   assert.ok(args.includes('--model'));
-  assert.ok(args.includes('claude-opus-4-6'));
+  assert.ok(args.includes('claude-opus-4-7'));
   assert.ok(args.includes('--fallback-model'));
   assert.ok(args.includes('claude-sonnet-4-6'));
 });
@@ -215,6 +231,23 @@ test('codexTool - extractSessionId with thread_id', () => {
   assert.strictEqual(sessionId, 'thread-123');
 });
 
+test('codexTool - mapModelToId with gpt-5.5 family aliases', () => {
+  assert.strictEqual(codexTool.mapModelToId({ model: 'gpt-5.5' }), 'gpt-5.5');
+  assert.strictEqual(
+    codexTool.mapModelToId({ model: 'gpt-5.5-mini' }),
+    'gpt-5.5-mini'
+  );
+  assert.strictEqual(codexTool.mapModelToId({ model: 'gpt-5.4' }), 'gpt-5.4');
+  assert.strictEqual(
+    codexTool.mapModelToId({ model: 'gpt-5.3-codex' }),
+    'gpt-5.3-codex'
+  );
+});
+
+test('codexTool - default model is gpt-5.5', () => {
+  assert.strictEqual(codexTool.defaultModel, 'gpt-5.5');
+});
+
 // OpenCode tool tests
 test('opencodeTool - mapModelToId with alias', () => {
   assert.strictEqual(
@@ -272,6 +305,24 @@ test('agentTool - detectErrors returns false for normal output', () => {
   const output = '{"type":"step_finish","part":{}}';
   const result = agentTool.detectErrors({ output });
   assert.strictEqual(result.hasError, false);
+});
+
+test('agentTool - mapModelToId with nemotron-3-super-free (new default)', () => {
+  assert.strictEqual(
+    agentTool.mapModelToId({ model: 'nemotron-3-super-free' }),
+    'opencode/nemotron-3-super-free'
+  );
+});
+
+test('agentTool - default model is nemotron-3-super-free', () => {
+  assert.strictEqual(agentTool.defaultModel, 'nemotron-3-super-free');
+});
+
+test('agentTool - mapModelToId keeps deprecated qwen3.6-plus-free for backward compatibility', () => {
+  assert.strictEqual(
+    agentTool.mapModelToId({ model: 'qwen3.6-plus-free' }),
+    'opencode/qwen3.6-plus-free'
+  );
 });
 
 // Qwen tool tests

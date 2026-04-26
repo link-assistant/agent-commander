@@ -16,6 +16,8 @@ export const modelMap = {
   'big-pickle': 'opencode/big-pickle',
   'gpt-5-nano': 'opencode/gpt-5-nano',
   'minimax-m2.5-free': 'opencode/minimax-m2.5-free',
+  // Default: NVIDIA hybrid Mamba-Transformer (hive-mind issue #1563, agent PR #243)
+  'nemotron-3-super-free': 'opencode/nemotron-3-super-free',
   // Kilo Gateway free models
   'glm-5-free': 'kilo/glm-5-free',
   'glm-4.5-air-free': 'kilo/glm-4.5-air-free',
@@ -30,6 +32,7 @@ export const modelMap = {
   'kilo/giga-potato-free': 'kilo/giga-potato-free',
   'kilo/trinity-large-preview': 'kilo/trinity-large-preview',
   // Deprecated free models (kept for backward compatibility)
+  'qwen3.6-plus-free': 'opencode/qwen3.6-plus-free', // Deprecated: free promotion ended April 2026
   'kimi-k2.5-free': 'opencode/kimi-k2.5-free',
   'glm-4.7-free': 'opencode/glm-4.7-free',
   'minimax-m2.1-free': 'opencode/minimax-m2.1-free',
@@ -270,7 +273,7 @@ export const agentTool = {
   supportsSystemPrompt: false, // System prompt is combined with user prompt
   supportsResume: false, // Agent doesn't have explicit resume like Claude
   supportsReadOnly: false, // No native enforceable read-only mode
-  defaultModel: 'minimax-m2.5-free',
+  defaultModel: 'nemotron-3-super-free', // hive-mind issue #1563, agent PR #243
   modelMap,
   mapModelToId,
   buildArgs,

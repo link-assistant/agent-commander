@@ -9,19 +9,21 @@
  */
 export const modelMap = {
   sonnet: 'claude-sonnet-4-6',
-  opus: 'claude-opus-4-6',
+  opus: 'claude-opus-4-7', // Opus 4.7 (hive-mind issue #1620, PR #1621)
   haiku: 'claude-haiku-4-5-20251001',
   'haiku-3-5': 'claude-3-5-haiku-20241022',
   'haiku-3': 'claude-3-haiku-20240307',
   opusplan: 'opusplan', // Special mode: Opus for planning, Sonnet for execution
   // Shorter version aliases
   'sonnet-4-6': 'claude-sonnet-4-6',
+  'opus-4-7': 'claude-opus-4-7',
   'opus-4-6': 'claude-opus-4-6',
   'opus-4-5': 'claude-opus-4-5-20251101',
   'sonnet-4-5': 'claude-sonnet-4-5-20250929', // Backward compatibility
   'haiku-4-5': 'claude-haiku-4-5-20251001',
   // Full model ID aliases for backward compatibility
   'claude-sonnet-4-6': 'claude-sonnet-4-6',
+  'claude-opus-4-7': 'claude-opus-4-7',
   'claude-opus-4-6': 'claude-opus-4-6',
   'claude-opus-4-5': 'claude-opus-4-5-20251101',
   'claude-sonnet-4-5': 'claude-sonnet-4-5-20250929',

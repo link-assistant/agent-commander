@@ -95,7 +95,7 @@ test('buildAgentCommand - with model (claude)', () => {
 
   assert.ok(command.includes('--model'));
   // Opus model should be mapped to full ID
-  assert.ok(command.includes('claude-opus-4-6'));
+  assert.ok(command.includes('claude-opus-4-7'));
 });
 
 test('buildAgentCommand - with codex tool', () => {

@@ -57,11 +57,11 @@ bun add agent-commander
 | Tool | Description | JSON Output | JSON Input | Read-only Mode | Model Aliases |
 |------|-------------|-------------|------------|----------------|---------------|
 | `claude` | Anthropic Claude Code CLI | ✅ (stream-json) | ✅ (stream-json) | ✅ `--permission-mode plan` | `sonnet`, `opus`, `haiku` |
-| `codex` | OpenAI Codex CLI | ✅ | ❌ | ✅ `--sandbox read-only` | `gpt5`, `o3`, `gpt4o` |
+| `codex` | OpenAI Codex CLI | ✅ | ❌ | ✅ `--sandbox read-only` | `gpt-5.5` (default), `gpt-5.4`, `gpt5`, `o3`, `gpt4o` |
 | `opencode` | OpenCode CLI | ✅ | ❌ | ✅ `OPENCODE_PERMISSION` deny rules | `grok`, `gemini`, `sonnet` |
 | `qwen` | Qwen Code CLI | ✅ (stream-json) | ✅ (stream-json) | ✅ `--approval-mode plan` | `qwen3-coder`, `coder`, `gpt-4o` |
 | `gemini` | Gemini CLI | ✅ (stream-json) | ❌ | ✅ `--approval-mode plan` | `flash`, `pro`, `lite` |
-| `agent` | @link-assistant/agent | ✅ | ✅ | ❌ not enforceable | `grok`, `sonnet`, `haiku` |
+| `agent` | @link-assistant/agent | ✅ | ✅ | ❌ not enforceable | `nemotron-3-super-free` (default), `grok`, `sonnet`, `haiku` |
 
 ### Claude-specific Features
 
@@ -460,11 +460,11 @@ console.log(isToolSupported({ toolName: 'claude' })); // true
 
 // Get tool configuration
 const claudeTool = getTool({ toolName: 'claude' });
-console.log(claudeTool.modelMap); // { sonnet: 'claude-sonnet-4-5-...', ... }
+console.log(claudeTool.modelMap); // { sonnet: 'claude-sonnet-4-6', opus: 'claude-opus-4-7', ... }
 
 // Map model alias to full ID
 const fullId = claudeTool.mapModelToId({ model: 'opus' });
-console.log(fullId); // 'claude-opus-4-5-20251101'
+console.log(fullId); // 'claude-opus-4-7'
 ```
 
 ## API Reference

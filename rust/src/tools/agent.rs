@@ -17,6 +17,8 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("big-pickle", "opencode/big-pickle");
     map.insert("gpt-5-nano", "opencode/gpt-5-nano");
     map.insert("minimax-m2.5-free", "opencode/minimax-m2.5-free");
+    // Default: NVIDIA hybrid Mamba-Transformer (hive-mind issue #1563, agent PR #243)
+    map.insert("nemotron-3-super-free", "opencode/nemotron-3-super-free");
     // Kilo Gateway free models
     map.insert("glm-5-free", "kilo/glm-5-free");
     map.insert("glm-4.5-air-free", "kilo/glm-4.5-air-free");
@@ -24,6 +26,7 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("giga-potato-free", "kilo/giga-potato-free");
     map.insert("trinity-large-preview", "kilo/trinity-large-preview");
     // Deprecated free models (kept for backward compatibility)
+    map.insert("qwen3.6-plus-free", "opencode/qwen3.6-plus-free"); // Deprecated: free promotion ended April 2026
     map.insert("kimi-k2.5-free", "opencode/kimi-k2.5-free");
     map.insert("glm-4.7-free", "opencode/glm-4.7-free");
     map.insert("minimax-m2.1-free", "opencode/minimax-m2.1-free");
@@ -298,7 +301,7 @@ impl Default for AgentTool {
             supports_system_prompt: false, // System prompt is combined with user prompt
             supports_resume: false,    // Agent doesn't have explicit resume like Claude
             supports_read_only: false, // No native enforceable read-only mode
-            default_model: "minimax-m2.5-free",
+            default_model: "nemotron-3-super-free", // hive-mind issue #1563, agent PR #243
         }
     }
 }
