@@ -1,5 +1,11 @@
 # agent-commander
 
+## 0.4.2
+
+### Patch Changes
+
+- 5ca235f: Add JavaScript package README metadata, language-specific GitHub Release tags, and cross-language release documentation.
+
 ## 0.4.1
 
 ### Patch Changes
