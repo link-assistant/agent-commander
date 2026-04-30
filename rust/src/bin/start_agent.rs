@@ -33,6 +33,7 @@ async fn main() {
         tool: options.tool.unwrap_or_default(),
         working_directory: options.working_directory.unwrap_or_default(),
         prompt: options.prompt,
+        prompt_file: options.prompt_file,
         system_prompt: options.system_prompt,
         append_system_prompt: options.append_system_prompt,
         model: options.model,

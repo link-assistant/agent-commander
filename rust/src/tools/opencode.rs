@@ -42,6 +42,7 @@ pub fn map_model_to_id(model: &str) -> String {
 #[derive(Debug, Clone, Default)]
 pub struct OpencodeBuildOptions {
     pub prompt: Option<String>,
+    pub prompt_file: Option<String>,
     pub system_prompt: Option<String>,
     pub model: Option<String>,
     pub json: bool,
@@ -124,21 +125,19 @@ pub fn build_command(options: &OpencodeBuildOptions) -> String {
     };
 
     // Build command with stdin piping
-    let escaped_prompt = escape_single_quotes(&combined_prompt);
+    let input_command = options.prompt_file.as_ref().map_or_else(
+        || format!("printf '%s' '{}'", escape_single_quotes(&combined_prompt)),
+        |prompt_file| format!("cat {}", escape_arg(prompt_file)),
+    );
     let executable = if options.read_only {
         format!("OPENCODE_PERMISSION='{}' opencode", READ_ONLY_PERMISSION)
     } else {
         "opencode".to_string()
     };
 
-    format!(
-        "printf '%s' '{}' | {} {}",
-        escaped_prompt,
-        executable,
-        args_str.join(" ")
-    )
-    .trim()
-    .to_string()
+    format!("{} | {} {}", input_command, executable, args_str.join(" "))
+        .trim()
+        .to_string()
 }
 
 /// Parse JSON messages from OpenCode output

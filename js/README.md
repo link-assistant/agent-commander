@@ -48,6 +48,7 @@ Common options:
 - `--tool <name>`: `claude`, `codex`, `opencode`, `qwen`, `gemini`, or `agent`
 - `--working-directory <path>`: directory where the agent command runs
 - `--prompt <text>` and `--system-prompt <text>`: user and system prompts
+- `--prompt-file <path>`: read prompt input from a file for stdin-based tools
 - `--model <name>`: tool-specific model alias or full model name
 - `--read-only` or `--plan-only`: enforce native planning/no-write mode when supported
 - `--isolation <mode>`: `none`, `screen`, or `docker`
@@ -73,6 +74,17 @@ const result = await controller.stop();
 
 console.log(result.exitCode);
 console.log(result.output.plain);
+```
+
+For large generated prompts, pass `promptFile` or let the controller create a temporary prompt file automatically for `claude`, `codex`, `opencode`, and `agent`:
+
+```javascript
+const controller = agent({
+  tool: 'codex',
+  workingDirectory: '/tmp/project',
+  promptFile: '/tmp/agent-prompt.txt',
+  model: 'gpt-5.5',
+});
 ```
 
 Pass tool-specific options through `toolOptions`:

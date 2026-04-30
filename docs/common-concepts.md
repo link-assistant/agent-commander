@@ -27,6 +27,14 @@ The shared isolation modes are:
 
 `--dry-run` should print the command that would be executed without starting a process.
 
+## Prompt Input
+
+Both packages accept `--prompt <text>` / `prompt` for short prompts and `--prompt-file <path>` / `promptFile` / `prompt_file` for prompt content already stored on disk.
+
+For `claude`, `codex`, `opencode`, and `agent`, the controllers also write in-memory prompts to temporary files at execution time and pipe those files into stdin. This keeps large generated prompts out of nested shell command strings while preserving the public API used by hive-mind and similar orchestrators.
+
+For `codex`, `opencode`, and `agent`, the temporary file contains the system prompt followed by a blank line and then the user prompt. For `claude`, the temporary file contains the user prompt and the system prompt remains a Claude CLI system-prompt argument.
+
 ## Claude Options
 
 Both packages expose Claude-specific options for model fallback, session management, prompt appending, verbose mode, and replaying user messages:

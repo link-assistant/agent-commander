@@ -36,6 +36,7 @@ Language-specific package documentation:
 - **Dry Run Mode**: Preview commands before execution
 - **Attached/Detached Modes**: Monitor output in real-time or run in background
 - **Read-only Planning Mode**: Enforce native no-shell/no-write restrictions for supported tools
+- **Prompt File Input**: Pipe large prompts through files for stdin-based tools instead of embedding them in shell commands
 
 ## Installation
 
@@ -152,6 +153,7 @@ start-agent --tool claude --working-directory "/tmp/dir" --prompt "Solve the iss
 - `--tool <name>` - CLI tool to use (e.g., 'claude', 'codex', 'opencode', 'qwen', 'gemini', 'agent') [required]
 - `--working-directory <path>` - Working directory for the agent [required]
 - `--prompt <text>` - Prompt for the agent
+- `--prompt-file <path>` - Read prompt input from a file
 - `--system-prompt <text>` - System prompt for the agent
 - `--append-system-prompt <text>` - Append to the default system prompt (Claude only)
 - `--model <name>` - Model to use (e.g., 'sonnet', 'opus', 'grok')
@@ -182,6 +184,13 @@ start-agent --tool claude --working-directory "/tmp/dir" --prompt "Hello" --mode
 
 ```bash
 start-agent --tool codex --working-directory "/tmp/dir" --prompt "Fix the bug" --model gpt5
+```
+
+**Using a prompt file for large prompts**
+
+```bash
+start-agent --tool codex --working-directory "/tmp/dir" \
+  --prompt-file /tmp/agent-prompt.txt --model gpt-5.5
 ```
 
 **Using @link-assistant/agent with Grok**

@@ -9,6 +9,9 @@
  * - agent: @link-assistant/agent (unrestricted OpenCode fork)
  */
 
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   buildAgentCommand,
   buildScreenStopCommand,
@@ -22,6 +25,59 @@ import {
 } from './executor.mjs';
 import { getTool, isToolSupported } from './tools/index.mjs';
 import { createOutputStream, createInputStream } from './streaming/index.mjs';
+
+const PROMPT_FILE_TOOLS = new Set(['claude', 'codex', 'opencode', 'agent']);
+
+/**
+ * Determine whether the tool can read prompt input from stdin.
+ * @param {string} toolName - Tool name
+ * @returns {boolean} True when prompt files can be piped into the tool
+ */
+function supportsPromptFileInput(toolName) {
+  return PROMPT_FILE_TOOLS.has(toolName);
+}
+
+/**
+ * Build the prompt content to write to a temporary stdin file.
+ * @param {Object} options - Options
+ * @param {string} options.toolName - Tool name
+ * @param {string} [options.prompt] - User prompt
+ * @param {string} [options.systemPrompt] - System prompt
+ * @returns {string} Prompt file content
+ */
+function buildPromptFileContent(options) {
+  const { toolName, prompt, systemPrompt } = options;
+
+  if (toolName === 'claude') {
+    return prompt || '';
+  }
+
+  return systemPrompt ? `${systemPrompt}\n\n${prompt || ''}` : prompt || '';
+}
+
+/**
+ * Return true when a temporary prompt file should replace inline shell input.
+ * @param {Object} options - Options
+ * @param {string} options.toolName - Tool name
+ * @param {string} [options.prompt] - User prompt
+ * @param {string} [options.systemPrompt] - System prompt
+ * @param {string} [options.promptFile] - Existing prompt file
+ * @param {boolean} [options.dryRun] - Dry-run mode
+ * @returns {boolean} True when a temporary prompt file should be created
+ */
+function shouldCreatePromptFile(options) {
+  const { toolName, prompt, systemPrompt, promptFile, dryRun } = options;
+
+  if (dryRun || promptFile || !supportsPromptFileInput(toolName)) {
+    return false;
+  }
+
+  if (toolName === 'claude') {
+    return Boolean(prompt);
+  }
+
+  return Boolean(prompt || systemPrompt);
+}
 
 /**
  * Parse JSON messages from output if the tool supports it
@@ -75,6 +131,7 @@ function parseJsonMessages(options) {
  * @param {string} options.tool - CLI tool to use (e.g., 'claude', 'codex', 'opencode', 'agent')
  * @param {string} options.workingDirectory - Working directory for the agent
  * @param {string} [options.prompt] - Prompt for the agent
+ * @param {string} [options.promptFile] - File containing prompt input for stdin-based tools
  * @param {string} [options.systemPrompt] - System prompt for the agent
  * @param {string} [options.model] - Model to use (tool-specific)
  * @param {string} [options.isolation='none'] - Isolation mode: 'none', 'screen', 'docker'
@@ -91,6 +148,7 @@ export function agent(options) {
     tool,
     workingDirectory,
     prompt,
+    promptFile,
     systemPrompt,
     model,
     isolation = 'none',
@@ -126,6 +184,40 @@ export function agent(options) {
   let command = null;
   let outputStream = null;
   let sessionId = null;
+  let promptTempDir = null;
+
+  const cleanupPromptTempDir = async () => {
+    if (!promptTempDir) {
+      return;
+    }
+
+    const dir = promptTempDir;
+    promptTempDir = null;
+    await rm(dir, { recursive: true, force: true });
+  };
+
+  const preparePromptFile = async (startOptions) => {
+    if (
+      !shouldCreatePromptFile({
+        toolName: tool,
+        prompt,
+        systemPrompt,
+        promptFile,
+        dryRun: startOptions.dryRun,
+      })
+    ) {
+      return promptFile;
+    }
+
+    promptTempDir = await mkdtemp(join(tmpdir(), 'agent-commander-'));
+    const tempPromptFile = join(promptTempDir, 'prompt.txt');
+    await writeFile(
+      tempPromptFile,
+      buildPromptFileContent({ toolName: tool, prompt, systemPrompt }),
+      { mode: 0o600 }
+    );
+    return tempPromptFile;
+  };
 
   /**
    * Start the agent (non-blocking)
@@ -153,74 +245,86 @@ export function agent(options) {
       });
     }
 
-    // Build the command with tool-specific options
-    const commandOptions = {
-      tool,
-      workingDirectory,
-      prompt,
-      systemPrompt,
-      isolation,
-      screenName,
-      containerName,
-      detached,
-      readOnly,
-    };
+    try {
+      const preparedPromptFile = await preparePromptFile({ dryRun });
+      const promptHandledByTempFile = preparedPromptFile && !promptFile;
 
-    // Add tool-specific options if tool is known
-    if (toolConfig) {
-      commandOptions.model = model;
-      commandOptions.json = json;
-      commandOptions.resume = resume;
-      Object.assign(commandOptions, toolOptions);
-    }
+      // Build the command with tool-specific options
+      const commandOptions = {
+        tool,
+        workingDirectory,
+        prompt: promptHandledByTempFile ? undefined : prompt,
+        promptFile: preparedPromptFile,
+        systemPrompt:
+          promptHandledByTempFile && tool !== 'claude'
+            ? undefined
+            : systemPrompt,
+        isolation,
+        screenName,
+        containerName,
+        detached,
+        readOnly,
+      };
 
-    command = buildAgentCommand(commandOptions);
-
-    if (dryRun) {
-      console.log('Dry run - command that would be executed:');
-      console.log(command);
-      return;
-    }
-
-    // Setup signal handler for graceful shutdown
-    if (!detached && isolation === 'none') {
-      removeSignalHandler = setupSignalHandler(async () => {
-        console.log('Propagating shutdown to agent...');
-        // The process will be terminated naturally by SIGINT
-      });
-    }
-
-    if (detached) {
-      // For detached mode, use executeDetached
-      processHandle = await executeDetached(command);
-      console.log(`Agent started in detached mode`);
-      if (isolation === 'screen') {
-        console.log(`Screen session: ${screenName}`);
-      } else if (isolation === 'docker') {
-        console.log(`Container: ${containerName}`);
+      // Add tool-specific options if tool is known
+      if (toolConfig) {
+        commandOptions.model = model;
+        commandOptions.json = json;
+        commandOptions.resume = resume;
+        Object.assign(commandOptions, toolOptions);
       }
-    } else {
-      // For attached mode, start command without waiting
-      const commandOptions = { attached };
 
-      // Add output handling for streaming
-      if (onOutput) {
-        commandOptions.onStdout = (chunk) => {
-          onOutput({ type: 'stdout', data: chunk });
-          if (outputStream) {
+      command = buildAgentCommand(commandOptions);
+
+      if (dryRun) {
+        console.log('Dry run - command that would be executed:');
+        console.log(command);
+        return;
+      }
+
+      // Setup signal handler for graceful shutdown
+      if (!detached && isolation === 'none') {
+        removeSignalHandler = setupSignalHandler(() => {
+          console.log('Propagating shutdown to agent...');
+          // The process will be terminated naturally by SIGINT
+        });
+      }
+
+      if (detached) {
+        // For detached mode, use executeDetached
+        processHandle = await executeDetached(command);
+        console.log(`Agent started in detached mode`);
+        if (isolation === 'screen') {
+          console.log(`Screen session: ${screenName}`);
+        } else if (isolation === 'docker') {
+          console.log(`Container: ${containerName}`);
+        }
+      } else {
+        // For attached mode, start command without waiting
+        const commandOptions = { attached };
+
+        // Add output handling for streaming
+        if (onOutput) {
+          commandOptions.onStdout = (chunk) => {
+            onOutput({ type: 'stdout', data: chunk });
+            if (outputStream) {
+              outputStream.process({ chunk });
+            }
+          };
+          commandOptions.onStderr = (chunk) => {
+            onOutput({ type: 'stderr', data: chunk });
+          };
+        } else if (outputStream) {
+          commandOptions.onStdout = (chunk) => {
             outputStream.process({ chunk });
-          }
-        };
-        commandOptions.onStderr = (chunk) => {
-          onOutput({ type: 'stderr', data: chunk });
-        };
-      } else if (outputStream) {
-        commandOptions.onStdout = (chunk) => {
-          outputStream.process({ chunk });
-        };
-      }
+          };
+        }
 
-      processHandle = await startCommand(command, commandOptions);
+        processHandle = await startCommand(command, commandOptions);
+      }
+    } catch (error) {
+      await cleanupPromptTempDir();
+      throw error;
     }
   };
 
@@ -254,17 +358,21 @@ export function agent(options) {
         return { exitCode: 0, output: { plain: '', parsed: null } };
       }
 
-      const result = await executeCommand(stopCommand, {
-        dryRun,
-        attached: true,
-      });
-      return {
-        exitCode: result.exitCode,
-        output: {
-          plain: result.stdout,
-          parsed: null, // Stop commands don't produce parsed output
-        },
-      };
+      try {
+        const result = await executeCommand(stopCommand, {
+          dryRun,
+          attached: true,
+        });
+        return {
+          exitCode: result.exitCode,
+          output: {
+            plain: result.stdout,
+            parsed: null, // Stop commands don't produce parsed output
+          },
+        };
+      } finally {
+        await cleanupPromptTempDir();
+      }
     }
 
     // For no isolation, wait for process to complete and collect output
@@ -273,55 +381,59 @@ export function agent(options) {
         throw new Error('Agent not started or already stopped');
       }
 
-      // Wait for the process to exit
-      const exitCode = await processHandle.waitForExit();
-      const { stdout, stderr } = processHandle.getOutput();
+      try {
+        // Wait for the process to exit
+        const exitCode = await processHandle.waitForExit();
+        const { stdout, stderr } = processHandle.getOutput();
 
-      // Combine stdout and stderr for plain output
-      const plainOutput = stdout + (stderr ? `\n${stderr}` : '');
+        // Combine stdout and stderr for plain output
+        const plainOutput = stdout + (stderr ? `\n${stderr}` : '');
 
-      // Flush output stream if we have one
-      if (outputStream) {
-        outputStream.flush();
+        // Flush output stream if we have one
+        if (outputStream) {
+          outputStream.flush();
+        }
+
+        // Try to parse JSON messages (use output stream messages if available, otherwise parse)
+        let parsedOutput;
+        if (outputStream && outputStream.getMessages().length > 0) {
+          parsedOutput = outputStream.getMessages();
+        } else {
+          parsedOutput = parseJsonMessages({
+            output: plainOutput,
+            toolName: tool,
+          });
+        }
+
+        // Extract session ID if tool supports it
+        if (toolConfig && toolConfig.extractSessionId) {
+          sessionId = toolConfig.extractSessionId({ output: plainOutput });
+        }
+
+        // Extract usage if tool supports it
+        let usage = null;
+        if (toolConfig && toolConfig.extractUsage) {
+          usage = toolConfig.extractUsage({ output: plainOutput });
+        }
+
+        // Clean up signal handler
+        if (removeSignalHandler) {
+          removeSignalHandler();
+          removeSignalHandler = null;
+        }
+
+        return {
+          exitCode,
+          output: {
+            plain: plainOutput,
+            parsed: parsedOutput,
+          },
+          sessionId,
+          usage,
+        };
+      } finally {
+        await cleanupPromptTempDir();
       }
-
-      // Try to parse JSON messages (use output stream messages if available, otherwise parse)
-      let parsedOutput;
-      if (outputStream && outputStream.getMessages().length > 0) {
-        parsedOutput = outputStream.getMessages();
-      } else {
-        parsedOutput = parseJsonMessages({
-          output: plainOutput,
-          toolName: tool,
-        });
-      }
-
-      // Extract session ID if tool supports it
-      if (toolConfig && toolConfig.extractSessionId) {
-        sessionId = toolConfig.extractSessionId({ output: plainOutput });
-      }
-
-      // Extract usage if tool supports it
-      let usage = null;
-      if (toolConfig && toolConfig.extractUsage) {
-        usage = toolConfig.extractUsage({ output: plainOutput });
-      }
-
-      // Clean up signal handler
-      if (removeSignalHandler) {
-        removeSignalHandler();
-        removeSignalHandler = null;
-      }
-
-      return {
-        exitCode,
-        output: {
-          plain: plainOutput,
-          parsed: parsedOutput,
-        },
-        sessionId,
-        usage,
-      };
     }
 
     throw new Error(`Unsupported isolation mode: ${isolation}`);

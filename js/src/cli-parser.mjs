@@ -47,6 +47,7 @@ export function parseStartAgentArgs(args) {
     tool: parsed.tool,
     workingDirectory: parsed['working-directory'],
     prompt: parsed.prompt,
+    promptFile: parsed['prompt-file'],
     systemPrompt: parsed['system-prompt'],
     appendSystemPrompt: parsed['append-system-prompt'],
     model: parsed.model,
@@ -95,6 +96,7 @@ Options:
   --tool <name>                    CLI tool to use (e.g., 'claude') [required]
   --working-directory <path>       Working directory for the agent [required]
   --prompt <text>                  Prompt for the agent
+  --prompt-file <path>             Read prompt input from a file
   --system-prompt <text>           System prompt for the agent
   --append-system-prompt <text>    Append to the default system prompt
   --model <model>                  Model to use (e.g., 'sonnet', 'opus', 'haiku')

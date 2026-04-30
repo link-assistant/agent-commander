@@ -57,6 +57,7 @@ pub fn map_model_to_id(model: &str) -> String {
 #[derive(Debug, Clone, Default)]
 pub struct AgentBuildOptions {
     pub prompt: Option<String>,
+    pub prompt_file: Option<String>,
     pub system_prompt: Option<String>,
     pub model: Option<String>,
     pub compact_json: bool,
@@ -135,14 +136,13 @@ pub fn build_command(options: &AgentBuildOptions) -> String {
     };
 
     // Build command with stdin piping
-    let escaped_prompt = escape_single_quotes(&combined_prompt);
-    format!(
-        "printf '%s' '{}' | agent {}",
-        escaped_prompt,
-        args_str.join(" ")
-    )
-    .trim()
-    .to_string()
+    let input_command = options.prompt_file.as_ref().map_or_else(
+        || format!("printf '%s' '{}'", escape_single_quotes(&combined_prompt)),
+        |prompt_file| format!("cat {}", escape_arg(prompt_file)),
+    );
+    format!("{} | agent {}", input_command, args_str.join(" "))
+        .trim()
+        .to_string()
 }
 
 /// Parse JSON messages from Agent output

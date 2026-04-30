@@ -67,6 +67,7 @@ export function buildArgs(options) {
  * @param {Object} options - Options
  * @param {string} options.workingDirectory - Working directory
  * @param {string} [options.prompt] - User prompt
+ * @param {string} [options.promptFile] - File containing combined prompt input
  * @param {string} [options.systemPrompt] - System prompt
  * @param {string} [options.model] - Model to use
  * @param {boolean} [options.json] - JSON output mode
@@ -75,7 +76,13 @@ export function buildArgs(options) {
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {
-  const { prompt, systemPrompt, readOnly = false, ...argOptions } = options;
+  const {
+    prompt,
+    promptFile,
+    systemPrompt,
+    readOnly = false,
+    ...argOptions
+  } = options;
   const args = buildArgs(argOptions);
 
   // OpenCode expects prompt via stdin, combine system and user prompts
@@ -84,11 +91,13 @@ export function buildCommand(options) {
     : prompt || '';
 
   // Build command with stdin piping
-  const escapedPrompt = combinedPrompt.replace(/'/g, "'\\''");
+  const inputCommand = promptFile
+    ? `cat ${escapeArg(promptFile)}`
+    : `printf '%s' '${combinedPrompt.replace(/'/g, "'\\''")}'`;
   const executable = readOnly
     ? `OPENCODE_PERMISSION='{"edit":"deny","bash":"deny","task":"deny"}' opencode`
     : 'opencode';
-  return `printf '%s' '${escapedPrompt}' | ${executable} ${args.map(escapeArg).join(' ')}`.trim();
+  return `${inputCommand} | ${executable} ${args.map(escapeArg).join(' ')}`.trim();
 }
 
 /**
