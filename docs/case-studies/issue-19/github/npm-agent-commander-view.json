@@ -1,0 +1,15 @@
+{
+  "version": "0.4.0",
+  "dist-tags": {
+    "latest": "0.4.0"
+  },
+  "time": {
+    "created": "2026-04-30T02:02:49.909Z",
+    "0.4.0": "2026-04-30T02:02:50.120Z",
+    "modified": "2026-04-30T02:02:50.296Z"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/link-assistant/agent-commander.git"
+  }
+}

@@ -12,8 +12,8 @@
     "stop-agent": "./bin/stop-agent.mjs"
   },
   "scripts": {
-    "test": "node --test --test-name-pattern=\".*\" test/",
-    "test:node": "node --test --test-name-pattern=\".*\" test/",
+    "test": "node ../scripts/js/run-node-tests.mjs",
+    "test:node": "node ../scripts/js/run-node-tests.mjs",
     "test:bun": "bun test",
     "test:deno": "deno test --allow-read --allow-run --allow-env --allow-net test/",
     "lint": "eslint .",
@@ -56,7 +56,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/link-assistant/agent-commander.git"
+    "url": "https://github.com/link-assistant/agent-commander.git",
+    "directory": "js"
   },
   "lint-staged": {
     "*.{js,mjs,cjs}": [

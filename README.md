@@ -40,10 +40,16 @@ npm install -g agent-commander
 npm install agent-commander
 ```
 
+### From the GitHub repository
+
+```bash
+npm install github:link-assistant/agent-commander
+```
+
 ### For Deno
 
 ```javascript
-import { agent } from 'https://raw.githubusercontent.com/link-assistant/agent-commander/main/src/index.mjs';
+import { agent } from 'https://raw.githubusercontent.com/link-assistant/agent-commander/main/js/src/index.mjs';
 ```
 
 ### For Bun
@@ -632,32 +638,19 @@ The library is built using patterns from [hive-mind](https://github.com/link-ass
 
 ```
 agent-commander/
-├── src/
-│   ├── index.mjs              # Main library interface
-│   ├── command-builder.mjs    # Command string construction
-│   ├── executor.mjs           # Command execution logic
-│   ├── cli-parser.mjs         # CLI argument parsing
-│   ├── tools/                 # Tool configurations
-│   │   ├── index.mjs          # Tool registry
-│   │   ├── claude.mjs         # Claude Code CLI config
-│   │   ├── codex.mjs          # Codex CLI config
-│   │   ├── opencode.mjs       # OpenCode CLI config
-│   │   ├── qwen.mjs           # Qwen Code CLI config
-│   │   ├── gemini.mjs         # Gemini CLI config
-│   │   └── agent.mjs          # @link-assistant/agent config
-│   ├── streaming/             # JSON streaming utilities
-│   │   ├── index.mjs          # Stream exports
-│   │   ├── ndjson.mjs         # NDJSON parsing/stringify
-│   │   ├── input-stream.mjs   # Input stream builder
-│   │   └── output-stream.mjs  # Output stream parser
-│   └── utils/
-│       └── loader.mjs         # use-m integration
-├── bin/
-│   ├── start-agent.mjs        # CLI: start-agent
-│   └── stop-agent.mjs         # CLI: stop-agent
-├── test/                      # Test files
-├── examples/                  # Usage examples
-└── .github/workflows/         # CI/CD pipelines
+├── package.json               # Root manifest for GitHub npm installs
+├── js/
+│   ├── src/                   # JavaScript library source
+│   ├── bin/                   # start-agent and stop-agent CLIs
+│   ├── test/                  # JavaScript tests
+│   ├── examples/              # JavaScript usage examples
+│   └── package.json           # Published npm package manifest
+├── rust/
+│   ├── src/                   # Rust library and CLI source
+│   ├── tests/                 # Rust tests
+│   └── Cargo.toml             # Published crate manifest
+├── scripts/                   # Release, changelog, and CI helpers
+└── .github/workflows/         # js.yml, rust.yml, and e2e workflows
 ```
 
 ## Contributing
