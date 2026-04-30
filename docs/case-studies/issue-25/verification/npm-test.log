@@ -1,0 +1,818 @@
+
+> agent-commander@0.4.1 test
+> node ../scripts/js/run-node-tests.mjs
+
+TAP version 13
+# Subtest: parseArgs - basic flags
+ok 1 - parseArgs - basic flags
+  ---
+  duration_ms: 1.328754
+  ...
+# Subtest: parseArgs - with positional
+ok 2 - parseArgs - with positional
+  ---
+  duration_ms: 2.360965
+  ...
+# Subtest: parseStartAgentArgs - basic
+ok 3 - parseStartAgentArgs - basic
+  ---
+  duration_ms: 0.279087
+  ...
+# Subtest: parseStartAgentArgs - with isolation
+ok 4 - parseStartAgentArgs - with isolation
+  ---
+  duration_ms: 0.136724
+  ...
+# Subtest: parseStartAgentArgs - dry-run flag
+ok 5 - parseStartAgentArgs - dry-run flag
+  ---
+  duration_ms: 0.172027
+  ...
+# Subtest: parseStopAgentArgs - screen
+ok 6 - parseStopAgentArgs - screen
+  ---
+  duration_ms: 0.1539
+  ...
+# Subtest: validateStartAgentOptions - valid
+ok 7 - validateStartAgentOptions - valid
+  ---
+  duration_ms: 0.172627
+  ...
+# Subtest: validateStartAgentOptions - missing tool
+ok 8 - validateStartAgentOptions - missing tool
+  ---
+  duration_ms: 0.278906
+  ...
+# Subtest: validateStartAgentOptions - screen without name
+ok 9 - validateStartAgentOptions - screen without name
+  ---
+  duration_ms: 0.252037
+  ...
+# Subtest: validateStopAgentOptions - valid
+ok 10 - validateStopAgentOptions - valid
+  ---
+  duration_ms: 0.226848
+  ...
+# Subtest: validateStopAgentOptions - missing isolation
+ok 11 - validateStopAgentOptions - missing isolation
+  ---
+  duration_ms: 0.11375
+  ...
+# Subtest: parseStartAgentArgs - with model and fallback-model
+ok 12 - parseStartAgentArgs - with model and fallback-model
+  ---
+  duration_ms: 0.134862
+  ...
+# Subtest: parseStartAgentArgs - with session management options
+ok 13 - parseStartAgentArgs - with session management options
+  ---
+  duration_ms: 0.272477
+  ...
+# Subtest: parseStartAgentArgs - with append-system-prompt
+ok 14 - parseStartAgentArgs - with append-system-prompt
+  ---
+  duration_ms: 0.199687
+  ...
+# Subtest: parseStartAgentArgs - with verbose and replay-user-messages
+ok 15 - parseStartAgentArgs - with verbose and replay-user-messages
+  ---
+  duration_ms: 0.124356
+  ...
+# Subtest: parseStartAgentArgs - with read-only flag
+ok 16 - parseStartAgentArgs - with read-only flag
+  ---
+  duration_ms: 0.173319
+  ...
+# Subtest: parseStartAgentArgs - plan-only aliases read-only
+ok 17 - parseStartAgentArgs - plan-only aliases read-only
+  ---
+  duration_ms: 0.090475
+  ...
+# Subtest: parseStartAgentArgs - defaults for new options
+ok 18 - parseStartAgentArgs - defaults for new options
+  ---
+  duration_ms: 0.192667
+  ...
+# Subtest: buildAgentCommand - basic no isolation with known tool (claude)
+ok 19 - buildAgentCommand - basic no isolation with known tool (claude)
+  ---
+  duration_ms: 4.597514
+  ...
+# Subtest: buildAgentCommand - with system prompt (claude)
+ok 20 - buildAgentCommand - with system prompt (claude)
+  ---
+  duration_ms: 0.219478
+  ...
+# Subtest: buildAgentCommand - unknown tool uses generic format
+ok 21 - buildAgentCommand - unknown tool uses generic format
+  ---
+  duration_ms: 0.220198
+  ...
+# Subtest: buildAgentCommand - screen isolation
+ok 22 - buildAgentCommand - screen isolation
+  ---
+  duration_ms: 0.176023
+  ...
+# Subtest: buildAgentCommand - docker isolation
+ok 23 - buildAgentCommand - docker isolation
+  ---
+  duration_ms: 0.185016
+  ...
+# Subtest: buildAgentCommand - with model (claude)
+ok 24 - buildAgentCommand - with model (claude)
+  ---
+  duration_ms: 0.152248
+  ...
+# Subtest: buildAgentCommand - with codex tool
+ok 25 - buildAgentCommand - with codex tool
+  ---
+  duration_ms: 0.185297
+  ...
+# Subtest: buildAgentCommand - with agent tool
+ok 26 - buildAgentCommand - with agent tool
+  ---
+  duration_ms: 4.686458
+  ...
+# Subtest: buildAgentCommand - with opencode tool
+ok 27 - buildAgentCommand - with opencode tool
+  ---
+  duration_ms: 0.358745
+  ...
+# Subtest: buildAgentCommand - claude read-only uses plan permission mode
+ok 28 - buildAgentCommand - claude read-only uses plan permission mode
+  ---
+  duration_ms: 0.276443
+  ...
+# Subtest: buildAgentCommand - codex read-only uses sandbox and no approvals
+ok 29 - buildAgentCommand - codex read-only uses sandbox and no approvals
+  ---
+  duration_ms: 0.15437
+  ...
+# Subtest: buildAgentCommand - opencode read-only denies shell and edits
+ok 30 - buildAgentCommand - opencode read-only denies shell and edits
+  ---
+  duration_ms: 0.13338
+  ...
+# Subtest: buildAgentCommand - read-only still works with screen isolation
+ok 31 - buildAgentCommand - read-only still works with screen isolation
+  ---
+  duration_ms: 0.110114
+  ...
+# Subtest: buildAgentCommand - read-only rejects unsupported agent tool
+ok 32 - buildAgentCommand - read-only rejects unsupported agent tool
+  ---
+  duration_ms: 3.653636
+  ...
+# Subtest: buildScreenStopCommand
+ok 33 - buildScreenStopCommand
+  ---
+  duration_ms: 0.182323
+  ...
+# Subtest: buildDockerStopCommand
+ok 34 - buildDockerStopCommand
+  ---
+  duration_ms: 0.219048
+  ...
+# Subtest: buildPipedCommand - basic
+ok 35 - buildPipedCommand - basic
+  ---
+  duration_ms: 0.179338
+  ...
+# Subtest: buildPipedCommand - escapes single quotes
+ok 36 - buildPipedCommand - escapes single quotes
+  ---
+  duration_ms: 0.238176
+  ...
+# Dry run - command that would be executed:
+# bash -c "cd /tmp/test && echo --prompt \\"Hello\\""
+# Dry run - command that would be executed:
+# screen -S "test-session" -X quit
+# Subtest: agent - throws without tool
+ok 37 - agent - throws without tool
+  ---
+  duration_ms: 1.42611
+  ...
+# Subtest: agent - throws without workingDirectory
+ok 38 - agent - throws without workingDirectory
+  ---
+  duration_ms: 0.158768
+  ...
+# Subtest: agent - throws for screen isolation without screenName
+ok 39 - agent - throws for screen isolation without screenName
+  ---
+  duration_ms: 0.204025
+  ...
+# Subtest: agent - throws for docker isolation without containerName
+ok 40 - agent - throws for docker isolation without containerName
+  ---
+  duration_ms: 0.11361
+  ...
+# Subtest: agent - creates controller with valid options
+ok 41 - agent - creates controller with valid options
+  ---
+  duration_ms: 0.215823
+  ...
+# Subtest: agent - start in dry-run mode
+ok 42 - agent - start in dry-run mode
+  ---
+  duration_ms: 1.183006
+  ...
+# Subtest: agent - stop throws for no isolation without start
+ok 43 - agent - stop throws for no isolation without start
+  ---
+  duration_ms: 0.431915
+  ...
+# Subtest: agent - stop in dry-run mode with screen
+ok 44 - agent - stop in dry-run mode with screen
+  ---
+  duration_ms: 0.208993
+  ...
+# Subtest: agent - start and stop with no isolation
+ok 45 - agent - start and stop with no isolation
+  ---
+  duration_ms: 17.149119
+  ...
+# Subtest: JavaScript package ships its own README
+ok 46 - JavaScript package ships its own README
+  ---
+  duration_ms: 6.008082
+  ...
+# Subtest: buildReleaseMetadata - JavaScript release uses package prefix and badge
+ok 47 - buildReleaseMetadata - JavaScript release uses package prefix and badge
+  ---
+  duration_ms: 1.445197
+  ...
+# Subtest: buildReleaseMetadata - Rust release uses package prefix and badge
+ok 48 - buildReleaseMetadata - Rust release uses package prefix and badge
+  ---
+  duration_ms: 0.305697
+  ...
+# Subtest: normalizeReleaseVersion strips existing language prefixes
+ok 49 - normalizeReleaseVersion strips existing language prefixes
+  ---
+  duration_ms: 0.195442
+  ...
+# Subtest: root package manifest exposes the JavaScript package for GitHub installs
+ok 50 - root package manifest exposes the JavaScript package for GitHub installs
+  ---
+  duration_ms: 5.670678
+  ...
+# Subtest: parseNdjsonLine - parses valid JSON object
+ok 51 - parseNdjsonLine - parses valid JSON object
+  ---
+  duration_ms: 1.543655
+  ...
+# Subtest: parseNdjsonLine - parses valid JSON array
+ok 52 - parseNdjsonLine - parses valid JSON array
+  ---
+  duration_ms: 0.178305
+  ...
+# Subtest: parseNdjsonLine - returns null for empty line
+ok 53 - parseNdjsonLine - returns null for empty line
+  ---
+  duration_ms: 0.139238
+  ...
+# Subtest: parseNdjsonLine - returns null for non-JSON line
+ok 54 - parseNdjsonLine - returns null for non-JSON line
+  ---
+  duration_ms: 0.111035
+  ...
+# Subtest: parseNdjsonLine - returns null for invalid JSON
+ok 55 - parseNdjsonLine - returns null for invalid JSON
+  ---
+  duration_ms: 0.238606
+  ...
+# Subtest: parseNdjsonLine - trims whitespace
+ok 56 - parseNdjsonLine - trims whitespace
+  ---
+  duration_ms: 0.125437
+  ...
+# Subtest: stringifyNdjsonLine - stringifies object
+ok 57 - stringifyNdjsonLine - stringifies object
+  ---
+  duration_ms: 0.135342
+  ...
+# Subtest: stringifyNdjsonLine - handles null
+ok 58 - stringifyNdjsonLine - handles null
+  ---
+  duration_ms: 0.179437
+  ...
+# Subtest: stringifyNdjsonLine - handles undefined
+ok 59 - stringifyNdjsonLine - handles undefined
+  ---
+  duration_ms: 0.184216
+  ...
+# Subtest: JsonOutputStream - processes single JSON line
+ok 60 - JsonOutputStream - processes single JSON line
+  ---
+  duration_ms: 0.382422
+  ...
+# Subtest: JsonOutputStream - processes multiple JSON lines
+ok 61 - JsonOutputStream - processes multiple JSON lines
+  ---
+  duration_ms: 0.186189
+  ...
+# Subtest: JsonOutputStream - handles partial lines across chunks
+ok 62 - JsonOutputStream - handles partial lines across chunks
+  ---
+  duration_ms: 0.136664
+  ...
+# Subtest: JsonOutputStream - calls onMessage callback
+ok 63 - JsonOutputStream - calls onMessage callback
+  ---
+  duration_ms: 0.156753
+  ...
+# Subtest: JsonOutputStream - getMessages returns all messages
+ok 64 - JsonOutputStream - getMessages returns all messages
+  ---
+  duration_ms: 0.211506
+  ...
+# Subtest: JsonOutputStream - flush processes remaining buffer
+ok 65 - JsonOutputStream - flush processes remaining buffer
+  ---
+  duration_ms: 0.188822
+  ...
+# Subtest: JsonOutputStream - filterByType
+ok 66 - JsonOutputStream - filterByType
+  ---
+  duration_ms: 0.209452
+  ...
+# Subtest: JsonOutputStream - reset clears state
+ok 67 - JsonOutputStream - reset clears state
+  ---
+  duration_ms: 1.474452
+  ...
+# Subtest: JsonInputStream - add message
+ok 68 - JsonInputStream - add message
+  ---
+  duration_ms: 0.346879
+  ...
+# Subtest: JsonInputStream - toString produces NDJSON
+ok 69 - JsonInputStream - toString produces NDJSON
+  ---
+  duration_ms: 0.189462
+  ...
+# Subtest: JsonInputStream - addPrompt adds user prompt
+ok 70 - JsonInputStream - addPrompt adds user prompt
+  ---
+  duration_ms: 0.20709
+  ...
+# Subtest: JsonInputStream - addSystemMessage adds system message
+ok 71 - JsonInputStream - addSystemMessage adds system message
+  ---
+  duration_ms: 0.093139
+  ...
+# Subtest: JsonInputStream - chaining works
+ok 72 - JsonInputStream - chaining works
+  ---
+  duration_ms: 0.053621
+  ...
+# Subtest: JsonInputStream - clear removes all messages
+ok 73 - JsonInputStream - clear removes all messages
+  ---
+  duration_ms: 0.051738
+  ...
+# Subtest: JsonInputStream.from - creates from array
+ok 74 - JsonInputStream.from - creates from array
+  ---
+  duration_ms: 0.089093
+  ...
+# Subtest: JsonInputStream - toBuffer returns Buffer or Uint8Array
+ok 75 - JsonInputStream - toBuffer returns Buffer or Uint8Array
+  ---
+  duration_ms: 0.30134
+  ...
+# Subtest: listTools - returns all available tools
+ok 76 - listTools - returns all available tools
+  ---
+  duration_ms: 1.014475
+  ...
+# Subtest: isToolSupported - returns true for supported tools
+ok 77 - isToolSupported - returns true for supported tools
+  ---
+  duration_ms: 0.141591
+  ...
+# Subtest: isToolSupported - returns false for unsupported tools
+ok 78 - isToolSupported - returns false for unsupported tools
+  ---
+  duration_ms: 0.114511
+  ...
+# Subtest: getTool - returns tool configuration
+ok 79 - getTool - returns tool configuration
+  ---
+  duration_ms: 0.189913
+  ...
+# Subtest: getTool - throws for unknown tool
+ok 80 - getTool - throws for unknown tool
+  ---
+  duration_ms: 0.344124
+  ...
+# Subtest: claudeTool - mapModelToId with alias
+ok 81 - claudeTool - mapModelToId with alias
+  ---
+  duration_ms: 0.179868
+  ...
+# Subtest: claudeTool - mapModelToId with new opus 4.7 alias
+ok 82 - claudeTool - mapModelToId with new opus 4.7 alias
+  ---
+  duration_ms: 0.138517
+  ...
+# Subtest: claudeTool - mapModelToId with full ID
+ok 83 - claudeTool - mapModelToId with full ID
+  ---
+  duration_ms: 0.115943
+  ...
+# Subtest: claudeTool - buildArgs with prompt
+ok 84 - claudeTool - buildArgs with prompt
+  ---
+  duration_ms: 0.256443
+  ...
+# Subtest: claudeTool - buildArgs with model
+ok 85 - claudeTool - buildArgs with model
+  ---
+  duration_ms: 0.161201
+  ...
+# Subtest: claudeTool - parseOutput with NDJSON
+ok 86 - claudeTool - parseOutput with NDJSON
+  ---
+  duration_ms: 0.171165
+  ...
+# Subtest: claudeTool - extractSessionId
+ok 87 - claudeTool - extractSessionId
+  ---
+  duration_ms: 0.112608
+  ...
+# Subtest: claudeTool - buildArgs includes --dangerously-skip-permissions by default
+ok 88 - claudeTool - buildArgs includes --dangerously-skip-permissions by default
+  ---
+  duration_ms: 0.782729
+  ...
+# Subtest: claudeTool - buildArgs uses stream-json output format
+ok 89 - claudeTool - buildArgs uses stream-json output format
+  ---
+  duration_ms: 0.148031
+  ...
+# Subtest: claudeTool - buildArgs with fallback model
+ok 90 - claudeTool - buildArgs with fallback model
+  ---
+  duration_ms: 0.084535
+  ...
+# Subtest: claudeTool - buildArgs with append-system-prompt
+ok 91 - claudeTool - buildArgs with append-system-prompt
+  ---
+  duration_ms: 0.172658
+  ...
+# Subtest: claudeTool - buildArgs with session management
+ok 92 - claudeTool - buildArgs with session management
+  ---
+  duration_ms: 0.122453
+  ...
+# Subtest: claudeTool - buildArgs with verbose mode
+ok 93 - claudeTool - buildArgs with verbose mode
+  ---
+  duration_ms: 0.190255
+  ...
+# Subtest: claudeTool - buildArgs with input format stream-json
+ok 94 - claudeTool - buildArgs with input format stream-json
+  ---
+  duration_ms: 0.120881
+  ...
+# Subtest: claudeTool - buildArgs with replay-user-messages
+ok 95 - claudeTool - buildArgs with replay-user-messages
+  ---
+  duration_ms: 0.151185
+  ...
+# Subtest: claudeTool - buildArgs always includes dangerously-skip-permissions (not configurable)
+ok 96 - claudeTool - buildArgs always includes dangerously-skip-permissions (not configurable)
+  ---
+  duration_ms: 0.09335
+  ...
+# Subtest: claudeTool - read-only uses plan mode without permission bypass
+ok 97 - claudeTool - read-only uses plan mode without permission bypass
+  ---
+  duration_ms: 0.081573
+  ...
+# Subtest: claudeTool - supportsJsonInput is true
+ok 98 - claudeTool - supportsJsonInput is true
+  ---
+  duration_ms: 0.066799
+  ...
+# Subtest: claudeTool - supports all new capability flags
+ok 99 - claudeTool - supports all new capability flags
+  ---
+  duration_ms: 0.089123
+  ...
+# Subtest: codexTool - mapModelToId with alias
+ok 100 - codexTool - mapModelToId with alias
+  ---
+  duration_ms: 0.08671
+  ...
+# Subtest: codexTool - buildArgs includes exec mode
+ok 101 - codexTool - buildArgs includes exec mode
+  ---
+  duration_ms: 0.097595
+  ...
+# Subtest: codexTool - read-only uses sandbox without bypass
+ok 102 - codexTool - read-only uses sandbox without bypass
+  ---
+  duration_ms: 0.072297
+  ...
+# Subtest: codexTool - extractSessionId with thread_id
+ok 103 - codexTool - extractSessionId with thread_id
+  ---
+  duration_ms: 0.128182
+  ...
+# Subtest: codexTool - mapModelToId with gpt-5.5 family aliases
+ok 104 - codexTool - mapModelToId with gpt-5.5 family aliases
+  ---
+  duration_ms: 0.053049
+  ...
+# Subtest: codexTool - default model is gpt-5.5
+ok 105 - codexTool - default model is gpt-5.5
+  ---
+  duration_ms: 0.036464
+  ...
+# Subtest: opencodeTool - mapModelToId with alias
+ok 106 - opencodeTool - mapModelToId with alias
+  ---
+  duration_ms: 0.044216
+  ...
+# Subtest: opencodeTool - buildArgs includes run mode
+ok 107 - opencodeTool - buildArgs includes run mode
+  ---
+  duration_ms: 0.132027
+  ...
+# Subtest: agentTool - mapModelToId with alias
+ok 108 - agentTool - mapModelToId with alias
+  ---
+  duration_ms: 0.114891
+  ...
+# Subtest: agentTool - buildArgs with model
+ok 109 - agentTool - buildArgs with model
+  ---
+  duration_ms: 0.110364
+  ...
+# Subtest: agentTool - extractUsage from step_finish events
+ok 110 - agentTool - extractUsage from step_finish events
+  ---
+  duration_ms: 0.490483
+  ...
+# Subtest: agentTool - detectErrors finds error messages
+ok 111 - agentTool - detectErrors finds error messages
+  ---
+  duration_ms: 0.236753
+  ...
+# Subtest: agentTool - detectErrors returns false for normal output
+ok 112 - agentTool - detectErrors returns false for normal output
+  ---
+  duration_ms: 0.14018
+  ...
+# Subtest: agentTool - mapModelToId with nemotron-3-super-free (new default)
+ok 113 - agentTool - mapModelToId with nemotron-3-super-free (new default)
+  ---
+  duration_ms: 0.052487
+  ...
+# Subtest: agentTool - default model is nemotron-3-super-free
+ok 114 - agentTool - default model is nemotron-3-super-free
+  ---
+  duration_ms: 0.050065
+  ...
+# Subtest: agentTool - mapModelToId keeps deprecated qwen3.6-plus-free for backward compatibility
+ok 115 - agentTool - mapModelToId keeps deprecated qwen3.6-plus-free for backward compatibility
+  ---
+  duration_ms: 0.059838
+  ...
+# Subtest: qwenTool - mapModelToId with alias
+ok 116 - qwenTool - mapModelToId with alias
+  ---
+  duration_ms: 0.089734
+  ...
+# Subtest: qwenTool - mapModelToId with full ID
+ok 117 - qwenTool - mapModelToId with full ID
+  ---
+  duration_ms: 0.059658
+  ...
+# Subtest: qwenTool - buildArgs with prompt
+ok 118 - qwenTool - buildArgs with prompt
+  ---
+  duration_ms: 0.188762
+  ...
+# Subtest: qwenTool - buildArgs with model
+ok 119 - qwenTool - buildArgs with model
+  ---
+  duration_ms: 0.087602
+  ...
+# Subtest: qwenTool - buildArgs uses stream-json output format by default
+ok 120 - qwenTool - buildArgs uses stream-json output format by default
+  ---
+  duration_ms: 0.160811
+  ...
+# Subtest: qwenTool - buildArgs with json output format
+ok 121 - qwenTool - buildArgs with json output format
+  ---
+  duration_ms: 0.111697
+  ...
+# Subtest: qwenTool - buildArgs includes --yolo by default
+ok 122 - qwenTool - buildArgs includes --yolo by default
+  ---
+  duration_ms: 0.078548
+  ...
+# Subtest: qwenTool - buildArgs with --resume
+ok 123 - qwenTool - buildArgs with --resume
+  ---
+  duration_ms: 0.078918
+  ...
+# Subtest: qwenTool - buildArgs with --continue
+ok 124 - qwenTool - buildArgs with --continue
+  ---
+  duration_ms: 0.067882
+  ...
+# Subtest: qwenTool - buildArgs with --all-files
+ok 125 - qwenTool - buildArgs with --all-files
+  ---
+  duration_ms: 0.046218
+  ...
+# Subtest: qwenTool - buildArgs with --include-directories
+ok 126 - qwenTool - buildArgs with --include-directories
+  ---
+  duration_ms: 0.138417
+  ...
+# Subtest: qwenTool - buildArgs with --include-partial-messages
+ok 127 - qwenTool - buildArgs with --include-partial-messages
+  ---
+  duration_ms: 0.074311
+  ...
+# Subtest: qwenTool - parseOutput with NDJSON
+ok 128 - qwenTool - parseOutput with NDJSON
+  ---
+  duration_ms: 0.09994
+  ...
+# Subtest: qwenTool - extractSessionId
+ok 129 - qwenTool - extractSessionId
+  ---
+  duration_ms: 0.136183
+  ...
+# Subtest: qwenTool - extractSessionId with sessionId format
+ok 130 - qwenTool - extractSessionId with sessionId format
+  ---
+  duration_ms: 0.065777
+  ...
+# Subtest: qwenTool - extractUsage from output
+ok 131 - qwenTool - extractUsage from output
+  ---
+  duration_ms: 0.171696
+  ...
+# Subtest: qwenTool - extractUsage calculates total if not provided
+ok 132 - qwenTool - extractUsage calculates total if not provided
+  ---
+  duration_ms: 0.154932
+  ...
+# Subtest: qwenTool - detectErrors finds error messages
+ok 133 - qwenTool - detectErrors finds error messages
+  ---
+  duration_ms: 0.150214
+  ...
+# Subtest: qwenTool - detectErrors with error field
+ok 134 - qwenTool - detectErrors with error field
+  ---
+  duration_ms: 0.064897
+  ...
+# Subtest: qwenTool - detectErrors returns false for normal output
+ok 135 - qwenTool - detectErrors returns false for normal output
+  ---
+  duration_ms: 0.123835
+  ...
+# Subtest: qwenTool - capability flags are correct
+ok 136 - qwenTool - capability flags are correct
+  ---
+  duration_ms: 0.088491
+  ...
+# Subtest: qwenTool - buildCommand constructs correct command
+ok 137 - qwenTool - buildCommand constructs correct command
+  ---
+  duration_ms: 0.24167
+  ...
+# Subtest: qwenTool - buildCommand combines system and user prompt
+ok 138 - qwenTool - buildCommand combines system and user prompt
+  ---
+  duration_ms: 0.08002
+  ...
+# Subtest: geminiTool - mapModelToId with alias
+ok 139 - geminiTool - mapModelToId with alias
+  ---
+  duration_ms: 0.064846
+  ...
+# Subtest: geminiTool - mapModelToId with full ID
+ok 140 - geminiTool - mapModelToId with full ID
+  ---
+  duration_ms: 0.048623
+  ...
+# Subtest: geminiTool - buildArgs with prompt
+ok 141 - geminiTool - buildArgs with prompt
+  ---
+  duration_ms: 0.088642
+  ...
+# Subtest: geminiTool - buildArgs with model
+ok 142 - geminiTool - buildArgs with model
+  ---
+  duration_ms: 0.083995
+  ...
+# Subtest: geminiTool - buildArgs with yolo mode
+ok 143 - geminiTool - buildArgs with yolo mode
+  ---
+  duration_ms: 0.153919
+  ...
+# Subtest: geminiTool - buildArgs with sandbox mode
+ok 144 - geminiTool - buildArgs with sandbox mode
+  ---
+  duration_ms: 2.170452
+  ...
+# Subtest: geminiTool - buildArgs with json output
+ok 145 - geminiTool - buildArgs with json output
+  ---
+  duration_ms: 0.156464
+  ...
+# Subtest: geminiTool - buildArgs with debug mode
+ok 146 - geminiTool - buildArgs with debug mode
+  ---
+  duration_ms: 0.202032
+  ...
+# Subtest: geminiTool - buildArgs with checkpointing
+ok 147 - geminiTool - buildArgs with checkpointing
+  ---
+  duration_ms: 0.076103
+  ...
+# Subtest: geminiTool - buildArgs with interactive mode
+ok 148 - geminiTool - buildArgs with interactive mode
+  ---
+  duration_ms: 0.098507
+  ...
+# Subtest: geminiTool - parseOutput with NDJSON
+ok 149 - geminiTool - parseOutput with NDJSON
+  ---
+  duration_ms: 0.136985
+  ...
+# Subtest: geminiTool - extractSessionId
+ok 150 - geminiTool - extractSessionId
+  ---
+  duration_ms: 0.076415
+  ...
+# Subtest: geminiTool - extractSessionId with conversation_id
+ok 151 - geminiTool - extractSessionId with conversation_id
+  ---
+  duration_ms: 0.071177
+  ...
+# Subtest: geminiTool - extractUsage with standard format
+ok 152 - geminiTool - extractUsage with standard format
+  ---
+  duration_ms: 0.158547
+  ...
+# Subtest: geminiTool - extractUsage with Gemini format
+ok 153 - geminiTool - extractUsage with Gemini format
+  ---
+  duration_ms: 0.129803
+  ...
+# Subtest: geminiTool - detectErrors with error
+ok 154 - geminiTool - detectErrors with error
+  ---
+  duration_ms: 0.20733
+  ...
+# Subtest: geminiTool - detectErrors returns false for normal output
+ok 155 - geminiTool - detectErrors returns false for normal output
+  ---
+  duration_ms: 5.270009
+  ...
+# Subtest: geminiTool - supportsYolo is true
+ok 156 - geminiTool - supportsYolo is true
+  ---
+  duration_ms: 0.169864
+  ...
+# Subtest: geminiTool - supportsSandbox is true
+ok 157 - geminiTool - supportsSandbox is true
+  ---
+  duration_ms: 0.089814
+  ...
+# Subtest: geminiTool - supportsCheckpointing is true
+ok 158 - geminiTool - supportsCheckpointing is true
+  ---
+  duration_ms: 0.151406
+  ...
+# Subtest: geminiTool - supportsDebug is true
+ok 159 - geminiTool - supportsDebug is true
+  ---
+  duration_ms: 0.050095
+  ...
+# Subtest: geminiTool - default model is gemini-2.5-flash
+ok 160 - geminiTool - default model is gemini-2.5-flash
+  ---
+  duration_ms: 0.041461
+  ...
+1..160
+# tests 160
+# suites 0
+# pass 160
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 220.258871

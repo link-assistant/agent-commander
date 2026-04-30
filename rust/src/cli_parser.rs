@@ -423,6 +423,104 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_start_agent_args_with_model_and_fallback_model() {
+        let args: Vec<String> = vec![
+            "--tool".into(),
+            "claude".into(),
+            "--working-directory".into(),
+            "/tmp/test".into(),
+            "--model".into(),
+            "opus".into(),
+            "--fallback-model".into(),
+            "sonnet".into(),
+        ];
+        let result = parse_start_agent_args(&args);
+
+        assert_eq!(result.model, Some("opus".to_string()));
+        assert_eq!(result.fallback_model, Some("sonnet".to_string()));
+    }
+
+    #[test]
+    fn test_parse_start_agent_args_with_session_management_options() {
+        let args: Vec<String> = vec![
+            "--tool".into(),
+            "claude".into(),
+            "--working-directory".into(),
+            "/tmp/test".into(),
+            "--resume".into(),
+            "abc123".into(),
+            "--session-id".into(),
+            "123e4567-e89b-12d3-a456-426614174000".into(),
+            "--fork-session".into(),
+        ];
+        let result = parse_start_agent_args(&args);
+
+        assert_eq!(result.resume, Some("abc123".to_string()));
+        assert_eq!(
+            result.session_id,
+            Some("123e4567-e89b-12d3-a456-426614174000".to_string())
+        );
+        assert!(result.fork_session);
+    }
+
+    #[test]
+    fn test_parse_start_agent_args_with_append_system_prompt() {
+        let args: Vec<String> = vec![
+            "--tool".into(),
+            "claude".into(),
+            "--working-directory".into(),
+            "/tmp/test".into(),
+            "--system-prompt".into(),
+            "You are helpful".into(),
+            "--append-system-prompt".into(),
+            "Extra instructions".into(),
+        ];
+        let result = parse_start_agent_args(&args);
+
+        assert_eq!(result.system_prompt, Some("You are helpful".to_string()));
+        assert_eq!(
+            result.append_system_prompt,
+            Some("Extra instructions".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_start_agent_args_with_verbose_and_replay_user_messages() {
+        let args: Vec<String> = vec![
+            "--tool".into(),
+            "claude".into(),
+            "--working-directory".into(),
+            "/tmp/test".into(),
+            "--verbose".into(),
+            "--replay-user-messages".into(),
+        ];
+        let result = parse_start_agent_args(&args);
+
+        assert!(result.verbose);
+        assert!(result.replay_user_messages);
+    }
+
+    #[test]
+    fn test_parse_start_agent_args_defaults_for_new_options() {
+        let args: Vec<String> = vec![
+            "--tool".into(),
+            "claude".into(),
+            "--working-directory".into(),
+            "/tmp/test".into(),
+        ];
+        let result = parse_start_agent_args(&args);
+
+        assert!(!result.verbose);
+        assert!(!result.replay_user_messages);
+        assert!(!result.fork_session);
+        assert!(result.model.is_none());
+        assert!(result.fallback_model.is_none());
+        assert!(result.resume.is_none());
+        assert!(result.session_id.is_none());
+        assert!(result.append_system_prompt.is_none());
+    }
+
+    #[test]
     fn test_parse_stop_agent_args_screen() {
         let args: Vec<String> = vec![
             "--isolation".into(),

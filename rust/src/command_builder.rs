@@ -17,9 +17,15 @@ pub struct AgentCommandOptions {
     pub working_directory: String,
     pub prompt: Option<String>,
     pub system_prompt: Option<String>,
+    pub append_system_prompt: Option<String>,
     pub model: Option<String>,
+    pub fallback_model: Option<String>,
     pub json: bool,
+    pub verbose: bool,
+    pub replay_user_messages: bool,
     pub resume: Option<String>,
+    pub session_id: Option<String>,
+    pub fork_session: bool,
     pub read_only: bool,
     pub isolation: String,
     pub screen_name: Option<String>,
@@ -154,16 +160,16 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
             "claude" => claude::build_command(&ClaudeBuildOptions {
                 prompt: options.prompt.clone(),
                 system_prompt: options.system_prompt.clone(),
-                append_system_prompt: None, // TODO: Add to AgentCommandOptions if needed
+                append_system_prompt: options.append_system_prompt.clone(),
                 model: options.model.clone(),
-                fallback_model: None, // TODO: Add to AgentCommandOptions if needed
+                fallback_model: options.fallback_model.clone(),
                 json: options.json,
                 json_input: false,
-                verbose: false,
-                replay_user_messages: false,
+                verbose: options.verbose,
+                replay_user_messages: options.replay_user_messages,
                 resume: options.resume.clone(),
-                session_id: None, // TODO: Add to AgentCommandOptions if needed
-                fork_session: false,
+                session_id: options.session_id.clone(),
+                fork_session: options.fork_session,
                 print: false,
                 read_only: options.read_only,
             }),
@@ -334,6 +340,75 @@ mod tests {
         assert!(command.contains("--prompt"));
         assert!(command.contains("--system-prompt"));
         assert!(command.contains("You are helpful"));
+    }
+
+    #[test]
+    fn test_build_agent_command_claude_with_fallback_model() {
+        let options = AgentCommandOptions {
+            tool: "claude".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            model: Some("opus".to_string()),
+            fallback_model: Some("sonnet".to_string()),
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("--model"));
+        assert!(command.contains("claude-opus-4-7"));
+        assert!(command.contains("--fallback-model"));
+        assert!(command.contains("claude-sonnet-4-6"));
+    }
+
+    #[test]
+    fn test_build_agent_command_claude_with_append_system_prompt() {
+        let options = AgentCommandOptions {
+            tool: "claude".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            append_system_prompt: Some("Extra instructions".to_string()),
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("--append-system-prompt"));
+        assert!(command.contains("Extra instructions"));
+    }
+
+    #[test]
+    fn test_build_agent_command_claude_with_session_management() {
+        let options = AgentCommandOptions {
+            tool: "claude".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            resume: Some("abc123".to_string()),
+            session_id: Some("123e4567-e89b-12d3-a456-426614174000".to_string()),
+            fork_session: true,
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("--resume"));
+        assert!(command.contains("abc123"));
+        assert!(command.contains("--session-id"));
+        assert!(command.contains("123e4567-e89b-12d3-a456-426614174000"));
+        assert!(command.contains("--fork-session"));
+    }
+
+    #[test]
+    fn test_build_agent_command_claude_with_verbose_streaming() {
+        let options = AgentCommandOptions {
+            tool: "claude".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            verbose: true,
+            replay_user_messages: true,
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("--verbose"));
+        assert!(command.contains("--replay-user-messages"));
     }
 
     #[test]

@@ -1,0 +1,30 @@
+TAP version 13
+# Subtest: JavaScript package ships its own README
+ok 1 - JavaScript package ships its own README
+  ---
+  duration_ms: 7.287512
+  ...
+# Subtest: buildReleaseMetadata - JavaScript release uses package prefix and badge
+ok 2 - buildReleaseMetadata - JavaScript release uses package prefix and badge
+  ---
+  duration_ms: 1.180392
+  ...
+# Subtest: buildReleaseMetadata - Rust release uses package prefix and badge
+ok 3 - buildReleaseMetadata - Rust release uses package prefix and badge
+  ---
+  duration_ms: 0.2541
+  ...
+# Subtest: normalizeReleaseVersion strips existing language prefixes
+ok 4 - normalizeReleaseVersion strips existing language prefixes
+  ---
+  duration_ms: 0.180991
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 59.809693
