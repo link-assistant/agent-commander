@@ -5,8 +5,6 @@
  * Usage: node scripts/publish-to-npm.mjs [--should-pull]
  *   should_pull: Optional flag to pull latest changes before publishing (for release job)
  *
- * IMPORTANT: Update the PACKAGE_NAME constant below to match your package.json
- *
  * Uses link-foundation libraries:
  * - use-m: Dynamic package loading without package.json dependencies
  * - command-stream: Modern shell command execution with streaming support
@@ -15,8 +13,7 @@
 
 import { readFileSync, appendFileSync } from 'fs';
 
-// TODO: Update this to match your package name in package.json
-const PACKAGE_NAME = 'my-package';
+const PACKAGE_NAME = 'agent-commander';
 
 // Load use-m dynamically
 const { use } = eval(

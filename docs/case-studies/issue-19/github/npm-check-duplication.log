@@ -1,0 +1,5 @@
+
+> agent-commander@0.4.0 check:duplication
+> jscpd .
+
+[3m[90mDetection time:[39m[23m: 0.162ms

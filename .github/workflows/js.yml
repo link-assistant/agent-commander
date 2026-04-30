@@ -1,0 +1,369 @@
+name: JavaScript CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - issue-*
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      release_mode:
+        description: "Manual release mode"
+        required: true
+        type: choice
+        default: "instant"
+        options:
+          - instant
+          - changeset-pr
+      bump_type:
+        description: "Version bump type"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      description:
+        description: "Release description (optional)"
+        required: false
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/main' }}
+
+jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    if: github.event_name != 'workflow_dispatch'
+    outputs:
+      mjs-changed: ${{ steps.changes.outputs.mjs-changed }}
+      js-changed: ${{ steps.changes.outputs.js-changed }}
+      package-changed: ${{ steps.changes.outputs.package-changed }}
+      docs-changed: ${{ steps.changes.outputs.docs-changed }}
+      workflow-changed: ${{ steps.changes.outputs.workflow-changed }}
+      any-js-code-changed: ${{ steps.changes.outputs.any-js-code-changed }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24.x"
+
+      - name: Detect changes
+        id: changes
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          GITHUB_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/shared/detect-code-changes.mjs
+
+  js-changeset-check:
+    name: JS Changeset Check
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: github.event_name == 'pull_request' && needs.detect-changes.outputs.any-js-code-changed == 'true'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24.x"
+
+      - name: Install dependencies
+        working-directory: js
+        run: npm install
+
+      - name: Check for changesets
+        working-directory: js
+        run: |
+          if [[ "${{ github.head_ref }}" == "changeset-release/"* ]]; then
+            echo "Skipping changeset check for automated release PR"
+            exit 0
+          fi
+
+          CHANGESET_COUNT=$(find .changeset -name "*.md" ! -name "README.md" 2>/dev/null | wc -l)
+          if [ "$CHANGESET_COUNT" -eq 0 ]; then
+            echo "::warning::No changeset found. Please add a changeset in js/.changeset/"
+          fi
+          echo "Found $CHANGESET_COUNT changeset file(s)"
+
+  js-lint:
+    name: JS Lint
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: |
+      always() && !cancelled() && (
+        github.event_name == 'push' ||
+        github.event_name == 'workflow_dispatch' ||
+        needs.detect-changes.outputs.mjs-changed == 'true' ||
+        needs.detect-changes.outputs.js-changed == 'true' ||
+        needs.detect-changes.outputs.package-changed == 'true' ||
+        needs.detect-changes.outputs.docs-changed == 'true' ||
+        needs.detect-changes.outputs.workflow-changed == 'true'
+      )
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24.x"
+
+      - name: Install dependencies
+        working-directory: js
+        run: npm install
+
+      - name: Run ESLint
+        working-directory: js
+        run: npm run lint
+
+      - name: Check formatting
+        working-directory: js
+        run: npm run format:check
+
+      - name: Check code duplication
+        working-directory: js
+        run: npm run check:duplication
+
+  js-test:
+    name: JS Test (${{ matrix.runtime }} on ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: [detect-changes, js-changeset-check, js-lint]
+    if: |
+      always() && !cancelled() &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || needs.js-changeset-check.result == 'success' || needs.js-changeset-check.result == 'skipped') &&
+      (needs.js-lint.result == 'success' || needs.js-lint.result == 'skipped')
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        runtime: [node, bun, deno]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        if: matrix.runtime == 'node'
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24.x"
+
+      - name: Install dependencies (Node.js)
+        if: matrix.runtime == 'node'
+        working-directory: js
+        run: npm install
+
+      - name: Run tests (Node.js)
+        if: matrix.runtime == 'node'
+        working-directory: js
+        run: npm test
+
+      - name: Setup Bun
+        if: matrix.runtime == 'bun'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies (Bun)
+        if: matrix.runtime == 'bun'
+        working-directory: js
+        run: bun install
+
+      - name: Run tests (Bun)
+        if: matrix.runtime == 'bun'
+        working-directory: js
+        run: bun test
+
+      - name: Setup Deno
+        if: matrix.runtime == 'deno'
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Run tests (Deno)
+        if: matrix.runtime == 'deno'
+        working-directory: js
+        run: deno test --allow-read --allow-run --allow-env --allow-net test/**/*.test.mjs
+
+  js-release:
+    name: JS Release
+    needs: [js-lint, js-test]
+    if: |
+      !cancelled() &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
+      needs.js-lint.result == 'success' &&
+      needs.js-test.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24.x"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        working-directory: js
+        run: npm install
+
+      - name: Update npm for OIDC trusted publishing
+        working-directory: js
+        run: node ../scripts/js/setup-npm.mjs
+
+      - name: Check for changesets
+        id: check_changesets
+        working-directory: js
+        run: |
+          CHANGESET_COUNT=$(find .changeset -name "*.md" ! -name "README.md" 2>/dev/null | wc -l)
+          echo "Found $CHANGESET_COUNT changeset file(s)"
+          echo "changeset_count=$CHANGESET_COUNT" >> "$GITHUB_OUTPUT"
+          echo "has_changesets=$([[ $CHANGESET_COUNT -gt 0 ]] && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
+
+      - name: Merge multiple changesets
+        if: steps.check_changesets.outputs.has_changesets == 'true' && steps.check_changesets.outputs.changeset_count > 1
+        working-directory: js
+        run: node ../scripts/js/merge-changesets.mjs
+
+      - name: Version packages and commit
+        if: steps.check_changesets.outputs.has_changesets == 'true'
+        id: version
+        working-directory: js
+        run: node ../scripts/js/version-and-commit.mjs --mode changeset
+
+      - name: Publish to npm
+        if: steps.version.outputs.version_committed == 'true' || steps.version.outputs.already_released == 'true'
+        id: publish
+        working-directory: js
+        run: node ../scripts/js/publish-to-npm.mjs --should-pull
+
+      - name: Create GitHub Release
+        if: steps.publish.outputs.published == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: js
+        run: node ../scripts/js/create-github-release.mjs --release-version "${{ steps.publish.outputs.published_version }}" --repository "${{ github.repository }}"
+
+  instant-release:
+    name: JS Instant Release
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_mode == 'instant'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24.x"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        working-directory: js
+        run: npm install
+
+      - name: Update npm for OIDC trusted publishing
+        working-directory: js
+        run: node ../scripts/js/setup-npm.mjs
+
+      - name: Version packages and commit
+        id: version
+        working-directory: js
+        run: node ../scripts/js/version-and-commit.mjs --mode instant --bump-type "${{ github.event.inputs.bump_type }}" --description "${{ github.event.inputs.description }}"
+
+      - name: Publish to npm
+        if: steps.version.outputs.version_committed == 'true' || steps.version.outputs.already_released == 'true'
+        id: publish
+        working-directory: js
+        run: node ../scripts/js/publish-to-npm.mjs
+
+      - name: Create GitHub Release
+        if: steps.publish.outputs.published == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: js
+        run: node ../scripts/js/create-github-release.mjs --release-version "${{ steps.publish.outputs.published_version }}" --repository "${{ github.repository }}"
+
+  changeset-pr:
+    name: Create JS Changeset PR
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_mode == 'changeset-pr'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24.x"
+
+      - name: Create changeset file
+        working-directory: js
+        run: |
+          BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+          DESCRIPTION="${{ github.event.inputs.description }}"
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          FRAGMENT_FILE=".changeset/${TIMESTAMP}-manual-${BUMP_TYPE}.md"
+
+          mkdir -p .changeset
+          cat > "$FRAGMENT_FILE" << EOF
+          ---
+          "agent-commander": $BUMP_TYPE
+          ---
+
+          EOF
+
+          if [ -n "$DESCRIPTION" ]; then
+            echo "${DESCRIPTION}" >> "$FRAGMENT_FILE"
+          else
+            echo "Manual ${BUMP_TYPE} release" >> "$FRAGMENT_FILE"
+          fi
+
+          echo "Created changeset fragment: $FRAGMENT_FILE"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: add changeset for manual ${{ github.event.inputs.bump_type }} release"
+          branch: changeset-manual-release-${{ github.run_id }}
+          delete-branch: true
+          title: "chore: manual ${{ github.event.inputs.bump_type }} release"
+          body: |
+            ## Manual Release Request
+
+            This PR was created by a manual workflow trigger to prepare a **${{ github.event.inputs.bump_type }}** JavaScript release.
+
+            ### Release Details
+            - **Description:** ${{ github.event.inputs.description || 'Manual release' }}
+            - **Triggered by:** @${{ github.actor }}
+
+            ### Next Steps
+            1. Review the changeset fragment in this PR
+            2. Merge this PR to main
+            3. The automated JavaScript release workflow will publish to npm and create a GitHub release

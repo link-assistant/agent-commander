@@ -9,15 +9,13 @@
  * - Validates that the PR adds exactly one changeset with proper format
  * - Falls back to checking all changesets for local development
  *
- * IMPORTANT: Update the package name below to match your package.json
  */
 
 import { execSync } from 'child_process';
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 
-// TODO: Update this to match your package name in package.json
-const PACKAGE_NAME = 'my-package';
+const PACKAGE_NAME = 'agent-commander';
 const CHANGESET_DIR = '.changeset';
 
 /**

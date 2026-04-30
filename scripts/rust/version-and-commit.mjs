@@ -12,7 +12,7 @@
  * - lino-arguments: Unified configuration from CLI args, env vars, and .lenv files
  */
 
-import { readFileSync, writeFileSync, appendFileSync, readdirSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, appendFileSync, readdirSync, existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
 
 // Load use-m dynamically
@@ -153,14 +153,15 @@ function stripFrontmatter(content) {
 function collectChangelog(version) {
   const changelogDir = 'changelog.d';
   const changelogFile = 'CHANGELOG.md';
+  const insertMarker = '<!-- changelog-insert-here -->';
 
   if (!existsSync(changelogDir)) {
     return;
   }
 
-  const files = readdirSync(changelogDir).filter(
-    (f) => f.endsWith('.md') && f !== 'README.md'
-  );
+  const files = readdirSync(changelogDir)
+    .filter((f) => f.endsWith('.md') && f !== 'README.md')
+    .sort();
 
   if (files.length === 0) {
     return;
@@ -185,27 +186,46 @@ function collectChangelog(version) {
 
   if (existsSync(changelogFile)) {
     let content = readFileSync(changelogFile, 'utf-8');
-    const lines = content.split('\n');
-    let insertIndex = -1;
 
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].startsWith('## [')) {
-        insertIndex = i;
-        break;
+    if (content.includes(insertMarker)) {
+      content = content.replace(insertMarker, `${insertMarker}${newEntry}`);
+    } else {
+      const lines = content.split('\n');
+      let insertIndex = -1;
+
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith('## [')) {
+          insertIndex = i;
+          break;
+        }
+      }
+
+      if (insertIndex >= 0) {
+        lines.splice(insertIndex, 0, newEntry);
+        content = lines.join('\n');
+      } else {
+        content += newEntry;
       }
     }
 
-    if (insertIndex >= 0) {
-      lines.splice(insertIndex, 0, newEntry);
-      content = lines.join('\n');
-    } else {
-      content += newEntry;
-    }
+    writeFileSync(changelogFile, content, 'utf-8');
+  } else {
+    const content = `# Changelog
 
+All notable changes to the Rust package will be documented in this file.
+
+${insertMarker}
+${newEntry}
+`;
     writeFileSync(changelogFile, content, 'utf-8');
   }
 
   console.log(`Collected ${files.length} changelog fragment(s)`);
+
+  for (const file of files) {
+    unlinkSync(join(changelogDir, file));
+    console.log(`Removed ${join(changelogDir, file)}`);
+  }
 }
 
 async function main() {
@@ -231,8 +251,8 @@ async function main() {
     // Collect changelog fragments
     collectChangelog(newVersion);
 
-    // Stage Cargo.toml and CHANGELOG.md
-    await $`git add Cargo.toml CHANGELOG.md`;
+    // Stage Cargo.toml, collected changelog, and removed fragments
+    await $`git add Cargo.toml CHANGELOG.md changelog.d`;
 
     // Check if there are changes to commit
     try {

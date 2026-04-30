@@ -1,0 +1,121 @@
+[
+  {
+    "id": "agent-commander@0.4.0",
+    "name": "agent-commander",
+    "version": "0.4.0",
+    "size": 25738,
+    "unpackedSize": 120048,
+    "shasum": "ff11125c04fc4113856fc8fd41c662859f927c91",
+    "integrity": "sha512-VeoF4D3gptqzYHyr98sUOdCEVBb5z26lYMY1KgQsaRpXx1cZPIrJTmXdc3JnI0Rzm5c1VLVJ9Q6Ey6UYdQ2gnA==",
+    "filename": "agent-commander-0.4.0.tgz",
+    "files": [
+      {
+        "path": "LICENSE",
+        "size": 1211,
+        "mode": 420
+      },
+      {
+        "path": "README.md",
+        "size": 21560,
+        "mode": 420
+      },
+      {
+        "path": "js/bin/start-agent.mjs",
+        "size": 1985,
+        "mode": 493
+      },
+      {
+        "path": "js/bin/stop-agent.mjs",
+        "size": 1387,
+        "mode": 493
+      },
+      {
+        "path": "js/src/cli-parser.mjs",
+        "size": 7330,
+        "mode": 420
+      },
+      {
+        "path": "js/src/command-builder.mjs",
+        "size": 7333,
+        "mode": 420
+      },
+      {
+        "path": "js/src/executor.mjs",
+        "size": 5188,
+        "mode": 420
+      },
+      {
+        "path": "js/src/index.mjs",
+        "size": 12090,
+        "mode": 420
+      },
+      {
+        "path": "js/src/streaming/index.mjs",
+        "size": 1080,
+        "mode": 420
+      },
+      {
+        "path": "js/src/streaming/input-stream.mjs",
+        "size": 3585,
+        "mode": 420
+      },
+      {
+        "path": "js/src/streaming/ndjson.mjs",
+        "size": 2172,
+        "mode": 420
+      },
+      {
+        "path": "js/src/streaming/output-stream.mjs",
+        "size": 3874,
+        "mode": 420
+      },
+      {
+        "path": "js/src/tools/agent.mjs",
+        "size": 8467,
+        "mode": 420
+      },
+      {
+        "path": "js/src/tools/claude.mjs",
+        "size": 8994,
+        "mode": 420
+      },
+      {
+        "path": "js/src/tools/codex.mjs",
+        "size": 6314,
+        "mode": 420
+      },
+      {
+        "path": "js/src/tools/gemini.mjs",
+        "size": 9386,
+        "mode": 420
+      },
+      {
+        "path": "js/src/tools/index.mjs",
+        "size": 1521,
+        "mode": 420
+      },
+      {
+        "path": "js/src/tools/opencode.mjs",
+        "size": 5439,
+        "mode": 420
+      },
+      {
+        "path": "js/src/tools/qwen.mjs",
+        "size": 9072,
+        "mode": 420
+      },
+      {
+        "path": "js/src/utils/loader.mjs",
+        "size": 1274,
+        "mode": 420
+      },
+      {
+        "path": "package.json",
+        "size": 786,
+        "mode": 420
+      }
+    ],
+    "entryCount": 21,
+    "bundled": []
+  }
+]

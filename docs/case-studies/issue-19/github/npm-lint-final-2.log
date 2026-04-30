@@ -1,0 +1,23 @@
+
+> agent-commander@0.4.0 lint
+> eslint .
+
+
+/tmp/gh-issue-solver-1777514957542/js/src/index.mjs
+   89:8   warning  Function 'agent' has too many lines (194). Maximum allowed is 150   max-lines-per-function
+  140:43  warning  Async arrow function has a complexity of 17. Maximum allowed is 15  complexity
+  187:57  warning  Async arrow function has no 'await' expression                      require-await
+  233:41  warning  Async arrow function has a complexity of 21. Maximum allowed is 15  complexity
+
+/tmp/gh-issue-solver-1777514957542/js/src/tools/claude.mjs
+  63:8  warning  Function 'buildArgs' has a complexity of 22. Maximum allowed is 15  complexity
+
+/tmp/gh-issue-solver-1777514957542/js/src/tools/gemini.mjs
+   52:8  warning  Function 'buildArgs' has a complexity of 17. Maximum allowed is 15     complexity
+  213:8  warning  Function 'extractUsage' has a complexity of 16. Maximum allowed is 15  complexity
+
+/tmp/gh-issue-solver-1777514957542/js/src/tools/qwen.mjs
+  50:8  warning  Function 'buildArgs' has a complexity of 22. Maximum allowed is 15  complexity
+
+✖ 8 problems (0 errors, 8 warnings)
+

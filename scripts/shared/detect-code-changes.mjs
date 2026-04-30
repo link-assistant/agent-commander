@@ -208,8 +208,11 @@ function detectChanges() {
 
   // Check if any JS code files changed
   const jsPattern = /\.(mjs|js|json)$/;
-  const jsCodeFiles = codeChangedFiles.filter((file) =>
-    file.startsWith('js/') && jsPattern.test(file)
+  const jsCodeFiles = codeChangedFiles.filter(
+    (file) =>
+      (file.startsWith('js/') && jsPattern.test(file)) ||
+      file === 'package.json' ||
+      (file.startsWith('scripts/js/') && file.endsWith('.mjs'))
   );
   const anyJsCodeChanged = jsCodeFiles.length > 0;
   setOutput('any-js-code-changed', anyJsCodeChanged ? 'true' : 'false');

@@ -12,7 +12,7 @@
  * - lino-arguments: Unified configuration from CLI args, env vars, and .lenv files
  */
 
-import { readFileSync, appendFileSync, readdirSync } from 'fs';
+import { readFileSync, writeFileSync, appendFileSync, readdirSync, existsSync } from 'fs';
 
 // Load use-m dynamically
 const { use } = eval(
@@ -126,12 +126,34 @@ function countChangesets() {
  */
 async function getVersion(source = 'local') {
   if (source === 'remote') {
-    const result = await $`git show origin/main:package.json`.run({
+    const result = await $`git show origin/main:js/package.json`.run({
       capture: true,
     });
     return JSON.parse(result.stdout).version;
   }
   return JSON.parse(readFileSync('./package.json', 'utf8')).version;
+}
+
+/**
+ * Keep the repository-root package manifest aligned with the JS package.
+ * The root manifest is what npm reads for github:link-assistant/agent-commander installs.
+ * @param {string} version
+ */
+function syncRootPackageVersion(version) {
+  const rootPackagePath = '../package.json';
+
+  if (!existsSync(rootPackagePath)) {
+    return;
+  }
+
+  const rootPackage = JSON.parse(readFileSync(rootPackagePath, 'utf8'));
+  if (rootPackage.version === version) {
+    return;
+  }
+
+  rootPackage.version = version;
+  writeFileSync(rootPackagePath, `${JSON.stringify(rootPackage, null, 2)}\n`);
+  console.log(`Synchronized root package.json to version ${version}`);
 }
 
 async function main() {
@@ -201,6 +223,7 @@ async function main() {
 
     // Get new version after bump
     const newVersion = await getVersion();
+    syncRootPackageVersion(newVersion);
     console.log(`New version: ${newVersion}`);
     setOutput('new_version', newVersion);
 
