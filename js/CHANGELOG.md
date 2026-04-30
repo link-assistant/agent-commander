@@ -1,5 +1,11 @@
 # agent-commander
 
+## 0.4.1
+
+### Patch Changes
+
+- a310e7d: Expose a repository-root npm package manifest for GitHub dependency installs and align JavaScript release publishing with the dedicated js.yml workflow.
+
 ## 0.4.0
 
 ### Minor Changes
