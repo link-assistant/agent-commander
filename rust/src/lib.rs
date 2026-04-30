@@ -52,8 +52,12 @@ pub struct AgentOptions {
     pub prompt: Option<String>,
     /// System prompt for the agent
     pub system_prompt: Option<String>,
+    /// Append to the default system prompt (tool-specific)
+    pub append_system_prompt: Option<String>,
     /// Model to use (tool-specific)
     pub model: Option<String>,
+    /// Fallback model to use when the primary model is overloaded (tool-specific)
+    pub fallback_model: Option<String>,
     /// Isolation mode: 'none', 'screen', 'docker'
     pub isolation: String,
     /// Screen session name (for screen isolation)
@@ -64,6 +68,14 @@ pub struct AgentOptions {
     pub json: bool,
     /// Resume a previous session (tool-specific)
     pub resume: Option<String>,
+    /// Enable verbose output (tool-specific)
+    pub verbose: bool,
+    /// Re-emit user messages in streaming output (tool-specific)
+    pub replay_user_messages: bool,
+    /// Use a specific session ID (tool-specific)
+    pub session_id: Option<String>,
+    /// Fork a resumed session into a new session (tool-specific)
+    pub fork_session: bool,
     /// Enforce native read-only/planning mode
     pub read_only: bool,
 }
@@ -160,9 +172,15 @@ impl Agent {
             working_directory: self.options.working_directory.clone(),
             prompt: self.options.prompt.clone(),
             system_prompt: self.options.system_prompt.clone(),
+            append_system_prompt: self.options.append_system_prompt.clone(),
             model: self.options.model.clone(),
+            fallback_model: self.options.fallback_model.clone(),
             json: self.options.json,
+            verbose: self.options.verbose,
+            replay_user_messages: self.options.replay_user_messages,
             resume: self.options.resume.clone(),
+            session_id: self.options.session_id.clone(),
+            fork_session: self.options.fork_session,
             read_only: self.options.read_only,
             isolation: self.options.isolation.clone(),
             screen_name: self.options.screen_name.clone(),

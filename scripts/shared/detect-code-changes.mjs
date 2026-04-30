@@ -40,8 +40,8 @@
  *   - any-code-changed: 'true' if any code files changed (excludes docs, changelog, changesets, experiments, examples)
  */
 
-import { execSync } from 'child_process';
-import { appendFileSync } from 'fs';
+import { execSync } from "child_process";
+import { appendFileSync } from "fs";
 
 /**
  * Execute a shell command and return trimmed output
@@ -50,11 +50,11 @@ import { appendFileSync } from 'fs';
  */
 function exec(command) {
   try {
-    return execSync(command, { encoding: 'utf-8' }).trim();
+    return execSync(command, { encoding: "utf-8" }).trim();
   } catch (error) {
     console.error(`Error executing command: ${command}`);
     console.error(error.message);
-    return '';
+    return "";
   }
 }
 
@@ -76,9 +76,9 @@ function setOutput(name, value) {
  * @returns {string[]} Array of changed file paths
  */
 function getChangedFiles() {
-  const eventName = process.env.GITHUB_EVENT_NAME || 'local';
+  const eventName = process.env.GITHUB_EVENT_NAME || "local";
 
-  if (eventName === 'pull_request') {
+  if (eventName === "pull_request") {
     const baseSha = process.env.GITHUB_BASE_SHA;
     const headSha = process.env.GITHUB_HEAD_SHA;
 
@@ -86,27 +86,27 @@ function getChangedFiles() {
       console.log(`Comparing PR: ${baseSha}...${headSha}`);
       try {
         try {
-          execSync(`git cat-file -e ${baseSha}`, { stdio: 'ignore' });
+          execSync(`git cat-file -e ${baseSha}`, { stdio: "ignore" });
         } catch {
-          console.log('Base commit not available locally, attempting fetch...');
-          execSync(`git fetch origin ${baseSha}`, { stdio: 'inherit' });
+          console.log("Base commit not available locally, attempting fetch...");
+          execSync(`git fetch origin ${baseSha}`, { stdio: "inherit" });
         }
         const output = exec(`git diff --name-only ${baseSha} ${headSha}`);
-        return output ? output.split('\n').filter(Boolean) : [];
+        return output ? output.split("\n").filter(Boolean) : [];
       } catch (error) {
         console.error(`Git diff failed: ${error.message}`);
       }
     }
   }
 
-  console.log('Comparing HEAD^ to HEAD');
+  console.log("Comparing HEAD^ to HEAD");
   try {
-    const output = exec('git diff --name-only HEAD^ HEAD');
-    return output ? output.split('\n').filter(Boolean) : [];
+    const output = exec("git diff --name-only HEAD^ HEAD");
+    return output ? output.split("\n").filter(Boolean) : [];
   } catch {
-    console.log('HEAD^ not available, listing all files in HEAD');
-    const output = exec('git ls-tree --name-only -r HEAD');
-    return output ? output.split('\n').filter(Boolean) : [];
+    console.log("HEAD^ not available, listing all files in HEAD");
+    const output = exec("git ls-tree --name-only -r HEAD");
+    return output ? output.split("\n").filter(Boolean) : [];
   }
 }
 
@@ -116,18 +116,18 @@ function getChangedFiles() {
  * @returns {boolean} True if the file should be excluded
  */
 function isExcludedFromCodeChanges(filePath) {
-  if (filePath.endsWith('.md')) {
+  if (filePath.endsWith(".md")) {
     return true;
   }
 
   const excludedFolders = [
-    'changelog.d/',
-    '.changeset/',
-    'docs/',
-    'experiments/',
-    'examples/',
-    'js/examples/',
-    'rust/examples/',
+    "changelog.d/",
+    ".changeset/",
+    "docs/",
+    "experiments/",
+    "examples/",
+    "js/examples/",
+    "rust/examples/",
   ];
 
   for (const folder of excludedFolders) {
@@ -143,86 +143,92 @@ function isExcludedFromCodeChanges(filePath) {
  * Main function to detect changes
  */
 function detectChanges() {
-  console.log('Detecting file changes for CI/CD...\n');
+  console.log("Detecting file changes for CI/CD...\n");
 
   const changedFiles = getChangedFiles();
 
-  console.log('Changed files:');
+  console.log("Changed files:");
   if (changedFiles.length === 0) {
-    console.log('  (none)');
+    console.log("  (none)");
   } else {
     changedFiles.forEach((file) => console.log(`  ${file}`));
   }
-  console.log('');
+  console.log("");
 
   // Detect .rs file changes (Rust source)
-  const rsChanged = changedFiles.some((file) => file.endsWith('.rs'));
-  setOutput('rs-changed', rsChanged ? 'true' : 'false');
+  const rsChanged = changedFiles.some((file) => file.endsWith(".rs"));
+  setOutput("rs-changed", rsChanged ? "true" : "false");
 
   // Detect .toml file changes (Cargo.toml, etc.)
-  const tomlChanged = changedFiles.some((file) => file.endsWith('.toml'));
-  setOutput('toml-changed', tomlChanged ? 'true' : 'false');
+  const tomlChanged = changedFiles.some((file) => file.endsWith(".toml"));
+  setOutput("toml-changed", tomlChanged ? "true" : "false");
 
   // Detect .mjs file changes
-  const mjsChanged = changedFiles.some((file) => file.endsWith('.mjs'));
-  setOutput('mjs-changed', mjsChanged ? 'true' : 'false');
+  const mjsChanged = changedFiles.some((file) => file.endsWith(".mjs"));
+  setOutput("mjs-changed", mjsChanged ? "true" : "false");
 
   // Detect .js file changes
-  const jsChanged = changedFiles.some((file) => file.endsWith('.js'));
-  setOutput('js-changed', jsChanged ? 'true' : 'false');
+  const jsChanged = changedFiles.some((file) => file.endsWith(".js"));
+  setOutput("js-changed", jsChanged ? "true" : "false");
 
   // Detect package.json changes
-  const packageChanged = changedFiles.some((file) => file.endsWith('package.json'));
-  setOutput('package-changed', packageChanged ? 'true' : 'false');
+  const packageChanged = changedFiles.some((file) =>
+    file.endsWith("package.json"),
+  );
+  setOutput("package-changed", packageChanged ? "true" : "false");
 
   // Detect documentation changes (any .md file)
-  const docsChanged = changedFiles.some((file) => file.endsWith('.md'));
-  setOutput('docs-changed', docsChanged ? 'true' : 'false');
+  const docsChanged = changedFiles.some((file) => file.endsWith(".md"));
+  setOutput("docs-changed", docsChanged ? "true" : "false");
 
   // Detect workflow changes
   const workflowChanged = changedFiles.some((file) =>
-    file.startsWith('.github/workflows/')
+    file.startsWith(".github/workflows/"),
   );
-  setOutput('workflow-changed', workflowChanged ? 'true' : 'false');
+  setOutput("workflow-changed", workflowChanged ? "true" : "false");
 
   // Detect code changes (excluding docs, changelog, changesets, experiments, examples)
   const codeChangedFiles = changedFiles.filter(
-    (file) => !isExcludedFromCodeChanges(file)
+    (file) => !isExcludedFromCodeChanges(file),
   );
 
-  console.log('\nFiles considered as code changes:');
+  console.log("\nFiles considered as code changes:");
   if (codeChangedFiles.length === 0) {
-    console.log('  (none)');
+    console.log("  (none)");
   } else {
     codeChangedFiles.forEach((file) => console.log(`  ${file}`));
   }
-  console.log('');
+  console.log("");
 
   // Check if any Rust code files changed
   const rustPattern = /\.(rs|toml)$/;
-  const rustCodeFiles = codeChangedFiles.filter((file) =>
-    file.startsWith('rust/') && rustPattern.test(file)
+  const rustCodeFiles = codeChangedFiles.filter(
+    (file) =>
+      (file.startsWith("rust/") && rustPattern.test(file)) ||
+      (file.startsWith("scripts/shared/") && file.endsWith(".mjs")) ||
+      (file.startsWith("scripts/rust/") && file.endsWith(".mjs")),
   );
   const anyRustCodeChanged = rustCodeFiles.length > 0;
-  setOutput('any-rust-code-changed', anyRustCodeChanged ? 'true' : 'false');
+  setOutput("any-rust-code-changed", anyRustCodeChanged ? "true" : "false");
 
   // Check if any JS code files changed
   const jsPattern = /\.(mjs|js|json)$/;
   const jsCodeFiles = codeChangedFiles.filter(
     (file) =>
-      (file.startsWith('js/') && jsPattern.test(file)) ||
-      file === 'package.json' ||
-      (file.startsWith('scripts/js/') && file.endsWith('.mjs'))
+      (file.startsWith("js/") && jsPattern.test(file)) ||
+      file === "package.json" ||
+      (file.startsWith("scripts/shared/") && file.endsWith(".mjs")) ||
+      (file.startsWith("scripts/js/") && file.endsWith(".mjs")),
   );
   const anyJsCodeChanged = jsCodeFiles.length > 0;
-  setOutput('any-js-code-changed', anyJsCodeChanged ? 'true' : 'false');
+  setOutput("any-js-code-changed", anyJsCodeChanged ? "true" : "false");
 
   // Check if any code files changed
   const codePattern = /\.(rs|toml|mjs|js|json|yml|yaml)$|\.github\/workflows\//;
   const codeChanged = codeChangedFiles.some((file) => codePattern.test(file));
-  setOutput('any-code-changed', codeChanged ? 'true' : 'false');
+  setOutput("any-code-changed", codeChanged ? "true" : "false");
 
-  console.log('\nChange detection completed.');
+  console.log("\nChange detection completed.");
 }
 
 detectChanges();

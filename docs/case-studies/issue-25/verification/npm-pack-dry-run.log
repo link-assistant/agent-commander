@@ -1,0 +1,39 @@
+
+> agent-commander@0.4.1 prepare
+> cd .. && husky js/.husky || true
+
+npm notice
+npm notice 📦  agent-commander@0.4.1
+npm notice Tarball Contents
+npm notice 1.6kB CHANGELOG.md
+npm notice 3.6kB README.md
+npm notice 2.0kB bin/start-agent.mjs
+npm notice 1.4kB bin/stop-agent.mjs
+npm notice 2.1kB package.json
+npm notice 7.3kB src/cli-parser.mjs
+npm notice 7.3kB src/command-builder.mjs
+npm notice 5.2kB src/executor.mjs
+npm notice 12.1kB src/index.mjs
+npm notice 1.1kB src/streaming/index.mjs
+npm notice 3.6kB src/streaming/input-stream.mjs
+npm notice 2.2kB src/streaming/ndjson.mjs
+npm notice 3.9kB src/streaming/output-stream.mjs
+npm notice 8.5kB src/tools/agent.mjs
+npm notice 9.0kB src/tools/claude.mjs
+npm notice 6.3kB src/tools/codex.mjs
+npm notice 9.4kB src/tools/gemini.mjs
+npm notice 1.5kB src/tools/index.mjs
+npm notice 5.4kB src/tools/opencode.mjs
+npm notice 9.1kB src/tools/qwen.mjs
+npm notice 1.3kB src/utils/loader.mjs
+npm notice Tarball Details
+npm notice name: agent-commander
+npm notice version: 0.4.1
+npm notice filename: agent-commander-0.4.1.tgz
+npm notice package size: 21.5 kB
+npm notice unpacked size: 103.8 kB
+npm notice shasum: d338a95d205aad07a59055dd6a8a5538712f34fa
+npm notice integrity: sha512-CPjOXdpjmnqbe[...]B0EA8FcrktPTQ==
+npm notice total files: 21
+npm notice
+agent-commander-0.4.1.tgz

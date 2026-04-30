@@ -12,40 +12,47 @@
  * - lino-arguments: Unified configuration from CLI args, env vars, and .lenv files
  */
 
-import { readFileSync, writeFileSync, appendFileSync, readdirSync, existsSync, unlinkSync } from 'fs';
-import { join } from 'path';
+import {
+  readFileSync,
+  writeFileSync,
+  appendFileSync,
+  readdirSync,
+  existsSync,
+  unlinkSync,
+} from "fs";
+import { join } from "path";
 
 // Load use-m dynamically
 const { use } = eval(
-  await (await fetch('https://unpkg.com/use-m/use.js')).text()
+  await (await fetch("https://unpkg.com/use-m/use.js")).text(),
 );
 
 // Import link-foundation libraries
-const { $ } = await use('command-stream');
-const { makeConfig } = await use('lino-arguments');
+const { $ } = await use("command-stream");
+const { makeConfig } = await use("lino-arguments");
 
 // Parse CLI arguments
 const config = makeConfig({
   yargs: ({ yargs, getenv }) =>
     yargs
-      .option('bump-type', {
-        type: 'string',
-        default: getenv('BUMP_TYPE', ''),
-        describe: 'Version bump type: major, minor, or patch',
-        choices: ['major', 'minor', 'patch'],
+      .option("bump-type", {
+        type: "string",
+        default: getenv("BUMP_TYPE", ""),
+        describe: "Version bump type: major, minor, or patch",
+        choices: ["major", "minor", "patch"],
       })
-      .option('description', {
-        type: 'string',
-        default: getenv('DESCRIPTION', ''),
-        describe: 'Release description',
+      .option("description", {
+        type: "string",
+        default: getenv("DESCRIPTION", ""),
+        describe: "Release description",
       }),
 });
 
 const { bumpType, description } = config;
 
-if (!bumpType || !['major', 'minor', 'patch'].includes(bumpType)) {
+if (!bumpType || !["major", "minor", "patch"].includes(bumpType)) {
   console.error(
-    'Usage: node scripts/version-and-commit.mjs --bump-type <major|minor|patch> [--description <desc>]'
+    "Usage: node scripts/version-and-commit.mjs --bump-type <major|minor|patch> [--description <desc>]",
   );
   process.exit(1);
 }
@@ -69,11 +76,11 @@ function setOutput(key, value) {
  * @returns {{major: number, minor: number, patch: number}}
  */
 function getCurrentVersion() {
-  const cargoToml = readFileSync('Cargo.toml', 'utf-8');
+  const cargoToml = readFileSync("Cargo.toml", "utf-8");
   const match = cargoToml.match(/^version\s*=\s*"(\d+)\.(\d+)\.(\d+)"/m);
 
   if (!match) {
-    console.error('Error: Could not parse version from Cargo.toml');
+    console.error("Error: Could not parse version from Cargo.toml");
     process.exit(1);
   }
 
@@ -94,11 +101,11 @@ function calculateNewVersion(current, bumpType) {
   const { major, minor, patch } = current;
 
   switch (bumpType) {
-    case 'major':
+    case "major":
       return `${major + 1}.0.0`;
-    case 'minor':
+    case "minor":
       return `${major}.${minor + 1}.0`;
-    case 'patch':
+    case "patch":
       return `${major}.${minor}.${patch + 1}`;
     default:
       throw new Error(`Invalid bump type: ${bumpType}`);
@@ -110,12 +117,12 @@ function calculateNewVersion(current, bumpType) {
  * @param {string} newVersion
  */
 function updateCargoToml(newVersion) {
-  let cargoToml = readFileSync('Cargo.toml', 'utf-8');
+  let cargoToml = readFileSync("Cargo.toml", "utf-8");
   cargoToml = cargoToml.replace(
     /^(version\s*=\s*")[^"]+(")/m,
-    `$1${newVersion}$2`
+    `$1${newVersion}$2`,
   );
-  writeFileSync('Cargo.toml', cargoToml, 'utf-8');
+  writeFileSync("Cargo.toml", cargoToml, "utf-8");
   console.log(`Updated Cargo.toml to version ${newVersion}`);
 }
 
@@ -126,11 +133,20 @@ function updateCargoToml(newVersion) {
  */
 async function checkTagExists(version) {
   try {
-    await $`git rev-parse v${version}`.run({ capture: true });
+    await $`git rev-parse ${releaseTag(version)}`.run({ capture: true });
     return true;
   } catch {
     return false;
   }
+}
+
+/**
+ * Build the language-specific release tag for a Rust package version.
+ * @param {string} version
+ * @returns {string}
+ */
+function releaseTag(version) {
+  return `rust_${version}`;
 }
 
 /**
@@ -139,7 +155,9 @@ async function checkTagExists(version) {
  * @returns {string} - Content without frontmatter
  */
 function stripFrontmatter(content) {
-  const frontmatterMatch = content.match(/^---\s*\n[\s\S]*?\n---\s*\n([\s\S]*)$/);
+  const frontmatterMatch = content.match(
+    /^---\s*\n[\s\S]*?\n---\s*\n([\s\S]*)$/,
+  );
   if (frontmatterMatch) {
     return frontmatterMatch[1].trim();
   }
@@ -151,16 +169,16 @@ function stripFrontmatter(content) {
  * @param {string} version
  */
 function collectChangelog(version) {
-  const changelogDir = 'changelog.d';
-  const changelogFile = 'CHANGELOG.md';
-  const insertMarker = '<!-- changelog-insert-here -->';
+  const changelogDir = "changelog.d";
+  const changelogFile = "CHANGELOG.md";
+  const insertMarker = "<!-- changelog-insert-here -->";
 
   if (!existsSync(changelogDir)) {
     return;
   }
 
   const files = readdirSync(changelogDir)
-    .filter((f) => f.endsWith('.md') && f !== 'README.md')
+    .filter((f) => f.endsWith(".md") && f !== "README.md")
     .sort();
 
   if (files.length === 0) {
@@ -170,31 +188,31 @@ function collectChangelog(version) {
   const fragments = files
     .sort()
     .map((f) => {
-      const rawContent = readFileSync(join(changelogDir, f), 'utf-8');
+      const rawContent = readFileSync(join(changelogDir, f), "utf-8");
       // Strip frontmatter (which contains bump type metadata)
       return stripFrontmatter(rawContent);
     })
     .filter(Boolean)
-    .join('\n\n');
+    .join("\n\n");
 
   if (!fragments) {
     return;
   }
 
-  const dateStr = new Date().toISOString().split('T')[0];
+  const dateStr = new Date().toISOString().split("T")[0];
   const newEntry = `\n## [${version}] - ${dateStr}\n\n${fragments}\n`;
 
   if (existsSync(changelogFile)) {
-    let content = readFileSync(changelogFile, 'utf-8');
+    let content = readFileSync(changelogFile, "utf-8");
 
     if (content.includes(insertMarker)) {
       content = content.replace(insertMarker, `${insertMarker}${newEntry}`);
     } else {
-      const lines = content.split('\n');
+      const lines = content.split("\n");
       let insertIndex = -1;
 
       for (let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith('## [')) {
+        if (lines[i].startsWith("## [")) {
           insertIndex = i;
           break;
         }
@@ -202,13 +220,13 @@ function collectChangelog(version) {
 
       if (insertIndex >= 0) {
         lines.splice(insertIndex, 0, newEntry);
-        content = lines.join('\n');
+        content = lines.join("\n");
       } else {
         content += newEntry;
       }
     }
 
-    writeFileSync(changelogFile, content, 'utf-8');
+    writeFileSync(changelogFile, content, "utf-8");
   } else {
     const content = `# Changelog
 
@@ -217,7 +235,7 @@ All notable changes to the Rust package will be documented in this file.
 ${insertMarker}
 ${newEntry}
 `;
-    writeFileSync(changelogFile, content, 'utf-8');
+    writeFileSync(changelogFile, content, "utf-8");
   }
 
   console.log(`Collected ${files.length} changelog fragment(s)`);
@@ -238,10 +256,11 @@ async function main() {
     const newVersion = calculateNewVersion(current, bumpType);
 
     // Check if this version was already released
+    const tag = releaseTag(newVersion);
     if (await checkTagExists(newVersion)) {
-      console.log(`Tag v${newVersion} already exists`);
-      setOutput('already_released', 'true');
-      setOutput('new_version', newVersion);
+      console.log(`Tag ${tag} already exists`);
+      setOutput("already_released", "true");
+      setOutput("new_version", newVersion);
       return;
     }
 
@@ -258,9 +277,9 @@ async function main() {
     try {
       await $`git diff --cached --quiet`.run({ capture: true });
       // No changes to commit
-      console.log('No changes to commit');
-      setOutput('version_committed', 'false');
-      setOutput('new_version', newVersion);
+      console.log("No changes to commit");
+      setOutput("version_committed", "false");
+      setOutput("new_version", newVersion);
       return;
     } catch {
       // There are changes to commit (git diff exits with 1 when there are differences)
@@ -275,20 +294,20 @@ async function main() {
 
     // Create tag
     const tagMsg = description
-      ? `Release v${newVersion}\n\n${description}`
-      : `Release v${newVersion}`;
-    await $`git tag -a v${newVersion} -m ${tagMsg}`;
-    console.log(`Created tag v${newVersion}`);
+      ? `[Rust] v${newVersion}\n\n${description}`
+      : `[Rust] v${newVersion}`;
+    await $`git tag -a ${tag} -m ${tagMsg}`;
+    console.log(`Created tag ${tag}`);
 
     // Push changes and tag
     await $`git push`;
     await $`git push --tags`;
-    console.log('Pushed changes and tags');
+    console.log("Pushed changes and tags");
 
-    setOutput('version_committed', 'true');
-    setOutput('new_version', newVersion);
+    setOutput("version_committed", "true");
+    setOutput("new_version", newVersion);
   } catch (error) {
-    console.error('Error:', error.message);
+    console.error("Error:", error.message);
     process.exit(1);
   }
 }

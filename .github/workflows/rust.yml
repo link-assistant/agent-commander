@@ -242,11 +242,11 @@ jobs:
         run: |
           if [ "${{ steps.bump_type.outputs.has_fragments }}" != "true" ]; then
             CURRENT_VERSION=$(grep -Po '(?<=^version = ")[^"]*' Cargo.toml)
-            if git rev-parse "v$CURRENT_VERSION" >/dev/null 2>&1; then
-              echo "No changelog fragments and v$CURRENT_VERSION already released"
+            if git rev-parse "rust_$CURRENT_VERSION" >/dev/null 2>&1; then
+              echo "No changelog fragments and rust_$CURRENT_VERSION already released"
               echo "should_release=false" >> "$GITHUB_OUTPUT"
             else
-              echo "No changelog fragments but v$CURRENT_VERSION not yet released"
+              echo "No changelog fragments but rust_$CURRENT_VERSION not yet released"
               echo "should_release=true" >> "$GITHUB_OUTPUT"
               echo "skip_bump=true" >> "$GITHUB_OUTPUT"
             fi

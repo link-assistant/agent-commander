@@ -5,6 +5,7 @@ edition = "2021"
 description = "A Rust library to control agents enclosed in CLI commands like Anthropic Claude Code CLI"
 license = "Unlicense"
 repository = "https://github.com/link-assistant/agent-commander"
+readme = "README.md"
 keywords = ["agent", "cli", "automation", "process-management", "ai"]
 categories = ["command-line-utilities", "development-tools"]
 

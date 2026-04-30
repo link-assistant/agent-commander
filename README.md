@@ -1,8 +1,19 @@
 # agent-commander
 
-A JavaScript library to control agents enclosed in CLI commands like Anthropic Claude Code CLI, OpenAI Codex, OpenCode, Qwen Code, Gemini CLI, and @link-assistant/agent.
+[![npm version](https://img.shields.io/npm/v/agent-commander?label=npm&style=flat)](https://www.npmjs.com/package/agent-commander)
+[![crates.io version](https://img.shields.io/crates/v/agent-commander?label=crates.io&style=flat)](https://crates.io/crates/agent-commander)
+[![JavaScript CI/CD](https://github.com/link-assistant/agent-commander/actions/workflows/js.yml/badge.svg)](https://github.com/link-assistant/agent-commander/actions/workflows/js.yml)
+[![Rust CI/CD](https://github.com/link-assistant/agent-commander/actions/workflows/rust.yml/badge.svg)](https://github.com/link-assistant/agent-commander/actions/workflows/rust.yml)
 
-Built on the success of [hive-mind](https://github.com/link-assistant/hive-mind), `agent-commander` provides a flexible JavaScript interface and CLI tools for managing agent processes with various isolation levels.
+A JavaScript and Rust library to control agents enclosed in CLI commands like Anthropic Claude Code CLI, OpenAI Codex, OpenCode, Qwen Code, Gemini CLI, and @link-assistant/agent.
+
+Built on the success of [hive-mind](https://github.com/link-assistant/hive-mind), `agent-commander` provides flexible language bindings and CLI tools for managing agent processes with various isolation levels.
+
+Language-specific package documentation:
+
+- [JavaScript package README](js/README.md)
+- [Rust crate README](rust/README.md)
+- [Shared concepts](docs/common-concepts.md)
 
 ## Features
 
@@ -49,7 +60,7 @@ npm install github:link-assistant/agent-commander
 ### For Deno
 
 ```javascript
-import { agent } from 'https://raw.githubusercontent.com/link-assistant/agent-commander/main/js/src/index.mjs';
+import { agent } from "https://raw.githubusercontent.com/link-assistant/agent-commander/main/js/src/index.mjs";
 ```
 
 ### For Bun
@@ -60,14 +71,14 @@ bun add agent-commander
 
 ## Supported Tools
 
-| Tool | Description | JSON Output | JSON Input | Read-only Mode | Model Aliases |
-|------|-------------|-------------|------------|----------------|---------------|
-| `claude` | Anthropic Claude Code CLI | ✅ (stream-json) | ✅ (stream-json) | ✅ `--permission-mode plan` | `sonnet`, `opus`, `haiku` |
-| `codex` | OpenAI Codex CLI | ✅ | ❌ | ✅ `--sandbox read-only` | `gpt-5.5` (default), `gpt-5.4`, `gpt5`, `o3`, `gpt4o` |
-| `opencode` | OpenCode CLI | ✅ | ❌ | ✅ `OPENCODE_PERMISSION` deny rules | `grok`, `gemini`, `sonnet` |
-| `qwen` | Qwen Code CLI | ✅ (stream-json) | ✅ (stream-json) | ✅ `--approval-mode plan` | `qwen3-coder`, `coder`, `gpt-4o` |
-| `gemini` | Gemini CLI | ✅ (stream-json) | ❌ | ✅ `--approval-mode plan` | `flash`, `pro`, `lite` |
-| `agent` | @link-assistant/agent | ✅ | ✅ | ❌ not enforceable | `nemotron-3-super-free` (default), `grok`, `sonnet`, `haiku` |
+| Tool       | Description               | JSON Output      | JSON Input       | Read-only Mode                      | Model Aliases                                                |
+| ---------- | ------------------------- | ---------------- | ---------------- | ----------------------------------- | ------------------------------------------------------------ |
+| `claude`   | Anthropic Claude Code CLI | ✅ (stream-json) | ✅ (stream-json) | ✅ `--permission-mode plan`         | `sonnet`, `opus`, `haiku`                                    |
+| `codex`    | OpenAI Codex CLI          | ✅               | ❌               | ✅ `--sandbox read-only`            | `gpt-5.5` (default), `gpt-5.4`, `gpt5`, `o3`, `gpt4o`        |
+| `opencode` | OpenCode CLI              | ✅               | ❌               | ✅ `OPENCODE_PERMISSION` deny rules | `grok`, `gemini`, `sonnet`                                   |
+| `qwen`     | Qwen Code CLI             | ✅ (stream-json) | ✅ (stream-json) | ✅ `--approval-mode plan`           | `qwen3-coder`, `coder`, `gpt-4o`                             |
+| `gemini`   | Gemini CLI                | ✅ (stream-json) | ❌               | ✅ `--approval-mode plan`           | `flash`, `pro`, `lite`                                       |
+| `agent`    | @link-assistant/agent     | ✅               | ✅               | ❌ not enforceable                  | `nemotron-3-super-free` (default), `grok`, `sonnet`, `haiku` |
 
 ### Claude-specific Features
 
@@ -162,49 +173,58 @@ start-agent --tool claude --working-directory "/tmp/dir" --prompt "Solve the iss
 #### Examples
 
 **Basic usage with Claude**
+
 ```bash
 start-agent --tool claude --working-directory "/tmp/dir" --prompt "Hello" --model sonnet
 ```
 
 **Using Codex**
+
 ```bash
 start-agent --tool codex --working-directory "/tmp/dir" --prompt "Fix the bug" --model gpt5
 ```
 
 **Using @link-assistant/agent with Grok**
+
 ```bash
 start-agent --tool agent --working-directory "/tmp/dir" --prompt "Analyze code" --model grok
 ```
 
 **Using Qwen Code**
+
 ```bash
 start-agent --tool qwen --working-directory "/tmp/dir" --prompt "Review this code" --model qwen3-coder
 ```
 
 **Using Gemini**
+
 ```bash
 start-agent --tool gemini --working-directory "/tmp/dir" --prompt "Explain this code" --model flash
 ```
 
 **With model fallback (Claude)**
+
 ```bash
 start-agent --tool claude --working-directory "/tmp/dir" \
   --prompt "Complex task" --model opus --fallback-model sonnet
 ```
 
 **Resume a session with fork (Claude)**
+
 ```bash
 start-agent --tool claude --working-directory "/tmp/dir" \
   --resume abc123 --fork-session
 ```
 
 **Read-only planning mode**
+
 ```bash
 start-agent --tool claude --working-directory "/tmp/dir" \
   --prompt "Return a JSON implementation plan" --read-only
 ```
 
 **Read-only planning mode with screen isolation**
+
 ```bash
 start-agent --tool codex --working-directory "/tmp/dir" \
   --prompt "Inspect and plan only" --read-only \
@@ -212,18 +232,21 @@ start-agent --tool codex --working-directory "/tmp/dir" \
 ```
 
 **With screen isolation (detached)**
+
 ```bash
 start-agent --tool claude --working-directory "/tmp/dir" \
   --isolation screen --screen-name my-agent --detached
 ```
 
 **With docker isolation (attached)**
+
 ```bash
 start-agent --tool claude --working-directory "/tmp/dir" \
   --isolation docker --container-name my-agent
 ```
 
 **Dry run**
+
 ```bash
 start-agent --tool claude --working-directory "/tmp/dir" --dry-run
 ```
@@ -247,11 +270,13 @@ stop-agent --isolation screen --screen-name my-agent
 #### Examples
 
 **Stop screen session**
+
 ```bash
 stop-agent --isolation screen --screen-name my-agent
 ```
 
 **Stop docker container**
+
 ```bash
 stop-agent --isolation docker --container-name my-agent
 ```
@@ -261,15 +286,15 @@ stop-agent --isolation docker --container-name my-agent
 ### Basic Usage
 
 ```javascript
-import { agent } from 'agent-commander';
+import { agent } from "agent-commander";
 
 // Create an agent controller
 const myAgent = agent({
-  tool: 'claude',
-  workingDirectory: '/tmp/project',
-  prompt: 'Analyze this code',
-  systemPrompt: 'You are a helpful assistant',
-  model: 'sonnet', // Optional: use model alias
+  tool: "claude",
+  workingDirectory: "/tmp/project",
+  prompt: "Analyze this code",
+  systemPrompt: "You are a helpful assistant",
+  model: "sonnet", // Optional: use model alias
 });
 
 // Start the agent (non-blocking, returns immediately)
@@ -279,68 +304,68 @@ await myAgent.start();
 
 // Stop the agent and collect output
 const result = await myAgent.stop();
-console.log('Exit code:', result.exitCode);
-console.log('Plain output:', result.output.plain);
-console.log('Parsed output:', result.output.parsed); // JSON messages if supported
-console.log('Session ID:', result.sessionId); // For resuming later
-console.log('Usage:', result.usage); // Token usage statistics
+console.log("Exit code:", result.exitCode);
+console.log("Plain output:", result.output.plain);
+console.log("Parsed output:", result.output.parsed); // JSON messages if supported
+console.log("Session ID:", result.sessionId); // For resuming later
+console.log("Usage:", result.usage); // Token usage statistics
 ```
 
 ### Using Different Tools
 
 ```javascript
-import { agent } from 'agent-commander';
+import { agent } from "agent-commander";
 
 // Using Codex
 const codexAgent = agent({
-  tool: 'codex',
-  workingDirectory: '/tmp/project',
-  prompt: 'Fix this bug',
-  model: 'gpt5',
+  tool: "codex",
+  workingDirectory: "/tmp/project",
+  prompt: "Fix this bug",
+  model: "gpt5",
 });
 
 // Using OpenCode
 const opencodeAgent = agent({
-  tool: 'opencode',
-  workingDirectory: '/tmp/project',
-  prompt: 'Refactor this code',
-  model: 'grok',
+  tool: "opencode",
+  workingDirectory: "/tmp/project",
+  prompt: "Refactor this code",
+  model: "grok",
 });
 
 // Using @link-assistant/agent
 const linkAgent = agent({
-  tool: 'agent',
-  workingDirectory: '/tmp/project',
-  prompt: 'Implement feature',
-  model: 'grok',
+  tool: "agent",
+  workingDirectory: "/tmp/project",
+  prompt: "Implement feature",
+  model: "grok",
 });
 
 // Using Qwen Code
 const qwenAgent = agent({
-  tool: 'qwen',
-  workingDirectory: '/tmp/project',
-  prompt: 'Review this code',
-  model: 'qwen3-coder',
+  tool: "qwen",
+  workingDirectory: "/tmp/project",
+  prompt: "Review this code",
+  model: "qwen3-coder",
 });
 
 // Using Gemini CLI
 const geminiAgent = agent({
-  tool: 'gemini',
-  workingDirectory: '/tmp/project',
-  prompt: 'Explain this code',
-  model: 'flash',
+  tool: "gemini",
+  workingDirectory: "/tmp/project",
+  prompt: "Explain this code",
+  model: "flash",
 });
 ```
 
 ### Read-only Planning
 
 ```javascript
-import { agent } from 'agent-commander';
+import { agent } from "agent-commander";
 
 const planner = agent({
-  tool: 'claude',
-  workingDirectory: '/tmp/project',
-  prompt: 'Inspect the codebase and return a task split plan',
+  tool: "claude",
+  workingDirectory: "/tmp/project",
+  prompt: "Inspect the codebase and return a task split plan",
   readOnly: true,
 });
 
@@ -350,19 +375,19 @@ await planner.start({ dryRun: true });
 ### Streaming JSON Messages
 
 ```javascript
-import { agent } from 'agent-commander';
+import { agent } from "agent-commander";
 
 const myAgent = agent({
-  tool: 'claude',
-  workingDirectory: '/tmp/project',
-  prompt: 'Process this',
+  tool: "claude",
+  workingDirectory: "/tmp/project",
+  prompt: "Process this",
   json: true, // Enable JSON output mode
 });
 
 // Stream messages as they arrive
 await myAgent.start({
   onMessage: (message) => {
-    console.log('Received:', message);
+    console.log("Received:", message);
   },
   onOutput: (chunk) => {
     // Raw output chunks
@@ -377,17 +402,17 @@ const result = await myAgent.stop();
 ### Using JSON Input/Output Streams
 
 ```javascript
-import { createJsonInputStream, createJsonOutputStream } from 'agent-commander';
+import { createJsonInputStream, createJsonOutputStream } from "agent-commander";
 
 // Create input stream for sending messages
 const input = createJsonInputStream();
-input.addSystemMessage({ content: 'You are helpful' });
-input.addPrompt({ content: 'Analyze this code' });
+input.addSystemMessage({ content: "You are helpful" });
+input.addPrompt({ content: "Analyze this code" });
 console.log(input.toString()); // NDJSON format
 
 // Parse streaming output
 const output = createJsonOutputStream({
-  onMessage: ({ message }) => console.log('Received:', message),
+  onMessage: ({ message }) => console.log("Received:", message),
 });
 
 // Process chunks as they arrive
@@ -401,14 +426,14 @@ const messages = output.getMessages();
 ### With Screen Isolation
 
 ```javascript
-import { agent } from 'agent-commander';
+import { agent } from "agent-commander";
 
 const myAgent = agent({
-  tool: 'claude',
-  workingDirectory: '/tmp/project',
-  prompt: 'Run tests',
-  isolation: 'screen',
-  screenName: 'my-agent-session',
+  tool: "claude",
+  workingDirectory: "/tmp/project",
+  prompt: "Run tests",
+  isolation: "screen",
+  screenName: "my-agent-session",
 });
 
 // Start in detached mode
@@ -416,20 +441,20 @@ await myAgent.start({ detached: true });
 
 // Later, stop the agent
 const result = await myAgent.stop();
-console.log('Exit code:', result.exitCode);
+console.log("Exit code:", result.exitCode);
 ```
 
 ### With Docker Isolation
 
 ```javascript
-import { agent } from 'agent-commander';
+import { agent } from "agent-commander";
 
 const myAgent = agent({
-  tool: 'claude',
-  workingDirectory: '/tmp/project',
-  prompt: 'Build the project',
-  isolation: 'docker',
-  containerName: 'my-agent-container',
+  tool: "claude",
+  workingDirectory: "/tmp/project",
+  prompt: "Build the project",
+  isolation: "docker",
+  containerName: "my-agent-container",
 });
 
 // Start attached (stream output to console)
@@ -437,16 +462,16 @@ await myAgent.start({ attached: true });
 
 // Stop the container and get results
 const result = await myAgent.stop();
-console.log('Exit code:', result.exitCode);
+console.log("Exit code:", result.exitCode);
 ```
 
 ### Dry Run Mode
 
 ```javascript
 const myAgent = agent({
-  tool: 'claude',
-  workingDirectory: '/tmp/project',
-  prompt: 'Test command',
+  tool: "claude",
+  workingDirectory: "/tmp/project",
+  prompt: "Test command",
 });
 
 // Preview the command without executing (prints to console)
@@ -456,20 +481,20 @@ await myAgent.start({ dryRun: true });
 ### Tool Configuration API
 
 ```javascript
-import { getTool, listTools, isToolSupported } from 'agent-commander';
+import { getTool, listTools, isToolSupported } from "agent-commander";
 
 // List all available tools
 console.log(listTools()); // ['claude', 'codex', 'opencode', 'agent', 'gemini', 'qwen']
 
 // Check if a tool is supported
-console.log(isToolSupported({ toolName: 'claude' })); // true
+console.log(isToolSupported({ toolName: "claude" })); // true
 
 // Get tool configuration
-const claudeTool = getTool({ toolName: 'claude' });
+const claudeTool = getTool({ toolName: "claude" });
 console.log(claudeTool.modelMap); // { sonnet: 'claude-sonnet-4-6', opus: 'claude-opus-4-7', ... }
 
 // Map model alias to full ID
-const fullId = claudeTool.mapModelToId({ model: 'opus' });
+const fullId = claudeTool.mapModelToId({ model: "opus" });
 console.log(fullId); // 'claude-opus-4-7'
 ```
 
@@ -480,6 +505,7 @@ console.log(fullId); // 'claude-opus-4-7'
 Creates an agent controller.
 
 **Parameters:**
+
 - `options.tool` (string, required) - CLI tool to use ('claude', 'codex', 'opencode', 'qwen', 'gemini', 'agent')
 - `options.workingDirectory` (string, required) - Working directory
 - `options.prompt` (string, optional) - Prompt for the agent
@@ -500,6 +526,7 @@ Creates an agent controller.
 Starts the agent (non-blocking - returns immediately after starting the process).
 
 **Parameters:**
+
 - `startOptions.dryRun` (boolean, optional) - Preview command without executing
 - `startOptions.detached` (boolean, optional) - Run in detached mode
 - `startOptions.attached` (boolean, optional) - Stream output (default: true)
@@ -516,9 +543,11 @@ For `isolation: 'none'`: Waits for process to exit and collects all output.
 For `isolation: 'screen'` or `'docker'`: Sends stop command to the isolated environment.
 
 **Parameters:**
+
 - `stopOptions.dryRun` (boolean, optional) - Preview command without executing
 
 **Returns:** Promise resolving to:
+
 ```javascript
 {
   exitCode: number,
@@ -536,6 +565,7 @@ For `isolation: 'screen'` or `'docker'`: Sends stop command to the isolated envi
 Creates a JSON input stream for building NDJSON input.
 
 **Parameters:**
+
 - `options.compact` (boolean, optional) - Use compact JSON (default: true)
 
 **Returns:** JsonInputStream with `add()`, `addPrompt()`, `addSystemMessage()`, `toString()`, `toBuffer()` methods
@@ -545,6 +575,7 @@ Creates a JSON input stream for building NDJSON input.
 Creates a JSON output stream for parsing NDJSON output.
 
 **Parameters:**
+
 - `options.onMessage` (function, optional) - Callback for each parsed message
 - `options.onError` (function, optional) - Callback for parse errors
 
@@ -569,6 +600,7 @@ Runs agent in a GNU Screen session.
 **Requirements:** `screen` must be installed
 
 **Management:**
+
 ```bash
 # List sessions
 screen -ls
@@ -589,6 +621,7 @@ Runs agent in a Docker container with working directory mounted.
 **Requirements:** Docker must be installed and running
 
 **Management:**
+
 ```bash
 # List containers
 docker ps -a
