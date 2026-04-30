@@ -28,6 +28,7 @@ The npm package `agent-commander` has since been published, but GitHub dependenc
 | 2026-04-30 | CI logs, issue metadata, npm registry data, the issue screenshot, and template snapshots were downloaded into this case-study folder.           |
 | 2026-04-30 | The GitHub install failure was reproduced locally against tag `v0.2.0`; npm exited `254` with `ENOENT` for the cloned root `package.json`.      |
 | 2026-04-30 | The fix added a root npm manifest, split CI/CD into `js.yml` and `rust.yml`, aligned publish scripts, and added tests.                          |
+| 2026-04-30 | Fresh PR CI found Node 24 no longer accepts `node --test test/`; the npm script now enumerates `.test.mjs` files explicitly.                    |
 
 ## Requirements Extracted
 
@@ -58,10 +59,15 @@ The issue states that npm trusted publishing was configured for `js.yml`, while 
 
 The Rust release script expected `CHANGELOG.md` during `git add`, but `rust/CHANGELOG.md` did not exist. It also collected changelog fragments without removing them, which would allow the same fragments to be reused on later releases.
 
+### Node 24 Test Directory Handling
+
+The split JavaScript workflow runs Node 24. PR run `25144466715` and push run `25144465539` both failed in the Node test matrix because `node --test test/` attempted to load `js/test` as a module. The package test script now uses a small Node runner that enumerates `.test.mjs` files and passes explicit file paths to `node --test`, avoiding shell glob and Node-version differences.
+
 ## Solution Implemented
 
 - Added a root `package.json` named `agent-commander` that exposes `./js/src/index.mjs` and the `start-agent` / `stop-agent` binaries from `js/bin`.
 - Added `js/test/root-package.test.mjs` to verify the root manifest stays aligned with `js/package.json`.
+- Updated the Node test script to enumerate explicit `.test.mjs` files instead of passing the `test/` directory for Node 24 CI compatibility.
 - Updated JS release versioning to synchronize the root package version after changeset or instant bumps.
 - Updated `scripts/js/publish-to-npm.mjs` to check and report `agent-commander`.
 - Split the combined workflow into `.github/workflows/js.yml` and `.github/workflows/rust.yml`.
@@ -105,6 +111,7 @@ Local verification logs were saved under `github/`.
 | Check                                                                      | Result |
 | -------------------------------------------------------------------------- | ------ |
 | `npm test` in `js/`                                                        | Pass   |
+| `npx -y node@24 ../scripts/js/run-node-tests.mjs` in `js/`                 | Pass   |
 | `npm run lint` in `js/`                                                    | Pass   |
 | `npm run format:check` in `js/`                                            | Pass   |
 | `npm run check:duplication` in `js/`                                       | Pass   |
