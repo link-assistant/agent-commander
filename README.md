@@ -86,7 +86,7 @@ bun add agent-commander
 The Claude Code CLI supports additional features:
 
 - **Stream JSON format**: Uses `--output-format stream-json` and `--input-format stream-json` for real-time streaming
-- **Permission bypass**: Automatically includes `--dangerously-skip-permissions` for unrestricted operation
+- **Permission bypass**: Automatically includes `--dangerously-skip-permissions` by default for unrestricted operation; use read-only mode or `--skip-default-safety-flags` to supply a stricter native policy
 - **Fallback model**: Use `--fallback-model` for automatic fallback when the primary model is overloaded
 - **Session management**: Full support for `--session-id`, `--fork-session`, and `--resume`
 - **System prompt appending**: Use `--append-system-prompt` to add to the default system prompt
@@ -165,6 +165,10 @@ start-agent --tool claude --working-directory "/tmp/dir" --prompt "Solve the iss
 - `--session-id <uuid>` - Use a specific session ID (Claude only, must be valid UUID)
 - `--fork-session` - Create new session ID when resuming (Claude only)
 - `--replay-user-messages` - Re-emit user messages on stdout (Claude only, streaming mode)
+- `--tool-executable <path>` - Override the native tool executable for `claude`, `codex`, `opencode`, or `agent`
+- `--tool-env <KEY=VALUE>` - Add an environment variable to the native tool process (repeatable)
+- `--tool-arg <arg>` - Append a raw native tool argument after agent-commander's typed arguments (repeatable)
+- `--skip-default-safety-flags` - Suppress default autonomous bypass flags so callers can provide their own permission, sandbox, or approval flags
 - `--isolation <mode>` - Isolation mode: none, screen, docker (default: none)
 - `--screen-name <name>` - Screen session name (required for screen isolation)
 - `--container-name <name>` - Container name (required for docker isolation)
@@ -216,6 +220,18 @@ start-agent --tool gemini --working-directory "/tmp/dir" --prompt "Explain this 
 ```bash
 start-agent --tool claude --working-directory "/tmp/dir" \
   --prompt "Complex task" --model opus --fallback-model sonnet
+```
+
+**Native tool passthrough**
+
+```bash
+start-agent --tool claude --working-directory "/tmp/dir" \
+  --prompt-file /tmp/agent-prompt.txt \
+  --tool-executable /opt/claude-code/bin/claude \
+  --tool-env MCP_TIMEOUT=10000 \
+  --skip-default-safety-flags \
+  --tool-arg --mcp-config --tool-arg /tmp/mcp.json \
+  --tool-arg --permission-mode --tool-arg default
 ```
 
 **Resume a session with fork (Claude)**
@@ -527,6 +543,13 @@ Creates an agent controller.
 - `options.screenName` (string, optional) - Screen session name (required for screen isolation)
 - `options.containerName` (string, optional) - Container name (required for docker isolation)
 - `options.toolOptions` (object, optional) - Additional tool-specific options
+  - `executable` (string, optional) - Override the native executable path/name for `claude`, `codex`, `opencode`, or `agent`
+  - `extraEnv` (object or `KEY=VALUE` / `[key, value]` array, optional) - Environment variables applied to the native tool process
+  - `extraArgs` (string array, optional) - Raw native tool arguments appended after typed agent-commander arguments
+  - `skipDefaultSafetyFlags` (boolean, optional) - Do not add default Claude/Codex autonomous safety bypass flags
+  - `permissionMode` (string, optional) - Explicit Claude permission mode
+  - `sandboxMode` (string, optional) - Explicit Codex sandbox mode
+  - `approvalMode` (string, optional) - Explicit Codex approval mode
 
 **Returns:** Agent controller object with `start()`, `stop()`, `getSessionId()`, `getMessages()`, and `getToolConfig()` methods
 

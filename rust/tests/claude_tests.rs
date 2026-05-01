@@ -67,13 +67,11 @@ fn test_extract_session_id() {
 
 // New capability tests (issue #3)
 #[test]
-fn test_build_args_always_includes_dangerously_skip_permissions() {
-    // dangerously_skip_permissions is always enabled and not configurable
+fn test_build_args_includes_dangerously_skip_permissions_by_default() {
     let options = ClaudeBuildOptions::new();
     let args = build_args(&options);
     assert!(args.contains(&"--dangerously-skip-permissions".to_string()));
 
-    // Even with default options, it should still be included
     let default_options = ClaudeBuildOptions::default();
     let default_args = build_args(&default_options);
     assert!(default_args.contains(&"--dangerously-skip-permissions".to_string()));

@@ -3,6 +3,8 @@
  * Based on hive-mind's claude.lib.mjs implementation
  */
 
+import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
+
 /**
  * Available Claude model configurations
  * Maps aliases to full model IDs
@@ -58,6 +60,9 @@ export function mapModelToId(options) {
  * @param {string} [options.sessionId] - Use specific session ID (must be valid UUID)
  * @param {boolean} [options.forkSession] - Create new session ID when resuming
  * @param {boolean} [options.readOnly] - Use Claude plan permission mode
+ * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
+ * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
+ * @param {string} [options.permissionMode] - Explicit Claude permission mode
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
@@ -76,13 +81,18 @@ export function buildArgs(options) {
     sessionId,
     forkSession = false,
     readOnly = false,
+    extraArgs = [],
+    skipDefaultSafetyFlags = false,
+    permissionMode,
   } = options;
 
   const args = [];
 
   if (readOnly) {
     args.push('--permission-mode', 'plan');
-  } else {
+  } else if (permissionMode) {
+    args.push('--permission-mode', permissionMode);
+  } else if (!skipDefaultSafetyFlags) {
     // Permission bypass - enabled by default for autonomous execution
     args.push('--dangerously-skip-permissions');
   }
@@ -145,6 +155,8 @@ export function buildArgs(options) {
     args.push('--fork-session');
   }
 
+  args.push(...normalizeExtraArgs(extraArgs));
+
   return args;
 }
 
@@ -167,35 +179,33 @@ export function buildArgs(options) {
  * @param {string} [options.sessionId] - Use specific session ID (must be valid UUID)
  * @param {boolean} [options.forkSession] - Create new session ID when resuming
  * @param {boolean} [options.readOnly] - Use Claude plan permission mode
+ * @param {string} [options.executable='claude'] - Executable path/name
+ * @param {Object|Array} [options.extraEnv] - Environment variables for the tool
+ * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
+ * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
+ * @param {string} [options.permissionMode] - Explicit Claude permission mode
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {
-  // eslint-disable-next-line no-unused-vars
-  const { workingDirectory, prompt, promptFile, ...argOptions } = options;
+  const {
+    prompt,
+    promptFile,
+    executable = 'claude',
+    extraEnv,
+    ...argOptions
+  } = options;
   const args = buildArgs({
     ...argOptions,
     prompt: promptFile ? undefined : prompt,
   });
-  const command = `claude ${args.map(escapeArg).join(' ')}`.trim();
+  const command =
+    `${buildCommandHead({ executable, extraEnv })} ${args.map(escapeArg).join(' ')}`.trim();
 
   if (promptFile) {
     return `cat ${escapeArg(promptFile)} | ${command}`;
   }
 
   return command;
-}
-
-/**
- * Escape an argument for shell usage
- * @param {string} arg - Argument to escape
- * @returns {string} Escaped argument
- */
-function escapeArg(arg) {
-  // If argument contains spaces, quotes, or special chars, wrap in quotes
-  if (/["\s$`\\]/.test(arg)) {
-    return `"${arg.replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`').replace(/\\/g, '\\\\')}"`;
-  }
-  return arg;
 }
 
 /**

@@ -6,6 +6,18 @@ use agent_commander::{
     AgentOptions, AgentStartOptions,
 };
 
+fn parse_tool_env(entries: Vec<String>) -> Result<Vec<(String, String)>, String> {
+    entries
+        .into_iter()
+        .map(|entry| {
+            entry
+                .split_once('=')
+                .map(|(key, value)| (key.to_string(), value.to_string()))
+                .ok_or_else(|| format!("Invalid --tool-env value \"{}\". Use KEY=VALUE.", entry))
+        })
+        .collect()
+}
+
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -28,6 +40,14 @@ async fn main() {
         std::process::exit(1);
     }
 
+    let extra_env = match parse_tool_env(options.tool_env) {
+        Ok(extra_env) => extra_env,
+        Err(error) => {
+            eprintln!("Error: {}", error);
+            std::process::exit(1);
+        }
+    };
+
     // Create agent controller
     let agent_options = AgentOptions {
         tool: options.tool.unwrap_or_default(),
@@ -44,6 +64,10 @@ async fn main() {
         session_id: options.session_id,
         fork_session: options.fork_session,
         read_only: options.read_only,
+        executable: options.tool_executable,
+        extra_args: options.tool_args,
+        extra_env,
+        skip_default_safety_flags: options.skip_default_safety_flags,
         isolation: options.isolation,
         screen_name: options.screen_name,
         container_name: options.container_name,

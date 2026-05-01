@@ -7,6 +7,7 @@ pub mod codex;
 pub mod gemini;
 pub mod opencode;
 pub mod qwen;
+pub(crate) mod shell;
 
 use std::collections::HashMap;
 

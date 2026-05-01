@@ -52,6 +52,10 @@ async function main() {
         replayUserMessages: options.replayUserMessages,
         sessionId: options.sessionId,
         forkSession: options.forkSession,
+        executable: options.toolExecutable,
+        extraArgs: options.toolArgs,
+        extraEnv: options.toolEnv,
+        skipDefaultSafetyFlags: options.skipDefaultSafetyFlags,
       },
     });
 

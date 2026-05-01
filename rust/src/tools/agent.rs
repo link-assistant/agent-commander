@@ -3,6 +3,7 @@
 //! Agent is a fork of OpenCode with unrestricted permissions for autonomous execution
 
 use crate::streaming::parse_ndjson;
+use crate::tools::shell::{build_command_head, escape_arg, escape_single_quotes};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -62,6 +63,9 @@ pub struct AgentBuildOptions {
     pub model: Option<String>,
     pub compact_json: bool,
     pub use_existing_claude_oauth: bool,
+    pub executable: Option<String>,
+    pub extra_env: Vec<(String, String)>,
+    pub extra_args: Vec<String>,
 }
 
 /// Build command line arguments for Agent
@@ -88,31 +92,9 @@ pub fn build_args(options: &AgentBuildOptions) -> Vec<String> {
         args.push("--use-existing-claude-oauth".to_string());
     }
 
+    args.extend(options.extra_args.clone());
+
     args
-}
-
-/// Escape an argument for shell usage
-fn escape_arg(arg: &str) -> String {
-    if arg.contains('"')
-        || arg.contains(char::is_whitespace)
-        || arg.contains('$')
-        || arg.contains('`')
-        || arg.contains('\\')
-    {
-        let escaped = arg
-            .replace('\\', "\\\\")
-            .replace('"', "\\\"")
-            .replace('$', "\\$")
-            .replace('`', "\\`");
-        format!("\"{}\"", escaped)
-    } else {
-        arg.to_string()
-    }
-}
-
-/// Escape single quotes for printf
-fn escape_single_quotes(s: &str) -> String {
-    s.replace('\'', "'\\''")
 }
 
 /// Build complete command string for Agent
@@ -140,9 +122,15 @@ pub fn build_command(options: &AgentBuildOptions) -> String {
         || format!("printf '%s' '{}'", escape_single_quotes(&combined_prompt)),
         |prompt_file| format!("cat {}", escape_arg(prompt_file)),
     );
-    format!("{} | agent {}", input_command, args_str.join(" "))
-        .trim()
-        .to_string()
+    let executable = options.executable.as_deref().unwrap_or("agent");
+    format!(
+        "{} | {} {}",
+        input_command,
+        build_command_head(executable, &options.extra_env, &[]),
+        args_str.join(" ")
+    )
+    .trim()
+    .to_string()
 }
 
 /// Parse JSON messages from Agent output

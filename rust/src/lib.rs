@@ -83,6 +83,14 @@ pub struct AgentOptions {
     pub fork_session: bool,
     /// Enforce native read-only/planning mode
     pub read_only: bool,
+    /// Override the tool executable path/name
+    pub executable: Option<String>,
+    /// Extra raw arguments appended after typed tool arguments
+    pub extra_args: Vec<String>,
+    /// Extra environment variables applied to the tool executable
+    pub extra_env: Vec<(String, String)>,
+    /// Do not add default autonomous safety bypass flags
+    pub skip_default_safety_flags: bool,
 }
 
 /// Agent result from stop()
@@ -289,6 +297,10 @@ impl Agent {
             session_id: self.options.session_id.clone(),
             fork_session: self.options.fork_session,
             read_only: self.options.read_only,
+            executable: self.options.executable.clone(),
+            extra_args: self.options.extra_args.clone(),
+            extra_env: self.options.extra_env.clone(),
+            skip_default_safety_flags: self.options.skip_default_safety_flags,
             isolation: self.options.isolation.clone(),
             screen_name: self.options.screen_name.clone(),
             container_name: self.options.container_name.clone(),

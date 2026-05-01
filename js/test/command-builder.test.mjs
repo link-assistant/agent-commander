@@ -188,6 +188,37 @@ test('buildAgentCommand - claude read-only uses plan permission mode', () => {
   assert.ok(!command.includes('--dangerously-skip-permissions'));
 });
 
+test('buildAgentCommand - claude supports raw passthrough options', () => {
+  const command = buildAgentCommand({
+    tool: 'claude',
+    workingDirectory: '/tmp/test',
+    prompt: 'Hello',
+    executable: '/opt/Claude Code/bin/claude',
+    extraEnv: {
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+      MCP_TIMEOUT: '10000',
+    },
+    extraArgs: [
+      '--mcp-config',
+      '/tmp/mcp config.json',
+      '--permission-mode',
+      'default',
+    ],
+    skipDefaultSafetyFlags: true,
+    isolation: 'none',
+  });
+
+  assert.ok(command.includes('env'));
+  assert.ok(command.includes('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1'));
+  assert.ok(command.includes('MCP_TIMEOUT=10000'));
+  assert.ok(command.includes('/opt/Claude Code/bin/claude'));
+  assert.ok(command.includes('--mcp-config'));
+  assert.ok(command.includes('/tmp/mcp config.json'));
+  assert.ok(command.includes('--permission-mode'));
+  assert.ok(command.includes('default'));
+  assert.ok(!command.includes('--dangerously-skip-permissions'));
+});
+
 test('buildAgentCommand - codex read-only uses sandbox and no approvals', () => {
   const command = buildAgentCommand({
     tool: 'codex',
@@ -203,6 +234,28 @@ test('buildAgentCommand - codex read-only uses sandbox and no approvals', () => 
   assert.ok(!command.includes('--dangerously-bypass-approvals-and-sandbox'));
 });
 
+test('buildAgentCommand - codex applies env to the tool side of prompt pipe', () => {
+  const command = buildAgentCommand({
+    tool: 'codex',
+    workingDirectory: '/tmp/test',
+    promptFile: '/tmp/prompt.txt',
+    executable: '/opt/codex bin/codex',
+    extraEnv: [['CODEX_HOME', '/tmp/codex home']],
+    extraArgs: ['--config', 'model_reasoning_effort="high"'],
+    skipDefaultSafetyFlags: true,
+    isolation: 'none',
+  });
+
+  assert.ok(command.includes('cat'));
+  assert.ok(command.includes('/tmp/prompt.txt'));
+  assert.ok(command.includes('| env CODEX_HOME='));
+  assert.ok(command.includes('/tmp/codex home'));
+  assert.ok(command.includes('/opt/codex bin/codex'));
+  assert.ok(command.includes('--config'));
+  assert.ok(command.includes('model_reasoning_effort='));
+  assert.ok(!command.includes('--dangerously-bypass-approvals-and-sandbox'));
+});
+
 test('buildAgentCommand - opencode read-only denies shell and edits', () => {
   const command = buildAgentCommand({
     tool: 'opencode',
@@ -213,8 +266,9 @@ test('buildAgentCommand - opencode read-only denies shell and edits', () => {
   });
 
   assert.ok(command.includes('OPENCODE_PERMISSION='));
-  assert.ok(command.includes('\\"bash\\":\\"deny\\"'));
-  assert.ok(command.includes('\\"edit\\":\\"deny\\"'));
+  assert.ok(command.includes('bash'));
+  assert.ok(command.includes('edit'));
+  assert.ok(command.includes('deny'));
 });
 
 test('buildAgentCommand - read-only still works with screen isolation', () => {

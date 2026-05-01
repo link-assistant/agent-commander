@@ -4,6 +4,8 @@
  * Agent is a fork of OpenCode with unrestricted permissions for autonomous execution
  */
 
+import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
+
 /**
  * Available Agent model configurations
  * Maps aliases to full model IDs (uses OpenCode's provider/model format)
@@ -65,6 +67,7 @@ export function mapModelToId(options) {
  * @param {string} [options.model] - Model to use
  * @param {boolean} [options.compactJson] - Use compact JSON output
  * @param {boolean} [options.useExistingClaudeOAuth] - Use existing Claude OAuth credentials
+ * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
@@ -72,6 +75,7 @@ export function buildArgs(options) {
     model,
     compactJson = false,
     useExistingClaudeOAuth = false,
+    extraArgs = [],
   } = options;
 
   const args = [];
@@ -89,6 +93,8 @@ export function buildArgs(options) {
     args.push('--use-existing-claude-oauth');
   }
 
+  args.push(...normalizeExtraArgs(extraArgs));
+
   return args;
 }
 
@@ -103,12 +109,20 @@ export function buildArgs(options) {
  * @param {string} [options.model] - Model to use
  * @param {boolean} [options.compactJson] - Use compact JSON output
  * @param {boolean} [options.useExistingClaudeOAuth] - Use existing Claude OAuth
+ * @param {string} [options.executable='agent'] - Executable path/name
+ * @param {Object|Array} [options.extraEnv] - Environment variables for the tool
+ * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {
-  // eslint-disable-next-line no-unused-vars
-  const { workingDirectory, prompt, promptFile, systemPrompt, ...argOptions } =
-    options;
+  const {
+    prompt,
+    promptFile,
+    systemPrompt,
+    executable = 'agent',
+    extraEnv,
+    ...argOptions
+  } = options;
   const args = buildArgs(argOptions);
 
   // Agent expects prompt via stdin, combine system and user prompts
@@ -120,19 +134,10 @@ export function buildCommand(options) {
   const inputCommand = promptFile
     ? `cat ${escapeArg(promptFile)}`
     : `printf '%s' '${combinedPrompt.replace(/'/g, "'\\''")}'`;
-  return `${inputCommand} | agent ${args.map(escapeArg).join(' ')}`.trim();
-}
-
-/**
- * Escape an argument for shell usage
- * @param {string} arg - Argument to escape
- * @returns {string} Escaped argument
- */
-function escapeArg(arg) {
-  if (/["\s$`\\]/.test(arg)) {
-    return `"${arg.replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`').replace(/\\/g, '\\\\')}"`;
-  }
-  return arg;
+  return `${inputCommand} | ${buildCommandHead({
+    executable,
+    extraEnv,
+  })} ${args.map(escapeArg).join(' ')}`.trim();
 }
 
 /**
