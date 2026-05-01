@@ -74,9 +74,12 @@ async fn main() -> Result<(), String> {
 
     let result = controller.stop(AgentStopOptions::default()).await?;
     println!("{}", result.plain_output);
+    println!("{:?}", result.metadata);
     Ok(())
 }
 ```
+
+`result.metadata` is a normalized summary for `claude`, `codex`, `opencode`, and `agent` runs. It includes success and error classification, session ID, usage-limit reset details, result summary, cost estimates, stream token usage, optional model usage, and sub-agent call summaries. `result.usage` exposes the aggregated stream token usage as JSON for parity with the JavaScript package.
 
 For large generated prompts, set `prompt_file` or let the controller create a temporary prompt file automatically for `claude`, `codex`, `opencode`, and `agent`.
 

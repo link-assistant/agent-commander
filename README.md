@@ -318,7 +318,19 @@ console.log("Plain output:", result.output.plain);
 console.log("Parsed output:", result.output.parsed); // JSON messages if supported
 console.log("Session ID:", result.sessionId); // For resuming later
 console.log("Usage:", result.usage); // Token usage statistics
+console.log("Metadata:", result.metadata); // Normalized cross-tool summary
 ```
+
+### Normalized Result Metadata
+
+`stop()` returns `result.metadata` for `claude`, `codex`, `opencode`, and `agent` runs. The metadata object gives callers a stable summary without tool-specific output parsing:
+
+- `success`, `exitCode`, `errorDuringExecution`, `errorType`, and `errorMessage`
+- `sessionId`
+- `limitReached`, `limitResetTime`, and `limitTimezone`
+- `resultSummary`
+- `anthropicTotalCostUSD`, `publicPricingEstimate`, and `pricingInfo`
+- `resultModelUsage`, `streamTokenUsage`, and `subAgentCalls`
 
 ### Using Different Tools
 

@@ -25,6 +25,7 @@ import {
 } from './executor.mjs';
 import { getTool, isToolSupported } from './tools/index.mjs';
 import { createOutputStream, createInputStream } from './streaming/index.mjs';
+import { buildNormalizedResultMetadata } from './result-metadata.mjs';
 
 const PROMPT_FILE_TOOLS = new Set(['claude', 'codex', 'opencode', 'agent']);
 
@@ -332,7 +333,7 @@ export function agent(options) {
    * Stop the agent and collect output
    * @param {Object} [stopOptions] - Stop options
    * @param {boolean} [stopOptions.dryRun] - If true, just show the command
-   * @returns {Promise<Object>} Result with exitCode, output.plain, output.parsed, and session info
+   * @returns {Promise<Object>} Result with exitCode, output, session info, usage, and metadata
    */
   const stop = async (stopOptions = {}) => {
     const { dryRun = false } = stopOptions;
@@ -355,7 +356,19 @@ export function agent(options) {
       if (dryRun) {
         console.log('Dry run - command that would be executed:');
         console.log(stopCommand);
-        return { exitCode: 0, output: { plain: '', parsed: null } };
+        return {
+          exitCode: 0,
+          output: { plain: '', parsed: null },
+          metadata: buildNormalizedResultMetadata({
+            tool,
+            exitCode: 0,
+            plainOutput: '',
+            parsedOutput: null,
+            sessionId: null,
+            usage: null,
+            toolConfig,
+          }),
+        };
       }
 
       try {
@@ -363,12 +376,22 @@ export function agent(options) {
           dryRun,
           attached: true,
         });
+        const metadata = buildNormalizedResultMetadata({
+          tool,
+          exitCode: result.exitCode,
+          plainOutput: result.stdout,
+          parsedOutput: null,
+          sessionId: null,
+          usage: null,
+          toolConfig,
+        });
         return {
           exitCode: result.exitCode,
           output: {
             plain: result.stdout,
             parsed: null, // Stop commands don't produce parsed output
           },
+          metadata,
         };
       } finally {
         await cleanupPromptTempDir();
@@ -422,6 +445,16 @@ export function agent(options) {
           removeSignalHandler = null;
         }
 
+        const metadata = buildNormalizedResultMetadata({
+          tool,
+          exitCode,
+          plainOutput,
+          parsedOutput,
+          sessionId,
+          usage,
+          toolConfig,
+        });
+
         return {
           exitCode,
           output: {
@@ -430,6 +463,7 @@ export function agent(options) {
           },
           sessionId,
           usage,
+          metadata,
         };
       } finally {
         await cleanupPromptTempDir();
@@ -506,3 +540,4 @@ export {
 export { tools, getTool, listTools, isToolSupported } from './tools/index.mjs';
 export { JsonOutputStream, JsonInputStream } from './streaming/index.mjs';
 export { parseNdjsonLine, stringifyNdjsonLine } from './streaming/ndjson.mjs';
+export { buildNormalizedResultMetadata } from './result-metadata.mjs';

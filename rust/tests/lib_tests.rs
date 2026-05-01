@@ -3,6 +3,9 @@
 use agent_commander::{agent, AgentOptions, AgentStartOptions, AgentStopOptions};
 
 #[cfg(not(target_os = "windows"))]
+static PATH_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+#[cfg(not(target_os = "windows"))]
 struct PathGuard {
     previous_path: String,
     temp_dir: std::path::PathBuf,
@@ -271,6 +274,7 @@ async fn test_agent_stdin_tools_handle_large_shell_sensitive_prompts_through_fil
         std::fs::set_permissions(&fake_agent, permissions).unwrap();
     }
 
+    let _path_lock = PATH_LOCK.lock().await;
     let previous_path = std::env::var("PATH").unwrap_or_default();
     std::env::set_var("PATH", format!("{}:{}", temp_dir.display(), previous_path));
     let _path_guard = PathGuard {
@@ -302,4 +306,101 @@ async fn test_agent_stdin_tools_handle_large_shell_sensitive_prompts_through_fil
 
     assert_eq!(result.exit_code, 0);
     assert_eq!(result.plain_output.trim(), expected_bytes.to_string());
+}
+
+#[tokio::test]
+#[cfg(not(target_os = "windows"))]
+async fn test_agent_stop_includes_normalized_metadata_for_claude_json_result_output() {
+    let temp_dir = std::env::temp_dir().join(format!(
+        "agent-commander-test-bin-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&temp_dir).unwrap();
+    let fake_claude = temp_dir.join("claude");
+    std::fs::write(
+        &fake_claude,
+        r#"#!/usr/bin/env bash
+printf '%s\n' '{"type":"system","session_id":"claude-session-1"}'
+printf '%s\n' '{"type":"assistant","message":{"usage":{"input_tokens":100,"output_tokens":25,"cache_creation_input_tokens":5,"cache_read_input_tokens":7}}}'
+printf '%s\n' '{"type":"result","subtype":"success","session_id":"claude-session-1","total_cost_usd":0.0123,"result":"Implemented the requested change."}'
+"#,
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = std::fs::metadata(&fake_claude).unwrap().permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&fake_claude, permissions).unwrap();
+    }
+
+    let _path_lock = PATH_LOCK.lock().await;
+    let previous_path = std::env::var("PATH").unwrap_or_default();
+    std::env::set_var("PATH", format!("{}:{}", temp_dir.display(), previous_path));
+    let _path_guard = PathGuard {
+        previous_path,
+        temp_dir,
+    };
+
+    let options = AgentOptions {
+        tool: "claude".to_string(),
+        working_directory: "/tmp".to_string(),
+        prompt: Some("hello".to_string()),
+        isolation: "none".to_string(),
+        json: true,
+        ..Default::default()
+    };
+    let mut controller = agent(options).unwrap();
+
+    controller
+        .start(AgentStartOptions {
+            attached: false,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    let result = controller.stop(AgentStopOptions::default()).await.unwrap();
+
+    assert_eq!(result.exit_code, 0);
+    assert_eq!(result.session_id, Some("claude-session-1".to_string()));
+    assert_eq!(result.metadata.tool, "claude");
+    assert!(result.metadata.success);
+    assert_eq!(
+        result.metadata.session_id,
+        Some("claude-session-1".to_string())
+    );
+    assert_eq!(result.metadata.anthropic_total_cost_usd, Some(0.0123));
+    assert_eq!(
+        result.metadata.result_summary,
+        Some("Implemented the requested change.".to_string())
+    );
+    assert!(!result.metadata.error_during_execution);
+
+    let usage = result.metadata.stream_token_usage.as_ref().unwrap();
+    assert_eq!(
+        usage.get("inputTokens").and_then(serde_json::Value::as_u64),
+        Some(100)
+    );
+    assert_eq!(
+        usage
+            .get("outputTokens")
+            .and_then(serde_json::Value::as_u64),
+        Some(25)
+    );
+    assert_eq!(
+        usage
+            .get("cacheCreationTokens")
+            .and_then(serde_json::Value::as_u64),
+        Some(5)
+    );
+    assert_eq!(
+        usage
+            .get("cacheReadTokens")
+            .and_then(serde_json::Value::as_u64),
+        Some(7)
+    );
 }

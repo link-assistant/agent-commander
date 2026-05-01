@@ -161,3 +161,55 @@ test(
     assert.strictEqual(result.output.plain.trim(), String(expectedBytes));
   }
 );
+
+test(
+  'agent - stop includes normalized metadata for Claude JSON result output',
+  { skip: process.platform === 'win32' || isDeno },
+  async (t) => {
+    const binDir = await mkdtemp(join(tmpdir(), 'agent-commander-test-bin-'));
+    const fakeClaude = join(binDir, 'claude');
+    await writeFile(
+      fakeClaude,
+      `#!/usr/bin/env bash
+printf '%s\\n' '{"type":"system","session_id":"claude-session-1"}'
+printf '%s\\n' '{"type":"assistant","message":{"usage":{"input_tokens":100,"output_tokens":25,"cache_creation_input_tokens":5,"cache_read_input_tokens":7}}}'
+printf '%s\\n' '{"type":"result","subtype":"success","session_id":"claude-session-1","total_cost_usd":0.0123,"result":"Implemented the requested change."}'
+`
+    );
+    await chmod(fakeClaude, 0o755);
+
+    const previousPath = process.env.PATH || '';
+    process.env.PATH = `${binDir}:${previousPath}`;
+    t.after(async () => {
+      process.env.PATH = previousPath;
+      await rm(binDir, { recursive: true, force: true });
+    });
+
+    const controller = agent({
+      tool: 'claude',
+      workingDirectory: '/tmp',
+      prompt: 'hello',
+      json: true,
+    });
+
+    await controller.start({ attached: false });
+    const result = await controller.stop();
+
+    assert.ok(result.metadata);
+    assert.strictEqual(result.metadata.tool, 'claude');
+    assert.strictEqual(result.metadata.success, true);
+    assert.strictEqual(result.metadata.sessionId, 'claude-session-1');
+    assert.strictEqual(result.metadata.anthropicTotalCostUSD, 0.0123);
+    assert.strictEqual(
+      result.metadata.resultSummary,
+      'Implemented the requested change.'
+    );
+    assert.deepStrictEqual(result.metadata.streamTokenUsage, {
+      inputTokens: 100,
+      outputTokens: 25,
+      cacheCreationTokens: 5,
+      cacheReadTokens: 7,
+    });
+    assert.strictEqual(result.metadata.errorDuringExecution, false);
+  }
+);
