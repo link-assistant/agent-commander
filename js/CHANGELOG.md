@@ -1,5 +1,11 @@
 # agent-commander
 
+## 0.5.0
+
+### Minor Changes
+
+- 80f26b4: Expose normalized `metadata` on agent results with success classification, session IDs, usage-limit details, summaries, cost estimates, token usage, sub-agent calls, and execution error information for `claude`, `codex`, `opencode`, and `agent`.
+
 ## 0.4.3
 
 ### Patch Changes
