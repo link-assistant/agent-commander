@@ -1,0 +1,217 @@
+
+> agent-commander@0.6.0 test:bun
+> bun test
+
+bun test v1.3.11 (af24e281)
+
+test/cli-parser.test.mjs:
+(pass) parseArgs - basic flags [2.00ms]
+(pass) parseArgs - with positional
+(pass) parseStartAgentArgs - basic [1.00ms]
+(pass) parseStartAgentArgs - with isolation
+(pass) parseStartAgentArgs - dry-run flag
+(pass) parseStopAgentArgs - screen
+(pass) validateStartAgentOptions - valid
+(pass) validateStartAgentOptions - missing tool
+(pass) validateStartAgentOptions - screen without name
+(pass) validateStopAgentOptions - valid
+(pass) validateStopAgentOptions - missing isolation
+(pass) parseStartAgentArgs - with model and fallback-model
+(pass) parseStartAgentArgs - with session management options
+(pass) parseStartAgentArgs - with append-system-prompt
+(pass) parseStartAgentArgs - with prompt-file
+(pass) parseStartAgentArgs - with verbose and replay-user-messages
+(pass) parseStartAgentArgs - with read-only flag
+(pass) parseStartAgentArgs - with repeated raw passthrough options [1.00ms]
+(pass) parseStartAgentArgs - plan-only aliases read-only
+(pass) parseStartAgentArgs - defaults for new options
+
+test/result-metadata.test.mjs:
+(pass) result metadata - normalizes Codex thread id and usage [1.00ms]
+(pass) result metadata - classifies OpenCode usage limits [1.00ms]
+(pass) result metadata - exposes Agent pricing and sub-agent calls
+
+test/root-package.test.mjs:
+(pass) root package manifest exposes the JavaScript package for GitHub installs [4.00ms]
+
+test/tools.test.mjs:
+(pass) listTools - returns all available tools
+(pass) isToolSupported - returns true for supported tools
+(pass) isToolSupported - returns false for unsupported tools
+(pass) getTool - returns tool configuration [1.00ms]
+(pass) getTool - throws for unknown tool
+(pass) claudeTool - mapModelToId with alias
+(pass) claudeTool - mapModelToId with new opus 4.7 alias
+(pass) claudeTool - mapModelToId with full ID
+(pass) claudeTool - buildArgs with prompt [1.00ms]
+(pass) claudeTool - buildArgs with model
+(pass) claudeTool - parseOutput with NDJSON
+(pass) claudeTool - extractSessionId
+(pass) claudeTool - buildArgs includes --dangerously-skip-permissions by default
+(pass) claudeTool - buildArgs uses stream-json output format
+(pass) claudeTool - buildArgs with fallback model
+(pass) claudeTool - buildArgs with append-system-prompt
+(pass) claudeTool - buildArgs with session management
+(pass) claudeTool - buildArgs with verbose mode
+(pass) claudeTool - buildArgs with input format stream-json
+(pass) claudeTool - buildArgs with replay-user-messages
+(pass) claudeTool - buildArgs includes dangerously-skip-permissions by default
+(pass) claudeTool - read-only uses plan mode without permission bypass
+(pass) claudeTool - supportsJsonInput is true
+(pass) claudeTool - supports all new capability flags
+(pass) codexTool - mapModelToId with alias
+(pass) codexTool - buildArgs includes exec mode
+(pass) codexTool - read-only uses sandbox without bypass
+(pass) codexTool - extractSessionId with thread_id
+(pass) codexTool - mapModelToId with gpt-5.5 family aliases
+(pass) codexTool - default model is gpt-5.5
+(pass) opencodeTool - mapModelToId with alias
+(pass) opencodeTool - buildArgs includes run mode
+(pass) agentTool - mapModelToId with alias
+(pass) agentTool - buildArgs with model
+(pass) agentTool - extractUsage from step_finish events
+(pass) agentTool - detectErrors finds error messages
+(pass) agentTool - detectErrors returns false for normal output
+(pass) agentTool - mapModelToId with nemotron-3-super-free (new default)
+(pass) agentTool - default model is nemotron-3-super-free
+(pass) agentTool - mapModelToId keeps deprecated qwen3.6-plus-free for backward compatibility
+(pass) qwenTool - mapModelToId with alias
+(pass) qwenTool - mapModelToId with full ID
+(pass) qwenTool - buildArgs with prompt [1.00ms]
+(pass) qwenTool - buildArgs with model
+(pass) qwenTool - buildArgs uses stream-json output format by default
+(pass) qwenTool - buildArgs with json output format [1.00ms]
+(pass) qwenTool - buildArgs includes --yolo by default
+(pass) qwenTool - buildArgs with --resume
+(pass) qwenTool - buildArgs with --continue
+(pass) qwenTool - buildArgs with --all-files
+(pass) qwenTool - buildArgs with --include-directories
+(pass) qwenTool - buildArgs with --include-partial-messages
+(pass) qwenTool - buildArgs appends extra raw args
+(pass) qwenTool - parseOutput with NDJSON
+(pass) qwenTool - extractSessionId
+(pass) qwenTool - extractSessionId with sessionId format
+(pass) qwenTool - extractUsage from output
+(pass) qwenTool - extractUsage calculates total if not provided
+(pass) qwenTool - detectErrors finds error messages
+(pass) qwenTool - detectErrors with error field
+(pass) qwenTool - detectErrors returns false for normal output
+(pass) qwenTool - capability flags are correct
+(pass) qwenTool - buildCommand constructs correct command [1.00ms]
+(pass) qwenTool - buildCommand combines system and user prompt
+(pass) qwenTool - buildCommand reads prompt file with passthrough options
+(pass) geminiTool - mapModelToId with alias
+(pass) geminiTool - mapModelToId with full ID
+(pass) geminiTool - buildArgs with prompt
+(pass) geminiTool - buildArgs with model
+(pass) geminiTool - buildArgs with yolo mode
+(pass) geminiTool - buildArgs with sandbox mode
+(pass) geminiTool - buildArgs with json output
+(pass) geminiTool - buildArgs with debug mode
+(pass) geminiTool - buildArgs with checkpointing [1.00ms]
+(pass) geminiTool - buildArgs with interactive mode
+(pass) geminiTool - buildArgs appends extra raw args
+(pass) geminiTool - parseOutput with NDJSON
+(pass) geminiTool - extractSessionId
+(pass) geminiTool - extractSessionId with conversation_id
+(pass) geminiTool - extractUsage with standard format
+(pass) geminiTool - extractUsage with Gemini format
+(pass) geminiTool - detectErrors with error
+(pass) geminiTool - detectErrors returns false for normal output
+(pass) geminiTool - supportsYolo is true
+(pass) geminiTool - supportsSandbox is true
+(pass) geminiTool - supportsCheckpointing is true
+(pass) geminiTool - supportsDebug is true
+(pass) geminiTool - default model is gemini-2.5-flash
+(pass) geminiTool - buildCommand reads prompt file with passthrough options
+
+test/command-builder.test.mjs:
+(pass) buildAgentCommand - basic no isolation with known tool (claude)
+(pass) buildAgentCommand - with system prompt (claude) [1.00ms]
+(pass) buildAgentCommand - unknown tool uses generic format
+(pass) buildAgentCommand - screen isolation
+(pass) buildAgentCommand - docker isolation
+(pass) buildAgentCommand - with model (claude)
+(pass) buildAgentCommand - with codex tool
+(pass) buildAgentCommand - codex can read prompt from file
+(pass) buildAgentCommand - claude can read prompt from file
+(pass) buildAgentCommand - qwen can read prompt from file [1.00ms]
+(pass) buildAgentCommand - gemini can read prompt from file
+(pass) buildAgentCommand - with agent tool
+(pass) buildAgentCommand - with opencode tool
+(pass) buildAgentCommand - claude read-only uses plan permission mode [1.00ms]
+(pass) buildAgentCommand - claude supports raw passthrough options
+(pass) buildAgentCommand - codex read-only uses sandbox and no approvals
+(pass) buildAgentCommand - codex applies env to the tool side of prompt pipe
+(pass) buildAgentCommand - qwen applies env to the tool side of prompt pipe
+(pass) buildAgentCommand - gemini applies env to the tool side of prompt pipe
+(pass) buildAgentCommand - opencode read-only denies shell and edits
+(pass) buildAgentCommand - read-only still works with screen isolation
+(pass) buildAgentCommand - read-only rejects unsupported agent tool
+(pass) buildScreenStopCommand
+(pass) buildDockerStopCommand
+(pass) buildPipedCommand - basic
+(pass) buildPipedCommand - escapes single quotes
+
+test/release-metadata.test.mjs:
+(pass) buildReleaseMetadata - JavaScript release uses package prefix and badge [1.00ms]
+(pass) buildReleaseMetadata - Rust release uses package prefix and badge
+(pass) normalizeReleaseVersion strips existing language prefixes
+
+test/streaming.test.mjs:
+(pass) parseNdjsonLine - parses valid JSON object
+(pass) parseNdjsonLine - parses valid JSON array
+(pass) parseNdjsonLine - returns null for empty line
+(pass) parseNdjsonLine - returns null for non-JSON line
+(pass) parseNdjsonLine - returns null for invalid JSON
+(pass) parseNdjsonLine - trims whitespace
+(pass) stringifyNdjsonLine - stringifies object
+(pass) stringifyNdjsonLine - handles null
+(pass) stringifyNdjsonLine - handles undefined
+(pass) JsonOutputStream - processes single JSON line
+(pass) JsonOutputStream - processes multiple JSON lines
+(pass) JsonOutputStream - handles partial lines across chunks
+(pass) JsonOutputStream - calls onMessage callback
+(pass) JsonOutputStream - getMessages returns all messages
+(pass) JsonOutputStream - flush processes remaining buffer
+(pass) JsonOutputStream - filterByType
+(pass) JsonOutputStream - reset clears state
+(pass) JsonInputStream - add message
+(pass) JsonInputStream - toString produces NDJSON
+(pass) JsonInputStream - addPrompt adds user prompt
+(pass) JsonInputStream - addSystemMessage adds system message
+(pass) JsonInputStream - chaining works
+(pass) JsonInputStream - clear removes all messages [1.00ms]
+(pass) JsonInputStream.from - creates from array [1.00ms]
+(pass) JsonInputStream - toBuffer returns Buffer or Uint8Array
+
+test/index.test.mjs:
+(pass) agent - throws without tool
+(pass) agent - throws without workingDirectory
+(pass) agent - throws for screen isolation without screenName
+(pass) agent - throws for docker isolation without containerName
+(pass) agent - creates controller with valid options
+Dry run - command that would be executed:
+bash -c "cd /tmp/test && echo --prompt \"Hello\""
+(pass) agent - start in dry-run mode [1.00ms]
+(pass) agent - stop throws for no isolation without start [1.00ms]
+Dry run - command that would be executed:
+screen -S "test-session" -X quit
+(pass) agent - stop in dry-run mode with screen
+(pass) agent - start and stop with no isolation [22.00ms]
+(pass) agent - stdin tools handle large shell-sensitive prompts through a file [217.00ms]
+(pass) agent - stop includes normalized metadata for Claude JSON result output [36.00ms]
+
+test/package-readme.test.mjs:
+(pass) JavaScript package ships its own README [2.00ms]
+
+test/rust-release-registry.test.mjs:
+(pass) selectRustReleaseVersion skips stale GitHub release tags
+(pass) selectRustReleaseVersion stays ahead of crates.io
+(pass) extractCratesVersions ignores yanked crate versions
+(pass) isVersionPublished treats crates.io as release truth [1.00ms]
+(pass) parseCargoPackageInfo reads package name and version
+
+ 184 pass
+ 0 fail
+Ran 184 tests across 10 files. [403.00ms]

@@ -147,23 +147,25 @@ test(
     });
 
     for (const tool of ['agent', 'qwen', 'gemini']) {
-      await t.test(tool, async () => {
-        const prompt = `${'x'.repeat(3 * 1024 * 1024)}\n' "$HOME" \`pwd\``;
-        const systemPrompt = 'system instructions';
-        const expectedBytes = Buffer.byteLength(`${systemPrompt}\n\n${prompt}`);
-        const controller = agent({
-          tool,
-          workingDirectory: '/tmp',
-          prompt,
-          systemPrompt,
-        });
-
-        await controller.start({ attached: false });
-        const result = await controller.stop();
-
-        assert.strictEqual(result.exitCode, 0);
-        assert.strictEqual(result.output.plain.trim(), String(expectedBytes));
+      const prompt = `${'x'.repeat(3 * 1024 * 1024)}\n' "$HOME" \`pwd\``;
+      const systemPrompt = 'system instructions';
+      const expectedBytes = Buffer.byteLength(`${systemPrompt}\n\n${prompt}`);
+      const controller = agent({
+        tool,
+        workingDirectory: '/tmp',
+        prompt,
+        systemPrompt,
       });
+
+      await controller.start({ attached: false });
+      const result = await controller.stop();
+
+      assert.strictEqual(result.exitCode, 0, `tool: ${tool}`);
+      assert.strictEqual(
+        result.output.plain.trim(),
+        String(expectedBytes),
+        `tool: ${tool}`
+      );
     }
   }
 );

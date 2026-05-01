@@ -1,0 +1,88 @@
+   Compiling agent-commander v0.1.0 (/tmp/gh-issue-solver-1777636839591/rust)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.20s
+     Running tests/gemini_tests.rs (rust/target/debug/deps/gemini_tests-000f22ffe9159c98)
+
+running 27 tests
+test test_build_args_appends_extra_raw_args ... ok
+test test_build_args_with_debug ... ok
+test test_build_args_with_checkpointing ... ok
+test test_build_args_with_interactive ... ok
+test test_build_args_with_json_output ... ok
+test test_build_args_with_model ... ok
+test test_build_args_with_prompt ... ok
+test test_build_args_with_sandbox ... ok
+test test_build_args_with_yolo ... ok
+test test_build_command_reads_prompt_file_with_passthrough_options ... ok
+test test_detect_errors_no_error ... ok
+test test_detect_errors_with_error ... ok
+test test_extract_session_id ... ok
+test test_extract_session_id_conversation ... ok
+test test_extract_usage_camel_case ... ok
+test test_extract_usage_gemini_format ... ok
+test test_gemini_build_options_new ... ok
+test test_detect_errors_with_error_field ... ok
+test test_gemini_tool_default ... ok
+test test_extract_usage ... ok
+test test_gemini_tool_supports_debug ... ok
+test test_gemini_tool_supports_sandbox ... ok
+test test_map_model_to_id_with_full_id ... ok
+test test_map_model_to_id_with_alias ... ok
+test test_gemini_tool_supports_yolo ... ok
+test test_parse_output_ndjson ... ok
+test test_gemini_tool_supports_checkpointing ... ok
+
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/lib_tests.rs (rust/target/debug/deps/lib_tests-e346d41f2e5e76bb)
+
+running 16 tests
+test test_agent_creates_with_all_options ... ok
+test test_agent_creates_with_docker_isolation ... ok
+test test_agent_creates_with_empty_isolation ... ok
+test test_agent_creates_with_screen_isolation ... ok
+test test_agent_creates_with_valid_options ... ok
+test test_agent_options_default ... ok
+test test_agent_stop_throws_for_no_isolation_without_start ... ok
+test test_agent_start_in_dry_run_mode ... ok
+test test_agent_stop_in_dry_run_mode_with_screen ... ok
+test test_agent_throws_for_docker_without_name ... ok
+test test_agent_throws_for_screen_without_name ... ok
+test test_agent_throws_without_tool ... ok
+test test_agent_throws_without_working_directory ... ok
+test test_agent_start_and_stop_with_no_isolation ... ok
+test test_agent_stop_includes_normalized_metadata_for_claude_json_result_output ... ok
+test test_agent_stdin_tools_handle_large_shell_sensitive_prompts_through_file ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests/qwen_tests.rs (rust/target/debug/deps/qwen_tests-6016e47a39330de8)
+
+running 26 tests
+test test_build_args_appends_extra_raw_args ... ok
+test test_build_args_uses_stream_json_output_format_by_default ... ok
+test test_build_args_includes_yolo_by_default ... ok
+test test_build_args_with_all_files ... ok
+test test_build_args_with_continue ... ok
+test test_build_args_with_include_directories ... ok
+test test_build_args_with_include_partial_messages ... ok
+test test_build_args_with_json_output_format ... ok
+test test_build_args_with_model ... ok
+test test_build_args_with_prompt ... ok
+test test_build_args_with_resume ... ok
+test test_build_command_combines_system_and_user_prompt ... ok
+test test_build_command_constructs_correct_command ... ok
+test test_build_command_reads_prompt_file_with_passthrough_options ... ok
+test test_capability_flags_are_correct ... ok
+test test_detect_errors_returns_false_for_normal_output ... ok
+test test_detect_errors_finds_error_messages ... ok
+test test_detect_errors_with_error_field ... ok
+test test_extract_session_id_with_session_id_format ... ok
+test test_extract_session_id ... ok
+test test_extract_usage_calculates_total_if_not_provided ... ok
+test test_map_model_to_id_with_alias ... ok
+test test_extract_usage_from_output ... ok
+test test_map_model_to_id_with_full_id ... ok
+test test_parse_output_with_ndjson ... ok
+test test_qwen_tool_default_values ... ok
+
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

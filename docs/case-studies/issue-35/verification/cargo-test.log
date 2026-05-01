@@ -1,0 +1,373 @@
+    Blocking waiting for file lock on package cache
+       Fresh unicode-ident v1.0.24
+       Fresh proc-macro2 v1.0.106
+       Fresh libc v0.2.186
+       Fresh quote v1.0.45
+       Fresh syn v2.0.117
+       Fresh cfg-if v1.0.4
+       Fresh scopeguard v1.2.0
+       Fresh smallvec v1.15.1
+       Fresh parking_lot_core v0.9.12
+       Fresh lock_api v0.4.14
+       Fresh errno v0.3.14
+       Fresh signal-hook-registry v1.4.8
+       Fresh parking_lot v0.12.5
+       Fresh tokio-macros v2.7.0
+       Fresh mio v1.2.0
+       Fresh socket2 v0.6.3
+       Fresh bytes v1.11.1
+       Fresh pin-project-lite v0.2.17
+       Fresh serde_core v1.0.228
+       Fresh tokio v1.52.1
+       Fresh serde_derive v1.0.228
+       Fresh zmij v1.0.21
+       Fresh thiserror-impl v2.0.18
+       Fresh memchr v2.8.0
+       Fresh itoa v1.0.18
+       Fresh futures-core v0.3.32
+       Fresh serde_json v1.0.149
+       Fresh thiserror v2.0.18
+       Fresh serde v1.0.228
+       Fresh tokio-stream v0.1.18
+       Dirty agent-commander v0.1.0 (/tmp/gh-issue-solver-1777636839591/rust): the file `src/lib.rs` has changed (1777637753.833394552s, 1m 35s after last build at 1777637658.467091719s)
+   Compiling agent-commander v0.1.0 (/tmp/gh-issue-solver-1777636839591/rust)
+       Fresh tokio-test v0.4.5
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name agent_commander --edition=2021 src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=2443fc3c633dacba -C extra-filename=-b27ba8ff9aa57bc7 --out-dir /tmp/gh-issue-solver-1777636839591/rust/target/debug/deps -C incremental=/tmp/gh-issue-solver-1777636839591/rust/target/debug/incremental -L dependency=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps --extern serde=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde-b342861e994e7fdb.rmeta --extern serde_json=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rmeta --extern thiserror=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rmeta --extern tokio=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio-9871956da99d1524.rmeta`
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name agent_commander --edition=2021 src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=b7b44b07ab209775 -C extra-filename=-04fcbb48fa648fc6 --out-dir /tmp/gh-issue-solver-1777636839591/rust/target/debug/deps -C incremental=/tmp/gh-issue-solver-1777636839591/rust/target/debug/incremental -L dependency=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps --extern serde=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde-b342861e994e7fdb.rlib --extern serde_json=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rlib --extern thiserror=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rlib --extern tokio=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio-9871956da99d1524.rlib --extern tokio_test=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio_test-69c927c79067acb2.rlib`
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name package_metadata_tests --edition=2021 tests/package_metadata_tests.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=6ef52dc64900a906 -C extra-filename=-681a56c34055efbe --out-dir /tmp/gh-issue-solver-1777636839591/rust/target/debug/deps -C incremental=/tmp/gh-issue-solver-1777636839591/rust/target/debug/incremental -L dependency=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps --extern agent_commander=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libagent_commander-b27ba8ff9aa57bc7.rlib --extern serde=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde-b342861e994e7fdb.rlib --extern serde_json=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rlib --extern thiserror=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rlib --extern tokio=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio-9871956da99d1524.rlib --extern tokio_test=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio_test-69c927c79067acb2.rlib`
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name tools_tests --edition=2021 tests/tools_tests.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=812dd218dd6d2192 -C extra-filename=-d70291187d3892b0 --out-dir /tmp/gh-issue-solver-1777636839591/rust/target/debug/deps -C incremental=/tmp/gh-issue-solver-1777636839591/rust/target/debug/incremental -L dependency=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps --extern agent_commander=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libagent_commander-b27ba8ff9aa57bc7.rlib --extern serde=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde-b342861e994e7fdb.rlib --extern serde_json=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rlib --extern thiserror=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rlib --extern tokio=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio-9871956da99d1524.rlib --extern tokio_test=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio_test-69c927c79067acb2.rlib`
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name claude_tests --edition=2021 tests/claude_tests.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=ae98a8b304faf9e8 -C extra-filename=-c126ee71fddf1472 --out-dir /tmp/gh-issue-solver-1777636839591/rust/target/debug/deps -C incremental=/tmp/gh-issue-solver-1777636839591/rust/target/debug/incremental -L dependency=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps --extern agent_commander=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libagent_commander-b27ba8ff9aa57bc7.rlib --extern serde=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde-b342861e994e7fdb.rlib --extern serde_json=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rlib --extern thiserror=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rlib --extern tokio=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio-9871956da99d1524.rlib --extern tokio_test=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio_test-69c927c79067acb2.rlib`
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name agent_tests --edition=2021 tests/agent_tests.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=fed1a75409914b64 -C extra-filename=-e05a474cbe5940bf --out-dir /tmp/gh-issue-solver-1777636839591/rust/target/debug/deps -C incremental=/tmp/gh-issue-solver-1777636839591/rust/target/debug/incremental -L dependency=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps --extern agent_commander=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libagent_commander-b27ba8ff9aa57bc7.rlib --extern serde=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde-b342861e994e7fdb.rlib --extern serde_json=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rlib --extern thiserror=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rlib --extern tokio=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio-9871956da99d1524.rlib --extern tokio_test=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio_test-69c927c79067acb2.rlib`
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name codex_tests --edition=2021 tests/codex_tests.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=b415624ea280816a -C extra-filename=-86aa38709cfac372 --out-dir /tmp/gh-issue-solver-1777636839591/rust/target/debug/deps -C incremental=/tmp/gh-issue-solver-1777636839591/rust/target/debug/incremental -L dependency=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps --extern agent_commander=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libagent_commander-b27ba8ff9aa57bc7.rlib --extern serde=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde-b342861e994e7fdb.rlib --extern serde_json=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rlib --extern thiserror=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rlib --extern tokio=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio-9871956da99d1524.rlib --extern tokio_test=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio_test-69c927c79067acb2.rlib`
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name stop_agent --edition=2021 src/bin/stop_agent.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=f0c1535ed77fce4e -C extra-filename=-0f793c5e95437eca --out-dir /tmp/gh-issue-solver-1777636839591/rust/target/debug/deps -C incremental=/tmp/gh-issue-solver-1777636839591/rust/target/debug/incremental -L dependency=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps --extern agent_commander=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libagent_commander-b27ba8ff9aa57bc7.rlib --extern serde=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde-b342861e994e7fdb.rlib --extern serde_json=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rlib --extern thiserror=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rlib --extern tokio=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio-9871956da99d1524.rlib --extern tokio_test=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio_test-69c927c79067acb2.rlib`
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name lib_tests --edition=2021 tests/lib_tests.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=39583bc48c1e57ae -C extra-filename=-e346d41f2e5e76bb --out-dir /tmp/gh-issue-solver-1777636839591/rust/target/debug/deps -C incremental=/tmp/gh-issue-solver-1777636839591/rust/target/debug/incremental -L dependency=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps --extern agent_commander=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libagent_commander-b27ba8ff9aa57bc7.rlib --extern serde=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde-b342861e994e7fdb.rlib --extern serde_json=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rlib --extern thiserror=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rlib --extern tokio=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio-9871956da99d1524.rlib --extern tokio_test=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio_test-69c927c79067acb2.rlib`
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name streaming_tests --edition=2021 tests/streaming_tests.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=460224c336ba67c2 -C extra-filename=-352c574124bd64de --out-dir /tmp/gh-issue-solver-1777636839591/rust/target/debug/deps -C incremental=/tmp/gh-issue-solver-1777636839591/rust/target/debug/incremental -L dependency=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps --extern agent_commander=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libagent_commander-b27ba8ff9aa57bc7.rlib --extern serde=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde-b342861e994e7fdb.rlib --extern serde_json=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rlib --extern thiserror=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rlib --extern tokio=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio-9871956da99d1524.rlib --extern tokio_test=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio_test-69c927c79067acb2.rlib`
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name stop_agent --edition=2021 src/bin/stop_agent.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type bin --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=6d476ce6da6b3f86 -C extra-filename=-9888b3906baa89ed --out-dir /tmp/gh-issue-solver-1777636839591/rust/target/debug/deps -C incremental=/tmp/gh-issue-solver-1777636839591/rust/target/debug/incremental -L dependency=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps --extern agent_commander=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libagent_commander-b27ba8ff9aa57bc7.rlib --extern serde=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde-b342861e994e7fdb.rlib --extern serde_json=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rlib --extern thiserror=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rlib --extern tokio=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio-9871956da99d1524.rlib`
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name qwen_tests --edition=2021 tests/qwen_tests.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=3c34448652f1270b -C extra-filename=-6016e47a39330de8 --out-dir /tmp/gh-issue-solver-1777636839591/rust/target/debug/deps -C incremental=/tmp/gh-issue-solver-1777636839591/rust/target/debug/incremental -L dependency=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps --extern agent_commander=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libagent_commander-b27ba8ff9aa57bc7.rlib --extern serde=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde-b342861e994e7fdb.rlib --extern serde_json=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rlib --extern thiserror=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rlib --extern tokio=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio-9871956da99d1524.rlib --extern tokio_test=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio_test-69c927c79067acb2.rlib`
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name opencode_tests --edition=2021 tests/opencode_tests.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=a1706a166ebcceee -C extra-filename=-7f6df68777153f41 --out-dir /tmp/gh-issue-solver-1777636839591/rust/target/debug/deps -C incremental=/tmp/gh-issue-solver-1777636839591/rust/target/debug/incremental -L dependency=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps --extern agent_commander=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libagent_commander-b27ba8ff9aa57bc7.rlib --extern serde=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde-b342861e994e7fdb.rlib --extern serde_json=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rlib --extern thiserror=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rlib --extern tokio=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio-9871956da99d1524.rlib --extern tokio_test=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio_test-69c927c79067acb2.rlib`
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name start_agent --edition=2021 src/bin/start_agent.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type bin --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=bb78da33a31f82b5 -C extra-filename=-b6b6bc6ea728b6ab --out-dir /tmp/gh-issue-solver-1777636839591/rust/target/debug/deps -C incremental=/tmp/gh-issue-solver-1777636839591/rust/target/debug/incremental -L dependency=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps --extern agent_commander=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libagent_commander-b27ba8ff9aa57bc7.rlib --extern serde=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde-b342861e994e7fdb.rlib --extern serde_json=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rlib --extern thiserror=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rlib --extern tokio=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio-9871956da99d1524.rlib`
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name start_agent --edition=2021 src/bin/start_agent.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=5ee757e1a882bf6a -C extra-filename=-e84995dd0557c95d --out-dir /tmp/gh-issue-solver-1777636839591/rust/target/debug/deps -C incremental=/tmp/gh-issue-solver-1777636839591/rust/target/debug/incremental -L dependency=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps --extern agent_commander=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libagent_commander-b27ba8ff9aa57bc7.rlib --extern serde=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde-b342861e994e7fdb.rlib --extern serde_json=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rlib --extern thiserror=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rlib --extern tokio=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio-9871956da99d1524.rlib --extern tokio_test=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio_test-69c927c79067acb2.rlib`
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name gemini_tests --edition=2021 tests/gemini_tests.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=bb859753cc370e83 -C extra-filename=-000f22ffe9159c98 --out-dir /tmp/gh-issue-solver-1777636839591/rust/target/debug/deps -C incremental=/tmp/gh-issue-solver-1777636839591/rust/target/debug/incremental -L dependency=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps --extern agent_commander=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libagent_commander-b27ba8ff9aa57bc7.rlib --extern serde=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde-b342861e994e7fdb.rlib --extern serde_json=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rlib --extern thiserror=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rlib --extern tokio=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio-9871956da99d1524.rlib --extern tokio_test=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio_test-69c927c79067acb2.rlib`
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.82s
+     Running `/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/agent_commander-04fcbb48fa648fc6`
+
+running 69 tests
+test cli_parser::tests::test_parse_args_basic_flags ... ok
+test cli_parser::tests::test_parse_args_with_positional ... ok
+test cli_parser::tests::test_parse_start_agent_args_defaults_for_new_options ... ok
+test cli_parser::tests::test_parse_start_agent_args_basic ... ok
+test cli_parser::tests::test_parse_start_agent_args_plan_only_alias ... ok
+test cli_parser::tests::test_parse_start_agent_args_dry_run ... ok
+test cli_parser::tests::test_parse_start_agent_args_read_only ... ok
+test cli_parser::tests::test_parse_start_agent_args_with_append_system_prompt ... ok
+test cli_parser::tests::test_parse_start_agent_args_with_isolation ... ok
+test cli_parser::tests::test_parse_start_agent_args_with_prompt_file ... ok
+test cli_parser::tests::test_parse_start_agent_args_with_model_and_fallback_model ... ok
+test cli_parser::tests::test_parse_stop_agent_args_screen ... ok
+test cli_parser::tests::test_parse_start_agent_args_with_raw_passthrough_options ... ok
+test cli_parser::tests::test_parse_start_agent_args_with_verbose_and_replay_user_messages ... ok
+test cli_parser::tests::test_validate_start_agent_options_screen_without_name ... ok
+test cli_parser::tests::test_parse_start_agent_args_with_session_management_options ... ok
+test cli_parser::tests::test_validate_start_agent_options_missing_tool ... ok
+test cli_parser::tests::test_validate_stop_agent_options_missing_isolation ... ok
+test cli_parser::tests::test_validate_start_agent_options_valid ... ok
+test cli_parser::tests::test_validate_stop_agent_options_valid ... ok
+test command_builder::tests::test_build_agent_command_basic_claude ... ok
+test command_builder::tests::test_build_agent_command_agent_tool ... ok
+test command_builder::tests::test_build_agent_command_claude_raw_passthrough ... ok
+test command_builder::tests::test_build_agent_command_claude_read_only ... ok
+test command_builder::tests::test_build_agent_command_claude_with_append_system_prompt ... ok
+test command_builder::tests::test_build_agent_command_claude_prompt_file ... ok
+test command_builder::tests::test_build_agent_command_claude_with_fallback_model ... ok
+test command_builder::tests::test_build_agent_command_claude_with_session_management ... ok
+test command_builder::tests::test_build_agent_command_claude_with_verbose_streaming ... ok
+test command_builder::tests::test_build_agent_command_codex ... ok
+test command_builder::tests::test_build_agent_command_codex_prompt_file ... ok
+test command_builder::tests::test_build_agent_command_codex_read_only ... ok
+test command_builder::tests::test_build_agent_command_docker_isolation ... ok
+test command_builder::tests::test_build_agent_command_gemini_prompt_file ... ok
+test command_builder::tests::test_build_agent_command_gemini_raw_passthrough ... ok
+test command_builder::tests::test_build_agent_command_opencode ... ok
+test command_builder::tests::test_build_agent_command_qwen_prompt_file ... ok
+test command_builder::tests::test_build_agent_command_qwen_raw_passthrough ... ok
+test command_builder::tests::test_build_agent_command_unknown_tool ... ok
+test command_builder::tests::test_build_agent_command_screen_isolation ... ok
+test command_builder::tests::test_build_agent_command_with_model ... ok
+test command_builder::tests::test_build_agent_command_opencode_read_only ... ok
+test command_builder::tests::test_build_piped_command_basic ... ok
+test command_builder::tests::test_build_agent_command_with_system_prompt ... ok
+test command_builder::tests::test_build_piped_command_escapes_quotes ... ok
+test command_builder::tests::test_build_agent_command_read_only_rejects_agent_tool - should panic ... ok
+test command_builder::tests::test_build_docker_stop_command ... ok
+test result_metadata::tests::exposes_agent_pricing_and_sub_agent_calls ... ok
+test command_builder::tests::test_build_screen_stop_command ... ok
+test executor::tests::test_execute_command_dry_run ... ok
+test streaming::input_stream::tests::test_add_message ... ok
+test streaming::input_stream::tests::test_add_system_message ... ok
+test streaming::input_stream::tests::test_chaining ... ok
+test streaming::input_stream::tests::test_add_prompt ... ok
+test result_metadata::tests::normalizes_codex_thread_id_and_usage ... ok
+test executor::tests::test_execute_detached ... ok
+test streaming::input_stream::tests::test_from_messages ... ok
+test streaming::input_stream::tests::test_to_bytes ... ok
+test streaming::input_stream::tests::test_to_string_produces_ndjson ... ok
+test streaming::input_stream::tests::test_clear ... ok
+test streaming::output_stream::tests::test_filter_by_type ... ok
+test streaming::output_stream::tests::test_flush_processes_remaining_buffer ... ok
+test streaming::output_stream::tests::test_get_messages_returns_all ... ok
+test streaming::output_stream::tests::test_handles_partial_lines_across_chunks ... ok
+test streaming::output_stream::tests::test_process_multiple_json_lines ... ok
+test streaming::output_stream::tests::test_reset_clears_state ... ok
+test streaming::output_stream::tests::test_process_single_json_line ... ok
+test executor::tests::test_execute_command_real ... ok
+test executor::tests::test_start_command_and_wait ... ok
+
+test result: ok. 69 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running `/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/start_agent-e84995dd0557c95d`
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running `/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/stop_agent-0f793c5e95437eca`
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running `/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/agent_tests-e05a474cbe5940bf`
+
+running 20 tests
+test test_agent_tool_default ... ok
+test test_build_args_with_model ... ok
+test test_detect_errors_finds_error ... ok
+test test_build_args_with_use_existing_claude_oauth ... ok
+test test_extract_session_id ... ok
+test test_detect_errors_normal_output ... ok
+test test_detect_errors_finds_step_error ... ok
+test test_build_args_with_compact_json ... ok
+test test_extract_usage_from_step_finish ... ok
+test test_extract_usage_with_reasoning_tokens ... ok
+test test_extract_usage_with_cost ... ok
+test test_extract_usage_with_cache_tokens ... ok
+test test_map_model_to_id_anthropic_models ... ok
+test test_map_model_to_id_nemotron_3_super_free ... ok
+test test_map_model_to_id_keeps_deprecated_qwen ... ok
+test test_map_model_to_id_other_providers ... ok
+test test_map_model_to_id_with_full_id ... ok
+test test_map_model_to_id_grok_variants ... ok
+test test_map_model_to_id_with_alias ... ok
+test test_parse_output_ndjson ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running `/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/claude_tests-c126ee71fddf1472`
+
+running 21 tests
+test test_build_args_includes_dangerously_skip_permissions_by_default ... ok
+test test_build_args_with_json_input ... ok
+test test_build_args_with_model ... ok
+test test_build_args_with_fallback_model ... ok
+test test_build_args_with_print_mode ... ok
+test test_build_args_uses_stream_json_format ... ok
+test test_build_args_with_prompt ... ok
+test test_build_args_with_replay_user_messages ... ok
+test test_build_args_with_session_management ... ok
+test test_build_args_with_system_prompt ... ok
+test test_build_args_with_append_system_prompt ... ok
+test test_build_args_with_verbose ... ok
+test test_claude_tool_default ... ok
+test test_claude_tool_supports_new_capabilities ... ok
+test test_extract_session_id ... ok
+test test_extract_usage ... ok
+test test_extract_usage_with_cache ... ok
+test test_map_model_to_id_with_full_id ... ok
+test test_map_model_to_id_with_alias ... ok
+test test_parse_output_ndjson ... ok
+test test_map_model_to_id_with_opus_4_7_alias ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running `/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/codex_tests-86aa38709cfac372`
+
+running 16 tests
+test test_build_args_includes_exec ... ok
+test test_build_args_includes_safety_bypasses ... ok
+test test_build_args_with_model ... ok
+test test_codex_tool_default ... ok
+test test_build_args_with_resume ... ok
+test test_extract_session_id_with_thread_id ... ok
+test test_build_args_with_json ... ok
+test test_extract_usage ... ok
+test test_map_model_to_id_gpt_variants ... ok
+test test_map_model_to_id_o3_variants ... ok
+test test_map_model_to_id_with_alias ... ok
+test test_map_model_to_id_gpt_5_5_family ... ok
+test test_map_model_to_id_claude_aliases ... ok
+test test_map_model_to_id_with_full_id ... ok
+test test_parse_output_ndjson ... ok
+test test_extract_session_id_with_session_id ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running `/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/gemini_tests-000f22ffe9159c98`
+
+running 27 tests
+test test_build_args_with_interactive ... ok
+test test_build_args_with_debug ... ok
+test test_build_args_with_checkpointing ... ok
+test test_build_args_with_json_output ... ok
+test test_build_args_with_model ... ok
+test test_build_args_appends_extra_raw_args ... ok
+test test_build_args_with_prompt ... ok
+test test_build_args_with_sandbox ... ok
+test test_detect_errors_no_error ... ok
+test test_build_args_with_yolo ... ok
+test test_extract_usage ... ok
+test test_extract_usage_camel_case ... ok
+test test_extract_usage_gemini_format ... ok
+test test_build_command_reads_prompt_file_with_passthrough_options ... ok
+test test_detect_errors_with_error ... ok
+test test_detect_errors_with_error_field ... ok
+test test_extract_session_id ... ok
+test test_extract_session_id_conversation ... ok
+test test_gemini_build_options_new ... ok
+test test_gemini_tool_supports_checkpointing ... ok
+test test_gemini_tool_supports_debug ... ok
+test test_gemini_tool_default ... ok
+test test_gemini_tool_supports_yolo ... ok
+test test_gemini_tool_supports_sandbox ... ok
+test test_map_model_to_id_with_alias ... ok
+test test_map_model_to_id_with_full_id ... ok
+test test_parse_output_ndjson ... ok
+
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running `/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/lib_tests-e346d41f2e5e76bb`
+
+running 16 tests
+test test_agent_creates_with_all_options ... ok
+test test_agent_creates_with_empty_isolation ... ok
+test test_agent_start_in_dry_run_mode ... ok
+test test_agent_creates_with_docker_isolation ... ok
+test test_agent_options_default ... ok
+test test_agent_stop_in_dry_run_mode_with_screen ... ok
+test test_agent_creates_with_valid_options ... ok
+test test_agent_throws_for_docker_without_name ... ok
+test test_agent_throws_for_screen_without_name ... ok
+test test_agent_stop_throws_for_no_isolation_without_start ... ok
+test test_agent_creates_with_screen_isolation ... ok
+test test_agent_throws_without_tool ... ok
+test test_agent_throws_without_working_directory ... ok
+test test_agent_start_and_stop_with_no_isolation ... ok
+test test_agent_stdin_tools_handle_large_shell_sensitive_prompts_through_file ... ok
+test test_agent_stop_includes_normalized_metadata_for_claude_json_result_output ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+     Running `/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/opencode_tests-7f6df68777153f41`
+
+running 13 tests
+test test_build_args_includes_run ... ok
+test test_build_args_with_model ... ok
+test test_build_args_with_resume ... ok
+test test_build_args_with_json ... ok
+test test_extract_session_id ... ok
+test test_extract_usage ... ok
+test test_map_model_to_id_claude_aliases ... ok
+test test_map_model_to_id_gpt_aliases ... ok
+test test_map_model_to_id_grok_variants ... ok
+test test_map_model_to_id_with_alias ... ok
+test test_map_model_to_id_with_full_id ... ok
+test test_opencode_tool_default ... ok
+test test_parse_output_ndjson ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running `/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/package_metadata_tests-681a56c34055efbe`
+
+running 1 test
+test rust_crate_declares_and_ships_readme ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running `/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/qwen_tests-6016e47a39330de8`
+
+running 26 tests
+test test_build_args_appends_extra_raw_args ... ok
+test test_build_args_includes_yolo_by_default ... ok
+test test_build_args_uses_stream_json_output_format_by_default ... ok
+test test_build_args_with_include_partial_messages ... ok
+test test_build_args_with_json_output_format ... ok
+test test_build_args_with_model ... ok
+test test_build_args_with_prompt ... ok
+test test_build_args_with_resume ... ok
+test test_build_command_combines_system_and_user_prompt ... ok
+test test_build_args_with_continue ... ok
+test test_build_command_constructs_correct_command ... ok
+test test_build_command_reads_prompt_file_with_passthrough_options ... ok
+test test_capability_flags_are_correct ... ok
+test test_build_args_with_include_directories ... ok
+test test_detect_errors_finds_error_messages ... ok
+test test_build_args_with_all_files ... ok
+test test_detect_errors_with_error_field ... ok
+test test_extract_session_id ... ok
+test test_detect_errors_returns_false_for_normal_output ... ok
+test test_parse_output_with_ndjson ... ok
+test test_qwen_tool_default_values ... ok
+test test_extract_session_id_with_session_id_format ... ok
+test test_extract_usage_calculates_total_if_not_provided ... ok
+test test_map_model_to_id_with_alias ... ok
+test test_map_model_to_id_with_full_id ... ok
+test test_extract_usage_from_output ... ok
+
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running `/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/streaming_tests-352c574124bd64de`
+
+running 17 tests
+test test_create_output_stream ... ok
+test test_parse_ndjson ... ok
+test test_create_input_stream ... ok
+test test_parse_ndjson_line_empty ... ok
+test test_output_stream_process_and_flush ... ok
+test test_input_stream_add_and_read ... ok
+test test_parse_ndjson_line_valid_array ... ok
+test test_parse_ndjson_line_non_json ... ok
+test test_parse_ndjson_line_invalid_json ... ok
+test test_parse_ndjson_line_valid_object ... ok
+test test_parse_ndjson_with_empty_lines ... ok
+test test_parse_ndjson_line_trims_whitespace ... ok
+test test_parse_ndjson_with_non_json_lines ... ok
+test test_stringify_ndjson_line_pretty ... ok
+test test_stringify_ndjson_line_null ... ok
+test test_stringify_ndjson ... ok
+test test_stringify_ndjson_line_object ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running `/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/tools_tests-d70291187d3892b0`
+
+running 12 tests
+test test_get_tool ... ok
+test test_get_tool_agent ... ok
+test test_is_tool_supported ... ok
+test test_get_tool_gemini ... ok
+test test_get_tool_opencode ... ok
+test test_get_tool_unknown ... ok
+test test_list_tools ... ok
+test test_get_tool_codex ... ok
+test test_tool_display_names ... ok
+test test_tool_default_models ... ok
+test test_tool_registry ... ok
+test test_tool_registry_list ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+   Doc-tests agent_commander
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustdoc --edition=2021 --crate-type lib --color auto --crate-name agent_commander --test src/lib.rs --test-run-directory /tmp/gh-issue-solver-1777636839591/rust '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --extern agent_commander=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libagent_commander-b27ba8ff9aa57bc7.rlib --extern serde=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde-b342861e994e7fdb.rlib --extern serde_json=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rlib --extern thiserror=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rlib --extern tokio=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio-9871956da99d1524.rlib --extern tokio_test=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps/libtokio_test-69c927c79067acb2.rlib -L dependency=/tmp/gh-issue-solver-1777636839591/rust/target/debug/deps -C embed-bitcode=no --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' --error-format human`
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
