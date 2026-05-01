@@ -2,6 +2,7 @@
 //! Based on hive-mind's opencode.lib.mjs implementation
 
 use crate::streaming::parse_ndjson;
+use crate::tools::shell::{build_command_head, escape_arg, escape_single_quotes};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -48,6 +49,9 @@ pub struct OpencodeBuildOptions {
     pub json: bool,
     pub resume: Option<String>,
     pub read_only: bool,
+    pub executable: Option<String>,
+    pub extra_env: Vec<(String, String)>,
+    pub extra_args: Vec<String>,
 }
 
 /// Build command line arguments for OpenCode
@@ -77,31 +81,9 @@ pub fn build_args(options: &OpencodeBuildOptions) -> Vec<String> {
         args.push(resume.clone());
     }
 
+    args.extend(options.extra_args.clone());
+
     args
-}
-
-/// Escape an argument for shell usage
-fn escape_arg(arg: &str) -> String {
-    if arg.contains('"')
-        || arg.contains(char::is_whitespace)
-        || arg.contains('$')
-        || arg.contains('`')
-        || arg.contains('\\')
-    {
-        let escaped = arg
-            .replace('\\', "\\\\")
-            .replace('"', "\\\"")
-            .replace('$', "\\$")
-            .replace('`', "\\`");
-        format!("\"{}\"", escaped)
-    } else {
-        arg.to_string()
-    }
-}
-
-/// Escape single quotes for printf
-fn escape_single_quotes(s: &str) -> String {
-    s.replace('\'', "'\\''")
 }
 
 /// Build complete command string for OpenCode
@@ -129,15 +111,24 @@ pub fn build_command(options: &OpencodeBuildOptions) -> String {
         || format!("printf '%s' '{}'", escape_single_quotes(&combined_prompt)),
         |prompt_file| format!("cat {}", escape_arg(prompt_file)),
     );
-    let executable = if options.read_only {
-        format!("OPENCODE_PERMISSION='{}' opencode", READ_ONLY_PERMISSION)
-    } else {
-        "opencode".to_string()
-    };
+    let executable = options.executable.as_deref().unwrap_or("opencode");
+    let mut extra_env = Vec::new();
+    if options.read_only {
+        extra_env.push((
+            "OPENCODE_PERMISSION".to_string(),
+            READ_ONLY_PERMISSION.to_string(),
+        ));
+    }
+    extra_env.extend(options.extra_env.clone());
 
-    format!("{} | {} {}", input_command, executable, args_str.join(" "))
-        .trim()
-        .to_string()
+    format!(
+        "{} | {} {}",
+        input_command,
+        build_command_head(executable, &extra_env, &[]),
+        args_str.join(" ")
+    )
+    .trim()
+    .to_string()
 }
 
 /// Parse JSON messages from OpenCode output

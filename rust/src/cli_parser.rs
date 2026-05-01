@@ -3,10 +3,12 @@
 
 use std::collections::HashMap;
 
+const VALUE_OPTION_KEYS: &[&str] = &["tool-arg"];
+
 /// Parsed command line arguments
 #[derive(Debug, Clone, Default)]
 pub struct ParsedArgs {
-    pub options: HashMap<String, String>,
+    pub options: HashMap<String, Vec<String>>,
     pub flags: Vec<String>,
     pub positional: Vec<String>,
 }
@@ -14,7 +16,12 @@ pub struct ParsedArgs {
 impl ParsedArgs {
     /// Get an option value
     pub fn get(&self, key: &str) -> Option<&String> {
-        self.options.get(key)
+        self.options.get(key).and_then(|values| values.last())
+    }
+
+    /// Get all option values
+    pub fn get_all(&self, key: &str) -> Vec<String> {
+        self.options.get(key).cloned().unwrap_or_default()
     }
 
     /// Check if a flag is set
@@ -48,8 +55,8 @@ pub fn parse_args(args: &[String]) -> ParsedArgs {
 
             // Check if it's a flag (boolean) or has a value
             if let Some(next) = next_arg {
-                if !next.starts_with("--") {
-                    parsed.options.insert(key, next.clone());
+                if !next.starts_with("--") || VALUE_OPTION_KEYS.contains(&key.as_str()) {
+                    parsed.options.entry(key).or_default().push(next.clone());
                     i += 1; // Skip next arg as it's the value
                 } else {
                     parsed.flags.push(key);
@@ -84,6 +91,10 @@ pub struct StartAgentOptions {
     pub resume: Option<String>,
     pub session_id: Option<String>,
     pub fork_session: bool,
+    pub tool_executable: Option<String>,
+    pub tool_args: Vec<String>,
+    pub tool_env: Vec<String>,
+    pub skip_default_safety_flags: bool,
     pub isolation: String,
     pub screen_name: Option<String>,
     pub container_name: Option<String>,
@@ -134,6 +145,10 @@ pub fn parse_start_agent_args(args: &[String]) -> StartAgentOptions {
         resume: parsed.get("resume").cloned(),
         session_id: parsed.get("session-id").cloned(),
         fork_session: parsed.get_bool("fork-session"),
+        tool_executable: parsed.get("tool-executable").cloned(),
+        tool_args: parsed.get_all("tool-arg"),
+        tool_env: parsed.get_all("tool-env"),
+        skip_default_safety_flags: parsed.get_bool("skip-default-safety-flags"),
         isolation,
         screen_name: parsed.get("screen-name").cloned(),
         container_name: parsed.get("container-name").cloned(),
@@ -185,6 +200,10 @@ Options:
   --session-id <uuid>              Use a specific session ID (must be valid UUID)
   --fork-session                   Create new session ID when resuming
   --replay-user-messages           Re-emit user messages on stdout (streaming mode)
+  --tool-executable <path>         Override the tool executable path/name
+  --tool-env <KEY=VALUE>           Add an environment variable for the tool (repeatable)
+  --tool-arg <arg>                 Append a raw argument to the tool command (repeatable)
+  --skip-default-safety-flags      Do not add default autonomous safety bypass flags
   --isolation <mode>               Isolation mode: none, screen, docker (default: none)
   --screen-name <name>             Screen session name (required for screen isolation)
   --container-name <name>          Container name (required for docker isolation)
@@ -409,6 +428,42 @@ mod tests {
         let result = parse_start_agent_args(&args);
 
         assert!(result.read_only);
+    }
+
+    #[test]
+    fn test_parse_start_agent_args_with_raw_passthrough_options() {
+        let args: Vec<String> = vec![
+            "--tool".into(),
+            "claude".into(),
+            "--working-directory".into(),
+            "/tmp/test".into(),
+            "--tool-executable".into(),
+            "/opt/claude".into(),
+            "--tool-env".into(),
+            "MCP_TIMEOUT=10000".into(),
+            "--tool-env".into(),
+            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1".into(),
+            "--tool-arg".into(),
+            "--mcp-config".into(),
+            "--tool-arg".into(),
+            "/tmp/mcp.json".into(),
+            "--skip-default-safety-flags".into(),
+        ];
+        let result = parse_start_agent_args(&args);
+
+        assert_eq!(result.tool_executable, Some("/opt/claude".to_string()));
+        assert_eq!(
+            result.tool_env,
+            vec![
+                "MCP_TIMEOUT=10000".to_string(),
+                "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1".to_string()
+            ]
+        );
+        assert_eq!(
+            result.tool_args,
+            vec!["--mcp-config".to_string(), "/tmp/mcp.json".to_string()]
+        );
+        assert!(result.skip_default_safety_flags);
     }
 
     #[test]

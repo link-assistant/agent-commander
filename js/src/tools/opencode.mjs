@@ -3,6 +3,15 @@
  * Based on hive-mind's opencode.lib.mjs implementation
  */
 
+import {
+  buildCommandHead,
+  escapeArg,
+  normalizeExtraArgs,
+  normalizeExtraEnv,
+} from './shell.mjs';
+
+const READ_ONLY_PERMISSION = '{"edit":"deny","bash":"deny","task":"deny"}';
+
 /**
  * Available OpenCode model configurations
  * Maps aliases to full model IDs
@@ -38,10 +47,11 @@ export function mapModelToId(options) {
  * @param {string} [options.model] - Model to use
  * @param {boolean} [options.json] - JSON output mode
  * @param {string} [options.resume] - Resume session ID
+ * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
-  const { model, json = true, resume } = options;
+  const { model, json = true, resume, extraArgs = [] } = options;
 
   const args = ['run'];
 
@@ -58,6 +68,8 @@ export function buildArgs(options) {
     args.push('--resume', resume);
   }
 
+  args.push(...normalizeExtraArgs(extraArgs));
+
   return args;
 }
 
@@ -73,6 +85,9 @@ export function buildArgs(options) {
  * @param {boolean} [options.json] - JSON output mode
  * @param {string} [options.resume] - Resume session ID
  * @param {boolean} [options.readOnly] - Deny OpenCode edit, bash, and task permissions
+ * @param {string} [options.executable='opencode'] - Executable path/name
+ * @param {Object|Array} [options.extraEnv] - Environment variables for the tool
+ * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {
@@ -81,6 +96,8 @@ export function buildCommand(options) {
     promptFile,
     systemPrompt,
     readOnly = false,
+    executable = 'opencode',
+    extraEnv,
     ...argOptions
   } = options;
   const args = buildArgs(argOptions);
@@ -94,22 +111,17 @@ export function buildCommand(options) {
   const inputCommand = promptFile
     ? `cat ${escapeArg(promptFile)}`
     : `printf '%s' '${combinedPrompt.replace(/'/g, "'\\''")}'`;
-  const executable = readOnly
-    ? `OPENCODE_PERMISSION='{"edit":"deny","bash":"deny","task":"deny"}' opencode`
-    : 'opencode';
-  return `${inputCommand} | ${executable} ${args.map(escapeArg).join(' ')}`.trim();
-}
+  const env = readOnly
+    ? [
+        ['OPENCODE_PERMISSION', READ_ONLY_PERMISSION],
+        ...normalizeExtraEnv(extraEnv),
+      ]
+    : extraEnv;
 
-/**
- * Escape an argument for shell usage
- * @param {string} arg - Argument to escape
- * @returns {string} Escaped argument
- */
-function escapeArg(arg) {
-  if (/["\s$`\\]/.test(arg)) {
-    return `"${arg.replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`').replace(/\\/g, '\\\\')}"`;
-  }
-  return arg;
+  return `${inputCommand} | ${buildCommandHead({
+    executable,
+    extraEnv: env,
+  })} ${args.map(escapeArg).join(' ')}`.trim();
 }
 
 /**

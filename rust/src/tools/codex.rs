@@ -2,6 +2,7 @@
 //! Based on hive-mind's codex.lib.mjs implementation
 
 use crate::streaming::parse_ndjson;
+use crate::tools::shell::{build_command_head, escape_arg, escape_single_quotes};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -64,6 +65,12 @@ pub struct CodexBuildOptions {
     pub json: bool,
     pub resume: Option<String>,
     pub read_only: bool,
+    pub executable: Option<String>,
+    pub extra_env: Vec<(String, String)>,
+    pub extra_args: Vec<String>,
+    pub skip_default_safety_flags: bool,
+    pub sandbox_mode: Option<String>,
+    pub approval_mode: Option<String>,
 }
 
 /// Build command line arguments for Codex
@@ -97,35 +104,22 @@ pub fn build_args(options: &CodexBuildOptions) -> Vec<String> {
     if options.read_only {
         args.push("--sandbox".to_string());
         args.push("read-only".to_string());
-    } else {
+    } else if let Some(ref sandbox_mode) = options.sandbox_mode {
+        args.push("--sandbox".to_string());
+        args.push(sandbox_mode.clone());
+    }
+
+    if !options.read_only
+        && options.sandbox_mode.is_none()
+        && options.approval_mode.is_none()
+        && !options.skip_default_safety_flags
+    {
         args.push("--dangerously-bypass-approvals-and-sandbox".to_string());
     }
 
+    args.extend(options.extra_args.clone());
+
     args
-}
-
-/// Escape an argument for shell usage
-fn escape_arg(arg: &str) -> String {
-    if arg.contains('"')
-        || arg.contains(char::is_whitespace)
-        || arg.contains('$')
-        || arg.contains('`')
-        || arg.contains('\\')
-    {
-        let escaped = arg
-            .replace('\\', "\\\\")
-            .replace('"', "\\\"")
-            .replace('$', "\\$")
-            .replace('`', "\\`");
-        format!("\"{}\"", escaped)
-    } else {
-        arg.to_string()
-    }
-}
-
-/// Escape single quotes for printf
-fn escape_single_quotes(s: &str) -> String {
-    s.replace('\'', "'\\''")
 }
 
 /// Build complete command string for Codex
@@ -153,15 +147,24 @@ pub fn build_command(options: &CodexBuildOptions) -> String {
         || format!("printf '%s' '{}'", escape_single_quotes(&combined_prompt)),
         |prompt_file| format!("cat {}", escape_arg(prompt_file)),
     );
-    let executable = if options.read_only {
-        "codex --ask-for-approval never"
-    } else {
-        "codex"
-    };
+    let executable = options.executable.as_deref().unwrap_or("codex");
+    let mut prefix_args = Vec::new();
+    if options.read_only {
+        prefix_args.push("--ask-for-approval".to_string());
+        prefix_args.push("never".to_string());
+    } else if let Some(ref approval_mode) = options.approval_mode {
+        prefix_args.push("--ask-for-approval".to_string());
+        prefix_args.push(approval_mode.clone());
+    }
 
-    format!("{} | {} {}", input_command, executable, args_str.join(" "))
-        .trim()
-        .to_string()
+    format!(
+        "{} | {} {}",
+        input_command,
+        build_command_head(executable, &options.extra_env, &prefix_args),
+        args_str.join(" ")
+    )
+    .trim()
+    .to_string()
 }
 
 /// Parse JSON messages from Codex output

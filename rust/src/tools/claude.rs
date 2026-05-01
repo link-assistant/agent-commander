@@ -2,6 +2,7 @@
 //! Based on hive-mind's claude.lib.mjs implementation
 
 use crate::streaming::parse_ndjson;
+use crate::tools::shell::{build_command_head, escape_arg};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -64,6 +65,11 @@ pub struct ClaudeBuildOptions {
     pub session_id: Option<String>,
     pub fork_session: bool,
     pub read_only: bool,
+    pub executable: Option<String>,
+    pub extra_env: Vec<(String, String)>,
+    pub extra_args: Vec<String>,
+    pub skip_default_safety_flags: bool,
+    pub permission_mode: Option<String>,
 }
 
 impl ClaudeBuildOptions {
@@ -86,7 +92,10 @@ pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
     if options.read_only {
         args.push("--permission-mode".to_string());
         args.push("plan".to_string());
-    } else {
+    } else if let Some(ref permission_mode) = options.permission_mode {
+        args.push("--permission-mode".to_string());
+        args.push(permission_mode.clone());
+    } else if !options.skip_default_safety_flags {
         // Permission bypass is enabled by default for autonomous execution.
         args.push("--dangerously-skip-permissions".to_string());
     }
@@ -160,26 +169,9 @@ pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
         args.push("--fork-session".to_string());
     }
 
-    args
-}
+    args.extend(options.extra_args.clone());
 
-/// Escape an argument for shell usage
-fn escape_arg(arg: &str) -> String {
-    if arg.contains('"')
-        || arg.contains(char::is_whitespace)
-        || arg.contains('$')
-        || arg.contains('`')
-        || arg.contains('\\')
-    {
-        let escaped = arg
-            .replace('\\', "\\\\")
-            .replace('"', "\\\"")
-            .replace('$', "\\$")
-            .replace('`', "\\`");
-        format!("\"{}\"", escaped)
-    } else {
-        arg.to_string()
-    }
+    args
 }
 
 /// Build complete command string for Claude
@@ -192,7 +184,14 @@ fn escape_arg(arg: &str) -> String {
 pub fn build_command(options: &ClaudeBuildOptions) -> String {
     let args = build_args(options);
     let args_str: Vec<String> = args.iter().map(|a| escape_arg(a)).collect();
-    let command = format!("claude {}", args_str.join(" ")).trim().to_string();
+    let executable = options.executable.as_deref().unwrap_or("claude");
+    let command = format!(
+        "{} {}",
+        build_command_head(executable, &options.extra_env, &[]),
+        args_str.join(" ")
+    )
+    .trim()
+    .to_string();
 
     if let Some(prompt_file) = &options.prompt_file {
         format!("cat {} | {}", escape_arg(prompt_file), command)

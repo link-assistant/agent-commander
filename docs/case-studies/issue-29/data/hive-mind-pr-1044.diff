@@ -1,0 +1,1258 @@
+diff --git a/.changeset/agent-commander-option.md b/.changeset/agent-commander-option.md
+new file mode 100644
+index 000000000..0b45f5e24
+--- /dev/null
++++ b/.changeset/agent-commander-option.md
+@@ -0,0 +1,5 @@
++---
++'@link-assistant/hive-mind': minor
++---
++
++Add experimental `--use-agent-commander` option to delegate tool execution to agent-commander library
+diff --git a/docs/case-studies/issue-1043/README.md b/docs/case-studies/issue-1043/README.md
+new file mode 100644
+index 000000000..65249eea5
+--- /dev/null
++++ b/docs/case-studies/issue-1043/README.md
+@@ -0,0 +1,87 @@
++# Issue 1043: Optional agent-commander Execution
++
++## Scope
++
++Issue: https://github.com/link-assistant/hive-mind/issues/1043
++
++Pull request: https://github.com/link-assistant/hive-mind/pull/1044
++
++The request is to add an experimental `--use-agent-commander` option. When it is not set, hive-mind must keep using the existing embedded tool adapters. When it is set, tool execution for `claude`, `codex`, `opencode`, and `agent` should go through `agent-commander`.
++
++## Evidence
++
++Raw evidence collected for this case study is in `data/`:
++
++- `issue-1043.json`: issue title, body, and comments.
++- `pr-1044.json`, `pr-1044-comments.json`, `pr-1044-review-comments.json`, `pr-1044-reviews.json`: PR state and feedback.
++- `agent-commander-npm-0.4.3.json`: npm package metadata.
++- `agent-commander-release-js-0.4.3.json`: GitHub release metadata.
++- `agent-commander-tools-files.json`: upstream tool implementation files.
++- `agent-commander-related-issues.json`: related upstream issues.
++- `agent-commander-issue-29.json`, `agent-commander-issue-30.json`: upstream issues opened for missing parity.
++- `online-sources.md`: online sources checked.
++
++Online sources checked:
++
++- https://www.npmjs.com/package/agent-commander
++- https://github.com/link-assistant/agent-commander
++- https://github.com/link-assistant/agent-commander/releases/tag/js_0.4.3
++
++`agent-commander@0.4.3` was published in release `js_0.4.3` on 2026-05-01T04:49:29Z. The release adds prompt-file support and routes large stdin-based prompts through temporary prompt files, which directly matters for hive-mind's generated prompts.
++
++## Requirements
++
++- Add a `--use-agent-commander` CLI option.
++- Keep the option experimental and disabled by default.
++- Preserve all existing behavior when the option is not selected.
++- Make `hive` pass the option to `solve` workers.
++- When selected, route all supported tool execution through `agent-commander`.
++- Cover `claude`, `codex`, `opencode`, and `agent`.
++- Validate that the latest `agent-commander` package can build the selected tool command.
++- Keep watch and auto-restart iterations on the same execution path.
++- Document missing upstream features and open issues in `link-assistant/agent-commander` where needed.
++
++## Implementation
++
++The option lives in `SOLVE_OPTION_DEFINITIONS` as hidden, boolean, and default `false`. `hive` already registers and forwards solve passthrough options from that shared map, so no duplicate hive option wiring is needed.
++
++Default behavior is preserved by guarding every `agent-commander` path behind `argv.useAgentCommander`. The existing embedded branches in `solve.mjs` and `solve.restart-shared.lib.mjs` still handle `claude`, `codex`, `opencode`, and `agent` when the flag is absent.
++
++The new adapter in `src/agent-commander.lib.mjs` centralizes:
++
++- supported tool validation
++- `agent-commander` availability checks
++- dry-run connection validation
++- prompt construction through the existing per-tool prompt modules
++- Playwright MCP prompt availability gating
++- result normalization back into the shape expected by solve post-processing
++- generic uncommitted-change detection for the agent-commander execution path
++
++## Compatibility Matrix
++
++| Hive-mind feature                                            | agent-commander 0.4.3 status | PR handling                                                                  |
++| ------------------------------------------------------------ | ---------------------------- | ---------------------------------------------------------------------------- |
++| Basic tool launch for `claude`, `codex`, `opencode`, `agent` | Supported                    | Routed through `agent()` when `--use-agent-commander` is set                 |
++| Model selection                                              | Supported                    | Passed as `model`                                                            |
++| Resume/session id                                            | Partially supported by tool  | Passed as `resume`; upstream parity tracked                                  |
++| Large generated prompts                                      | Supported in 0.4.3           | Uses prompt/systemPrompt API, benefiting from upstream prompt-file handling  |
++| Claude fallback model                                        | Supported                    | Passed via `toolOptions.fallbackModel`                                       |
++| Claude verbose flag                                          | Supported                    | Passed via `toolOptions.verbose`                                             |
++| JSON result capture                                          | Partially supported          | Adapter normalizes `output.plain`, `output.parsed`, `sessionId`, and `usage` |
++| Playwright MCP prompt hints                                  | Hive-mind-specific           | Adapter reuses existing availability checks and toggles prompt hints         |
++| Thinking budget / context window / sub-session sizing        | Missing parity               | Reported upstream in agent-commander issue 29                                |
++| Tool-specific MCP config and permission config parity        | Missing parity               | Reported upstream in agent-commander issue 29                                |
++| Normalized cost, usage, usage-limit, and summary metadata    | Missing full parity          | Reported upstream in agent-commander issue 30                                |
++
++## Upstream Issues
++
++- https://github.com/link-assistant/agent-commander/issues/29: execution parity options for `claude`, `codex`, `opencode`, and `agent`.
++- https://github.com/link-assistant/agent-commander/issues/30: normalized result metadata for hive-mind solve sessions.
++
++There was an older generic sync issue, https://github.com/link-assistant/agent-commander/issues/27, but it was already closed. The new issues are narrower and actionable for the gaps found while updating this PR.
++
++## Decision
++
++The PR implements a conservative integration now: it uses `agent-commander` for execution only when explicitly requested, keeps embedded adapters as the default, and reports missing upstream parity instead of weakening default behavior.
++
++This gives reviewers a working draft for issue 1043 while making the remaining upstream requirements visible and trackable before `--use-agent-commander` is treated as fully equivalent to the embedded adapters.
+diff --git a/docs/case-studies/issue-1043/data/agent-commander-issue-29.json b/docs/case-studies/issue-1043/data/agent-commander-issue-29.json
+new file mode 100644
+index 000000000..8a46adb5d
+--- /dev/null
++++ b/docs/case-studies/issue-1043/data/agent-commander-issue-29.json
+@@ -0,0 +1,8 @@
++{
++  "body": "During hive-mind PR https://github.com/link-assistant/hive-mind/pull/1044 for issue https://github.com/link-assistant/hive-mind/issues/1043, I reviewed the latest JavaScript package `agent-commander@0.4.3` against hive-mind's embedded tool adapters.\n\nThe current hive-mind integration can route basic execution through `agent-commander`, but several hive-mind options still cannot be expressed through the public agent-commander API without falling back to direct tool-specific command construction.\n\nNeeded parity surface:\n\n- Claude: thinking budget / effort env handling, 1M context disable behavior, sub-session auto-compact envs, MCP config without Playwright, useless/disallowed tool flags, read-only / permission modes, verbose/fallback/resume/session behavior, and custom binary/env passthrough.\n- Codex: reasoning effort mapping, context window / auto-compact config, MCP config generation, sandbox/approval mode parity, custom binary/env passthrough, and the prompt-file path used for large prompts.\n- OpenCode: config/permission env parity, custom binary/env passthrough, and prompt-file or equivalent large-prompt support.\n- `agent`: hive-mind verbose handling, resume/no-fork equivalents where supported, permission/config parity, custom binary/env passthrough, and full JSON usage/result reporting.\n\nRequest:\n\nProvide typed agent-commander options or a documented raw args/env/config passthrough that lets hive-mind control these features only through agent-commander when `--use-agent-commander` is enabled. This would let hive-mind remove remaining adapter-level compromises while keeping default embedded execution unchanged.",
++  "createdAt": "2026-05-01T05:12:29Z",
++  "number": 29,
++  "state": "OPEN",
++  "title": "Expose hive-mind execution parity options for claude/codex/opencode/agent",
++  "url": "https://github.com/link-assistant/agent-commander/issues/29"
++}
+diff --git a/docs/case-studies/issue-1043/data/agent-commander-issue-30.json b/docs/case-studies/issue-1043/data/agent-commander-issue-30.json
+new file mode 100644
+index 000000000..06648cf2e
+--- /dev/null
++++ b/docs/case-studies/issue-1043/data/agent-commander-issue-30.json
+@@ -0,0 +1,8 @@
++{
++  "body": "During hive-mind PR https://github.com/link-assistant/hive-mind/pull/1044 for issue https://github.com/link-assistant/hive-mind/issues/1043, the experimental `--use-agent-commander` adapter had to best-effort parse raw/plain output from `agent-commander@0.4.3` to populate hive-mind's solve result fields.\n\nHive-mind currently consumes normalized metadata from its embedded adapters, including:\n\n- success / non-zero exit classification\n- session id\n- usage-limit detection and reset time/timezone\n- human-readable result summary\n- Anthropic total cost where available\n- public pricing estimate where available\n- detailed model usage\n- stream token usage\n- sub-agent call summaries\n- execution error classification\n\nThe current agent-commander result object has useful `exitCode`, `output.plain`, `output.parsed`, `sessionId`, and `usage` fields, but hive-mind still needs adapter-specific parsing to derive the complete normalized result shape.\n\nRequest:\n\nExpose a stable normalized result metadata object from agent-commander for each supported tool (`claude`, `codex`, `opencode`, `agent`) so callers like hive-mind can avoid parsing tool-specific output while still reporting costs, usage limits, summaries, and failures consistently.",
++  "createdAt": "2026-05-01T05:12:38Z",
++  "number": 30,
++  "state": "OPEN",
++  "title": "Expose normalized result metadata for hive-mind solve sessions",
++  "url": "https://github.com/link-assistant/agent-commander/issues/30"
++}
+diff --git a/docs/case-studies/issue-1043/data/agent-commander-npm-0.4.3.json b/docs/case-studies/issue-1043/data/agent-commander-npm-0.4.3.json
+new file mode 100644
+index 000000000..5ffe4f830
+--- /dev/null
++++ b/docs/case-studies/issue-1043/data/agent-commander-npm-0.4.3.json
+@@ -0,0 +1,109 @@
++{
++  "_id": "agent-commander@0.4.3",
++  "_rev": "4-66b84ee46ac3bd458f5be8c5bd93d72b",
++  "name": "agent-commander",
++  "dist-tags": {
++    "latest": "0.4.3"
++  },
++  "versions": ["0.4.0", "0.4.1", "0.4.2", "0.4.3"],
++  "time": {
++    "created": "2026-04-30T02:02:49.909Z",
++    "modified": "2026-05-01T04:49:27.595Z",
++    "0.4.0": "2026-04-30T02:02:50.120Z",
++    "0.4.1": "2026-04-30T02:56:42.638Z",
++    "0.4.2": "2026-04-30T04:26:55.891Z",
++    "0.4.3": "2026-05-01T04:49:27.325Z"
++  },
++  "bugs": {
++    "url": "https://github.com/link-assistant/agent-commander/issues"
++  },
++  "license": "Unlicense",
++  "homepage": "https://github.com/link-assistant/agent-commander#readme",
++  "keywords": ["agent", "cli", "automation", "process-management", "ai", "commander"],
++  "repository": {
++    "type": "git",
++    "url": "git+https://github.com/link-assistant/agent-commander.git",
++    "directory": "js"
++  },
++  "description": "A JavaScript library to control agents enclosed in CLI commands like Anthropic Claude Code CLI",
++  "maintainers": ["konard <drakonard@gmail.com>"],
++  "readmeFilename": "README.md",
++  "_contentLength": 16830,
++  "version": "0.4.3",
++  "type": "module",
++  "main": "./src/index.mjs",
++  "exports": {
++    ".": "./src/index.mjs"
++  },
++  "bin": {
++    "start-agent": "bin/start-agent.mjs",
++    "stop-agent": "bin/stop-agent.mjs"
++  },
++  "scripts": {
++    "test": "node ../scripts/js/run-node-tests.mjs",
++    "test:node": "node ../scripts/js/run-node-tests.mjs",
++    "test:bun": "bun test",
++    "test:deno": "deno test --allow-read --allow-run --allow-env --allow-net test/",
++    "lint": "eslint .",
++    "lint:fix": "eslint . --fix",
++    "format": "prettier --write .",
++    "format:check": "prettier --check .",
++    "check:duplication": "jscpd .",
++    "check": "npm run lint && npm run format:check && npm run check:duplication",
++    "prepare": "cd .. && husky js/.husky || true",
++    "changeset": "changeset",
++    "changeset:version": "node ../scripts/js/changeset-version.mjs",
++    "changeset:publish": "changeset publish",
++    "changeset:status": "changeset status --since=origin/main",
++    "example": "node examples/basic-usage.mjs"
++  },
++  "author": "",
++  "engines": {
++    "node": ">=18.0.0"
++  },
++  "dependencies": {},
++  "devDependencies": {
++    "@changesets/cli": "^2.29.7",
++    "@eslint/js": "^9.35.0",
++    "eslint": "^9.35.0",
++    "eslint-config-prettier": "^10.1.8",
++    "eslint-plugin-prettier": "^5.5.4",
++    "husky": "^9.1.7",
++    "jscpd": "^4.0.5",
++    "lint-staged": "^16.2.6",
++    "prettier": "^3.6.2"
++  },
++  "lint-staged": {
++    "*.{js,mjs,cjs}": ["eslint --fix --max-warnings 0", "prettier --write", "prettier --check"],
++    "*.md": ["prettier --write", "prettier --check"]
++  },
++  "gitHead": "88e9c8aba1700879c7ba418e9a73b5c337fe4d9d",
++  "_nodeVersion": "24.14.1",
++  "_npmVersion": "11.13.0",
++  "dist": {
++    "integrity": "sha512-+dWTcWNlgSplrO9IebGlBcPa9rszPysGkpYuZoNXKRFbPSl1UVAyyIiQc3JyG9QGUgPIR5pX0R95dTt3TXEO5g==",
++    "shasum": "7d365910c5c76451ba3046ee75f21e928ad26c0d",
++    "tarball": "https://registry.npmjs.org/agent-commander/-/agent-commander-0.4.3.tgz",
++    "fileCount": 21,
++    "unpackedSize": 109258,
++    "attestations": {
++      "url": "https://registry.npmjs.org/-/npm/v1/attestations/agent-commander@0.4.3",
++      "provenance": {
++        "predicateType": "https://slsa.dev/provenance/v1"
++      }
++    },
++    "signatures": [
++      {
++        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
++        "sig": "MEUCID93C/8i4zgYYziRMubmq7fX7lGskr28EzaI+Q/sQ6v+AiEAkhrSZKVeNJLFxa5XV3CF3lUetGXx31d2ww7EvrVZ4UI="
++      }
++    ]
++  },
++  "_npmUser": "GitHub Actions <npm-oidc-no-reply@github.com>",
++  "directories": {},
++  "_npmOperationalInternal": {
++    "host": "s3://npm-registry-packages-npm-production",
++    "tmp": "tmp/agent-commander_0.4.3_1777610967149_0.8902422847874973"
++  },
++  "_hasShrinkwrap": false
++}
+diff --git a/docs/case-studies/issue-1043/data/agent-commander-related-issues.json b/docs/case-studies/issue-1043/data/agent-commander-related-issues.json
+new file mode 100644
+index 000000000..d089bd746
+--- /dev/null
++++ b/docs/case-studies/issue-1043/data/agent-commander-related-issues.json
+@@ -0,0 +1,14 @@
++[
++  { "createdAt": "2026-05-01T05:12:29Z", "number": 29, "state": "OPEN", "title": "Expose hive-mind execution parity options for claude/codex/opencode/agent", "updatedAt": "2026-05-01T05:12:29Z", "url": "https://github.com/link-assistant/agent-commander/issues/29" },
++  { "createdAt": "2026-05-01T05:12:38Z", "number": 30, "state": "OPEN", "title": "Expose normalized result metadata for hive-mind solve sessions", "updatedAt": "2026-05-01T05:12:38Z", "url": "https://github.com/link-assistant/agent-commander/issues/30" },
++  { "createdAt": "2026-04-30T08:22:31Z", "number": 27, "state": "CLOSED", "title": "Sync with features required by https://github.com/link-assistant/hive-mind", "updatedAt": "2026-05-01T04:46:37Z", "url": "https://github.com/link-assistant/agent-commander/issues/27" },
++  { "createdAt": "2026-04-26T16:17:33Z", "number": 20, "state": "CLOSED", "title": "Add hard read-only / no-shell tool mode for planning tasks", "updatedAt": "2026-04-26T20:25:40Z", "url": "https://github.com/link-assistant/agent-commander/issues/20" },
++  { "createdAt": "2026-04-26T17:36:46Z", "number": 22, "state": "CLOSED", "title": "Check when we last did sync with logic from https://github.com/link-assistant/hive-mind and sync all best practices and logic again from it", "updatedAt": "2026-04-26T21:12:26Z", "url": "https://github.com/link-assistant/agent-commander/issues/22" },
++  { "createdAt": "2026-04-05T14:57:00Z", "number": 17, "state": "CLOSED", "title": "Check when we last did sync with logic from https://github.com/link-assistant/hive-mind and sync all best practices and logic again from it", "updatedAt": "2026-04-06T08:14:52Z", "url": "https://github.com/link-assistant/agent-commander/issues/17" },
++  { "createdAt": "2026-04-26T15:50:14Z", "number": 19, "state": "CLOSED", "title": "Publish JavaScript package or expose root package.json for npm dependency installs", "updatedAt": "2026-04-30T02:54:56Z", "url": "https://github.com/link-assistant/agent-commander/issues/19" },
++  { "createdAt": "2025-12-09T04:58:12Z", "number": 4, "state": "CLOSED", "title": "After `agent` and `hive-mind` repositories are stabilized for `claude` and `agent` commands update code in this repository with best known experience from these projects", "updatedAt": "2025-12-28T04:02:22Z", "url": "https://github.com/link-assistant/agent-commander/issues/4" },
++  { "createdAt": "2026-01-10T16:00:20Z", "number": 11, "state": "CLOSED", "title": "Add Qwen Coder support", "updatedAt": "2026-01-18T01:12:21Z", "url": "https://github.com/link-assistant/agent-commander/issues/11" },
++  { "createdAt": "2026-01-10T16:02:08Z", "number": 13, "state": "CLOSED", "title": "Add Gemini CLI support", "updatedAt": "2026-01-17T23:07:11Z", "url": "https://github.com/link-assistant/agent-commander/issues/13" },
++  { "createdAt": "2025-11-11T07:54:24Z", "number": 1, "state": "CLOSED", "title": "Make proof of concept", "updatedAt": "2025-12-01T10:22:09Z", "url": "https://github.com/link-assistant/agent-commander/issues/1" },
++  { "createdAt": "2025-11-11T12:09:31Z", "number": 3, "state": "CLOSED", "title": "Make sure we fully support all capabilities of Claude Code CLI", "updatedAt": "2025-12-31T18:16:55Z", "url": "https://github.com/link-assistant/agent-commander/issues/3" }
++]
+diff --git a/docs/case-studies/issue-1043/data/agent-commander-release-js-0.4.3.json b/docs/case-studies/issue-1043/data/agent-commander-release-js-0.4.3.json
+new file mode 100644
+index 000000000..cb2f7275a
+--- /dev/null
++++ b/docs/case-studies/issue-1043/data/agent-commander-release-js-0.4.3.json
+@@ -0,0 +1 @@
++{ "body": "[![npm v0.4.3](https://img.shields.io/badge/npm-v0.4.3-cb3837.svg?style=flat)](https://www.npmjs.com/package/agent-commander/v/0.4.3)\n\nPackage: npm `agent-commander@0.4.3`\n\n### Patch Changes\n\n- f914440: ### Fixed\n  - Pipe prompts for stdin-based tools through temporary prompt files during execution so large generated prompts are not embedded in nested shell commands.\n\n  ### Added\n  - Added `--prompt-file` / `promptFile` support for callers that already have prompt content on disk.", "isDraft": false, "isPrerelease": false, "name": "[JavaScript] v0.4.3", "publishedAt": "2026-05-01T04:49:29Z", "tagName": "js_0.4.3", "targetCommitish": "main", "url": "https://github.com/link-assistant/agent-commander/releases/tag/js_0.4.3" }
+diff --git a/docs/case-studies/issue-1043/data/agent-commander-release-js-0.4.3.raw.json b/docs/case-studies/issue-1043/data/agent-commander-release-js-0.4.3.raw.json
+new file mode 100644
+index 000000000..316f6e252
+--- /dev/null
++++ b/docs/case-studies/issue-1043/data/agent-commander-release-js-0.4.3.raw.json
+@@ -0,0 +1,42 @@
++{
++  "url": "https://api.github.com/repos/link-assistant/agent-commander/releases/316284926",
++  "assets_url": "https://api.github.com/repos/link-assistant/agent-commander/releases/316284926/assets",
++  "upload_url": "https://uploads.github.com/repos/link-assistant/agent-commander/releases/316284926/assets{?name,label}",
++  "html_url": "https://github.com/link-assistant/agent-commander/releases/tag/js_0.4.3",
++  "id": 316284926,
++  "author": {
++    "login": "github-actions[bot]",
++    "id": 41898282,
++    "node_id": "MDM6Qm90NDE4OTgyODI=",
++    "avatar_url": "https://avatars.githubusercontent.com/in/15368?v=4",
++    "gravatar_id": "",
++    "url": "https://api.github.com/users/github-actions%5Bbot%5D",
++    "html_url": "https://github.com/apps/github-actions",
++    "followers_url": "https://api.github.com/users/github-actions%5Bbot%5D/followers",
++    "following_url": "https://api.github.com/users/github-actions%5Bbot%5D/following{/other_user}",
++    "gists_url": "https://api.github.com/users/github-actions%5Bbot%5D/gists{/gist_id}",
++    "starred_url": "https://api.github.com/users/github-actions%5Bbot%5D/starred{/owner}{/repo}",
++    "subscriptions_url": "https://api.github.com/users/github-actions%5Bbot%5D/subscriptions",
++    "organizations_url": "https://api.github.com/users/github-actions%5Bbot%5D/orgs",
++    "repos_url": "https://api.github.com/users/github-actions%5Bbot%5D/repos",
++    "events_url": "https://api.github.com/users/github-actions%5Bbot%5D/events{/privacy}",
++    "received_events_url": "https://api.github.com/users/github-actions%5Bbot%5D/received_events",
++    "type": "Bot",
++    "user_view_type": "public",
++    "site_admin": false
++  },
++  "node_id": "RE_kwDOQTX-kM4S2h_-",
++  "tag_name": "js_0.4.3",
++  "target_commitish": "main",
++  "name": "[JavaScript] v0.4.3",
++  "draft": false,
++  "immutable": false,
++  "prerelease": false,
++  "created_at": "2026-05-01T04:49:20Z",
++  "updated_at": "2026-05-01T04:49:29Z",
++  "published_at": "2026-05-01T04:49:29Z",
++  "assets": [],
++  "tarball_url": "https://api.github.com/repos/link-assistant/agent-commander/tarball/js_0.4.3",
++  "zipball_url": "https://api.github.com/repos/link-assistant/agent-commander/zipball/js_0.4.3",
++  "body": "[![npm v0.4.3](https://img.shields.io/badge/npm-v0.4.3-cb3837.svg?style=flat)](https://www.npmjs.com/package/agent-commander/v/0.4.3)\n\nPackage: npm `agent-commander@0.4.3`\n\n### Patch Changes\n\n- f914440: ### Fixed\n  - Pipe prompts for stdin-based tools through temporary prompt files during execution so large generated prompts are not embedded in nested shell commands.\n\n  ### Added\n  - Added `--prompt-file` / `promptFile` support for callers that already have prompt content on disk."
++}
+diff --git a/docs/case-studies/issue-1043/data/agent-commander-tools-files.json b/docs/case-studies/issue-1043/data/agent-commander-tools-files.json
+new file mode 100644
+index 000000000..3ce9569cd
+--- /dev/null
++++ b/docs/case-studies/issue-1043/data/agent-commander-tools-files.json
+@@ -0,0 +1,9 @@
++[
++  { "html_url": "https://github.com/link-assistant/agent-commander/blob/main/js/src/tools/agent.mjs", "name": "agent.mjs", "path": "js/src/tools/agent.mjs" },
++  { "html_url": "https://github.com/link-assistant/agent-commander/blob/main/js/src/tools/claude.mjs", "name": "claude.mjs", "path": "js/src/tools/claude.mjs" },
++  { "html_url": "https://github.com/link-assistant/agent-commander/blob/main/js/src/tools/codex.mjs", "name": "codex.mjs", "path": "js/src/tools/codex.mjs" },
++  { "html_url": "https://github.com/link-assistant/agent-commander/blob/main/js/src/tools/gemini.mjs", "name": "gemini.mjs", "path": "js/src/tools/gemini.mjs" },
++  { "html_url": "https://github.com/link-assistant/agent-commander/blob/main/js/src/tools/index.mjs", "name": "index.mjs", "path": "js/src/tools/index.mjs" },
++  { "html_url": "https://github.com/link-assistant/agent-commander/blob/main/js/src/tools/opencode.mjs", "name": "opencode.mjs", "path": "js/src/tools/opencode.mjs" },
++  { "html_url": "https://github.com/link-assistant/agent-commander/blob/main/js/src/tools/qwen.mjs", "name": "qwen.mjs", "path": "js/src/tools/qwen.mjs" }
++]
+diff --git a/docs/case-studies/issue-1043/data/issue-1043.json b/docs/case-studies/issue-1043/data/issue-1043.json
+new file mode 100644
+index 000000000..fbd152528
+--- /dev/null
++++ b/docs/case-studies/issue-1043/data/issue-1043.json
+@@ -0,0 +1 @@
++{ "body": "We should have option `--use-agent-commander`, to use https://github.com/link-assistant/agent-commander for all our tools (claude, codex, opencode, agent), instead of logic that is embedded in our repository.\n\nThat option is experimental and should not be enabled by default.\n\nAlso we should implement it carefully so we ensure all existing features continue to work as expected without that option.\n\nIf https://github.com/link-assistant/agent-commander misses some features or has bugs - please file issues there, so we will be able to address them.", "comments": [], "createdAt": "2025-12-31T11:45:09Z", "number": 1043, "state": "OPEN", "title": "Add an option to use agent-commander", "updatedAt": "2025-12-31T11:45:09Z", "url": "https://github.com/link-assistant/hive-mind/issues/1043" }
+diff --git a/docs/case-studies/issue-1043/data/online-sources.md b/docs/case-studies/issue-1043/data/online-sources.md
+new file mode 100644
+index 000000000..4bae05d92
+--- /dev/null
++++ b/docs/case-studies/issue-1043/data/online-sources.md
+@@ -0,0 +1,5 @@
++Web/online sources checked on 2026-05-01:
++
++- https://www.npmjs.com/package/agent-commander
++- https://github.com/link-assistant/agent-commander
++- https://github.com/link-assistant/agent-commander/releases/tag/js_0.4.3
+diff --git a/docs/case-studies/issue-1043/data/pr-1044-comments.json b/docs/case-studies/issue-1043/data/pr-1044-comments.json
+new file mode 100644
+index 000000000..b4a19a206
+--- /dev/null
++++ b/docs/case-studies/issue-1043/data/pr-1044-comments.json
+@@ -0,0 +1,58 @@
++[
++  {
++    "url": "https://api.github.com/repos/link-assistant/hive-mind/issues/comments/3702107074",
++    "html_url": "https://github.com/link-assistant/hive-mind/pull/1044#issuecomment-3702107074",
++    "issue_url": "https://api.github.com/repos/link-assistant/hive-mind/issues/1044",
++    "id": 3702107074,
++    "node_id": "IC_kwDOPUU0qc7cqavC",
++    "user": { "login": "konard", "id": 1431904, "node_id": "MDQ6VXNlcjE0MzE5MDQ=", "avatar_url": "https://avatars.githubusercontent.com/u/1431904?v=4", "gravatar_id": "", "url": "https://api.github.com/users/konard", "html_url": "https://github.com/konard", "followers_url": "https://api.github.com/users/konard/followers", "following_url": "https://api.github.com/users/konard/following{/other_user}", "gists_url": "https://api.github.com/users/konard/gists{/gist_id}", "starred_url": "https://api.github.com/users/konard/starred{/owner}{/repo}", "subscriptions_url": "https://api.github.com/users/konard/subscriptions", "organizations_url": "https://api.github.com/users/konard/orgs", "repos_url": "https://api.github.com/users/konard/repos", "events_url": "https://api.github.com/users/konard/events{/privacy}", "received_events_url": "https://api.github.com/users/konard/received_events", "type": "User", "user_view_type": "public", "site_admin": false },
++    "created_at": "2025-12-31T12:22:53Z",
++    "updated_at": "2025-12-31T12:22:53Z",
++    "body": "🤖 **AI Work Session Started**\n\nStarting automated work session at 2025-12-31T12:22:51.887Z\n\nThe PR has been converted to draft mode while work is in progress.\n\n_This comment marks the beginning of an AI work session. Please wait working session to finish, and provide your feedback._",
++    "author_association": "MEMBER",
++    "reactions": { "url": "https://api.github.com/repos/link-assistant/hive-mind/issues/comments/3702107074/reactions", "total_count": 0, "+1": 0, "-1": 0, "laugh": 0, "hooray": 0, "confused": 0, "heart": 0, "rocket": 0, "eyes": 0 },
++    "performed_via_github_app": null
++  },
++  {
++    "url": "https://api.github.com/repos/link-assistant/hive-mind/issues/comments/3702128381",
++    "html_url": "https://github.com/link-assistant/hive-mind/pull/1044#issuecomment-3702128381",
++    "issue_url": "https://api.github.com/repos/link-assistant/hive-mind/issues/1044",
++    "id": 3702128381,
++    "node_id": "IC_kwDOPUU0qc7cqf79",
++    "user": { "login": "konard", "id": 1431904, "node_id": "MDQ6VXNlcjE0MzE5MDQ=", "avatar_url": "https://avatars.githubusercontent.com/u/1431904?v=4", "gravatar_id": "", "url": "https://api.github.com/users/konard", "html_url": "https://github.com/konard", "followers_url": "https://api.github.com/users/konard/followers", "following_url": "https://api.github.com/users/konard/following{/other_user}", "gists_url": "https://api.github.com/users/konard/gists{/gist_id}", "starred_url": "https://api.github.com/users/konard/starred{/owner}{/repo}", "subscriptions_url": "https://api.github.com/users/konard/subscriptions", "organizations_url": "https://api.github.com/users/konard/orgs", "repos_url": "https://api.github.com/users/konard/repos", "events_url": "https://api.github.com/users/konard/events{/privacy}", "received_events_url": "https://api.github.com/users/konard/received_events", "type": "User", "user_view_type": "public", "site_admin": false },
++    "created_at": "2025-12-31T12:36:35Z",
++    "updated_at": "2025-12-31T12:36:35Z",
++    "body": "## 🤖 Solution Draft Log\nThis log file contains the complete execution trace of the AI solution draft process.\n\n💰 **Cost estimation:**\n- Public pricing estimate: $11.491305 USD\n- Calculated by Anthropic: $8.025166 USD\n- Difference: $-3.466139 (-30.16%)\n📎 **Log file uploaded as GitHub Gist** (1937KB)\n🔗 [View complete solution draft log](https://gist.githubusercontent.com/konard/8003a42c6572876a7e8334779793153f/raw/b5c5a26f41eb8b19899ec44491b80beb7e588b15/solution-draft-log-pr-1767184590221.txt)\n---\n*Now working session is ended, feel free to review and add any feedback on the solution draft.*",
++    "author_association": "MEMBER",
++    "reactions": { "url": "https://api.github.com/repos/link-assistant/hive-mind/issues/comments/3702128381/reactions", "total_count": 0, "+1": 0, "-1": 0, "laugh": 0, "hooray": 0, "confused": 0, "heart": 0, "rocket": 0, "eyes": 0 },
++    "performed_via_github_app": null
++  },
++  {
++    "url": "https://api.github.com/repos/link-assistant/hive-mind/issues/comments/4357883177",
++    "html_url": "https://github.com/link-assistant/hive-mind/pull/1044#issuecomment-4357883177",
++    "issue_url": "https://api.github.com/repos/link-assistant/hive-mind/issues/1044",
++    "id": 4357883177,
++    "node_id": "IC_kwDOPUU0qc8AAAABA8AFKQ",
++    "user": { "login": "konard", "id": 1431904, "node_id": "MDQ6VXNlcjE0MzE5MDQ=", "avatar_url": "https://avatars.githubusercontent.com/u/1431904?v=4", "gravatar_id": "", "url": "https://api.github.com/users/konard", "html_url": "https://github.com/konard", "followers_url": "https://api.github.com/users/konard/followers", "following_url": "https://api.github.com/users/konard/following{/other_user}", "gists_url": "https://api.github.com/users/konard/gists{/gist_id}", "starred_url": "https://api.github.com/users/konard/starred{/owner}{/repo}", "subscriptions_url": "https://api.github.com/users/konard/subscriptions", "organizations_url": "https://api.github.com/users/konard/orgs", "repos_url": "https://api.github.com/users/konard/repos", "events_url": "https://api.github.com/users/konard/events{/privacy}", "received_events_url": "https://api.github.com/users/konard/received_events", "type": "User", "user_view_type": "public", "site_admin": false },
++    "created_at": "2026-05-01T04:53:35Z",
++    "updated_at": "2026-05-01T04:54:01Z",
++    "body": "Get latest changes from default branch, note that codex support and claude support has changed significantly.\r\n\r\nWe need to carefully double check, that we don't break any existing code, and without `--use-agent-commander` everything will work as it was working before.\r\n\r\nYet with `--use-agent-commander` we should use latest version of https://github.com/link-assistant/agent-commander for all tools - claude, codex, agent, opencode, but only if this option selected. Also we need to make sure that when  `--use-agent-commander` we support each and every feature we have, but control tools (claude, codex, agent, opencode) only via our https://github.com/link-assistant/agent-commander, not directly. But only if `--use-agent-commander` is enabled.\r\n\r\nPlease also carefully list all the features we need in hive-mind, and we have in agent-commander, and if any feature is missing, make a code draft, but also report the issue to https://github.com/link-assistant/agent-commander, so I can pause this pull request, to fix all issues and add all missing features.\r\n\r\nSo we fully support `--use-agent-commander` when it is enabled.\r\n\r\nWe need to collect data related about the issue to this repository, make sure we compile that data to `./docs/case-studies/issue-{id}` folder, and use it to do deep case study analysis (also make sure to search online for additional facts and data), list of each and all requirements from the issue, and propose possible solutions and solution plans for each requirement (we should also check known existing components/libraries, that solve similar problem or can help in solutions).\r\n\r\nPlease plan and execute everything in a single pull request, you have unlimited time and context, as context autocompacts and you can continue indefinetely, do as much as possible in one go, until it is each and every requirement fully addressed, and everything is totally done. For issues use gh tool and create them directly on https://github.com/link-assistant/agent-commander if needed.",
++    "author_association": "MEMBER",
++    "reactions": { "url": "https://api.github.com/repos/link-assistant/hive-mind/issues/comments/4357883177/reactions", "total_count": 0, "+1": 0, "-1": 0, "laugh": 0, "hooray": 0, "confused": 0, "heart": 0, "rocket": 0, "eyes": 0 },
++    "performed_via_github_app": null
++  },
++  {
++    "url": "https://api.github.com/repos/link-assistant/hive-mind/issues/comments/4357886239",
++    "html_url": "https://github.com/link-assistant/hive-mind/pull/1044#issuecomment-4357886239",
++    "issue_url": "https://api.github.com/repos/link-assistant/hive-mind/issues/1044",
++    "id": 4357886239,
++    "node_id": "IC_kwDOPUU0qc8AAAABA8ARHw",
++    "user": { "login": "konard", "id": 1431904, "node_id": "MDQ6VXNlcjE0MzE5MDQ=", "avatar_url": "https://avatars.githubusercontent.com/u/1431904?v=4", "gravatar_id": "", "url": "https://api.github.com/users/konard", "html_url": "https://github.com/konard", "followers_url": "https://api.github.com/users/konard/followers", "following_url": "https://api.github.com/users/konard/following{/other_user}", "gists_url": "https://api.github.com/users/konard/gists{/gist_id}", "starred_url": "https://api.github.com/users/konard/starred{/owner}{/repo}", "subscriptions_url": "https://api.github.com/users/konard/subscriptions", "organizations_url": "https://api.github.com/users/konard/orgs", "repos_url": "https://api.github.com/users/konard/repos", "events_url": "https://api.github.com/users/konard/events{/privacy}", "received_events_url": "https://api.github.com/users/konard/received_events", "type": "User", "user_view_type": "public", "site_admin": false },
++    "created_at": "2026-05-01T04:54:48Z",
++    "updated_at": "2026-05-01T04:54:48Z",
++    "body": "🤖 **AI Work Session Started**\n\nStarting automated work session at 2026-05-01T04:54:47.349Z\n\nThe PR has been converted to draft mode while work is in progress.\n\n_This comment marks the beginning of an AI work session. Please wait for the session to finish, and provide your feedback._",
++    "author_association": "MEMBER",
++    "reactions": { "url": "https://api.github.com/repos/link-assistant/hive-mind/issues/comments/4357886239/reactions", "total_count": 0, "+1": 0, "-1": 0, "laugh": 0, "hooray": 0, "confused": 0, "heart": 0, "rocket": 0, "eyes": 0 },
++    "performed_via_github_app": null
++  }
++]
+diff --git a/docs/case-studies/issue-1043/data/pr-1044-review-comments.json b/docs/case-studies/issue-1043/data/pr-1044-review-comments.json
+new file mode 100644
+index 000000000..fe51488c7
+--- /dev/null
++++ b/docs/case-studies/issue-1043/data/pr-1044-review-comments.json
+@@ -0,0 +1 @@
++[]
+diff --git a/docs/case-studies/issue-1043/data/pr-1044-reviews.json b/docs/case-studies/issue-1043/data/pr-1044-reviews.json
+new file mode 100644
+index 000000000..fe51488c7
+--- /dev/null
++++ b/docs/case-studies/issue-1043/data/pr-1044-reviews.json
+@@ -0,0 +1 @@
++[]
+diff --git a/docs/case-studies/issue-1043/data/pr-1044.json b/docs/case-studies/issue-1043/data/pr-1044.json
+new file mode 100644
+index 000000000..d8814606b
+--- /dev/null
++++ b/docs/case-studies/issue-1043/data/pr-1044.json
+@@ -0,0 +1,31 @@
++{
++  "baseRefName": "main",
++  "baseRefOid": "e1349a76da02dfbac0909a3233bb9e44fc3cd637",
++  "body": "## Summary\nAdds the `--use-agent-commander` option to both `solve.mjs` and `hive.mjs`. When enabled, this experimental flag delegates tool execution to the [agent-commander](https://github.com/link-assistant/agent-commander) library instead of using the embedded tool logic in this repository.\n\nFixes #1043\n\n## Changes\n- Added `--use-agent-commander` option to `solve.config.lib.mjs` (hidden, experimental)\n- Added `--use-agent-commander` option to `hive.config.lib.mjs` (hidden, experimental)\n- Created `agent-commander.lib.mjs` wrapper library with:\n  - `isAgentCommanderAvailable()` - Checks if agent-commander is installed\n  - `validateAgentCommanderConnection()` - Validates tool connection\n  - `executeWithAgentCommander()` - Unified execution interface\n  - `checkForUncommittedChanges()` - Git status checking\n- Integrated agent-commander in `solve.mjs` tool execution flow (first priority check when flag enabled)\n- Passed `--use-agent-commander` flag through `hive.mjs` to solve workers\n- Added `agent-commander` as optional dependency in `package.json`\n- Added experiment scripts for testing the integration\n\n## Behavior\nThe option is:\n- Hidden from `--help` output (experimental feature)\n- Disabled by default (opt-in only)\n- Fails gracefully with clear error message when agent-commander is not installed\n\n## Usage\n```bash\n# Install agent-commander (required for the flag to work)\nnpm install agent-commander\n\n# Use with solve.mjs\nsolve.mjs https://github.com/owner/repo/issues/123 --use-agent-commander\n\n# Use with hive.mjs\nhive.mjs https://github.com/owner/repo --use-agent-commander\n```\n\n## Test plan\n- [x] Verify `--use-agent-commander` option is hidden from `--help`\n- [x] Verify lint and format checks pass\n- [x] Verify baseline functionality works without the flag\n- [x] Verify availability detection works (shows clear message when not installed)\n- [x] Verify graceful failure when agent-commander is not installed\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
++  "comments": [
++    { "id": "IC_kwDOPUU0qc7cqavC", "author": { "login": "konard" }, "authorAssociation": "MEMBER", "body": "🤖 **AI Work Session Started**\n\nStarting automated work session at 2025-12-31T12:22:51.887Z\n\nThe PR has been converted to draft mode while work is in progress.\n\n_This comment marks the beginning of an AI work session. Please wait working session to finish, and provide your feedback._", "createdAt": "2025-12-31T12:22:53Z", "includesCreatedEdit": false, "isMinimized": false, "minimizedReason": "", "reactionGroups": [], "url": "https://github.com/link-assistant/hive-mind/pull/1044#issuecomment-3702107074", "viewerDidAuthor": true },
++    { "id": "IC_kwDOPUU0qc7cqf79", "author": { "login": "konard" }, "authorAssociation": "MEMBER", "body": "## 🤖 Solution Draft Log\nThis log file contains the complete execution trace of the AI solution draft process.\n\n💰 **Cost estimation:**\n- Public pricing estimate: $11.491305 USD\n- Calculated by Anthropic: $8.025166 USD\n- Difference: $-3.466139 (-30.16%)\n📎 **Log file uploaded as GitHub Gist** (1937KB)\n🔗 [View complete solution draft log](https://gist.githubusercontent.com/konard/8003a42c6572876a7e8334779793153f/raw/b5c5a26f41eb8b19899ec44491b80beb7e588b15/solution-draft-log-pr-1767184590221.txt)\n---\n*Now working session is ended, feel free to review and add any feedback on the solution draft.*", "createdAt": "2025-12-31T12:36:35Z", "includesCreatedEdit": false, "isMinimized": false, "minimizedReason": "", "reactionGroups": [], "url": "https://github.com/link-assistant/hive-mind/pull/1044#issuecomment-3702128381", "viewerDidAuthor": true },
++    {
++      "id": "IC_kwDOPUU0qc8AAAABA8AFKQ",
++      "author": { "login": "konard" },
++      "authorAssociation": "MEMBER",
++      "body": "Get latest changes from default branch, note that codex support and claude support has changed significantly.\r\n\r\nWe need to carefully double check, that we don't break any existing code, and without `--use-agent-commander` everything will work as it was working before.\r\n\r\nYet with `--use-agent-commander` we should use latest version of https://github.com/link-assistant/agent-commander for all tools - claude, codex, agent, opencode, but only if this option selected. Also we need to make sure that when  `--use-agent-commander` we support each and every feature we have, but control tools (claude, codex, agent, opencode) only via our https://github.com/link-assistant/agent-commander, not directly. But only if `--use-agent-commander` is enabled.\r\n\r\nPlease also carefully list all the features we need in hive-mind, and we have in agent-commander, and if any feature is missing, make a code draft, but also report the issue to https://github.com/link-assistant/agent-commander, so I can pause this pull request, to fix all issues and add all missing features.\r\n\r\nSo we fully support `--use-agent-commander` when it is enabled.\r\n\r\nWe need to collect data related about the issue to this repository, make sure we compile that data to `./docs/case-studies/issue-{id}` folder, and use it to do deep case study analysis (also make sure to search online for additional facts and data), list of each and all requirements from the issue, and propose possible solutions and solution plans for each requirement (we should also check known existing components/libraries, that solve similar problem or can help in solutions).\r\n\r\nPlease plan and execute everything in a single pull request, you have unlimited time and context, as context autocompacts and you can continue indefinetely, do as much as possible in one go, until it is each and every requirement fully addressed, and everything is totally done. For issues use gh tool and create them directly on https://github.com/link-assistant/agent-commander if needed.",
++      "createdAt": "2026-05-01T04:53:35Z",
++      "includesCreatedEdit": true,
++      "isMinimized": false,
++      "minimizedReason": "",
++      "reactionGroups": [],
++      "url": "https://github.com/link-assistant/hive-mind/pull/1044#issuecomment-4357883177",
++      "viewerDidAuthor": true
++    },
++    { "id": "IC_kwDOPUU0qc8AAAABA8ARHw", "author": { "login": "konard" }, "authorAssociation": "MEMBER", "body": "🤖 **AI Work Session Started**\n\nStarting automated work session at 2026-05-01T04:54:47.349Z\n\nThe PR has been converted to draft mode while work is in progress.\n\n_This comment marks the beginning of an AI work session. Please wait for the session to finish, and provide your feedback._", "createdAt": "2026-05-01T04:54:48Z", "includesCreatedEdit": false, "isMinimized": false, "minimizedReason": "", "reactionGroups": [], "url": "https://github.com/link-assistant/hive-mind/pull/1044#issuecomment-4357886239", "viewerDidAuthor": true }
++  ],
++  "headRefName": "issue-1043-824a8917a5fe",
++  "headRefOid": "e6907a6d1a0cb504ac76feea531a6b811172d4c5",
++  "isDraft": true,
++  "mergeable": "CONFLICTING",
++  "number": 1044,
++  "state": "OPEN",
++  "title": "feat: Add experimental --use-agent-commander option",
++  "url": "https://github.com/link-assistant/hive-mind/pull/1044"
++}
+diff --git a/experiments/test-agent-commander-availability.mjs b/experiments/test-agent-commander-availability.mjs
+new file mode 100644
+index 000000000..067dd8922
+--- /dev/null
++++ b/experiments/test-agent-commander-availability.mjs
+@@ -0,0 +1,42 @@
++#!/usr/bin/env node
++/**
++ * Experiment: Test agent-commander availability detection
++ *
++ * This script tests whether the agent-commander library can be detected
++ * and its availability is properly reported.
++ *
++ * Usage:
++ *   node experiments/test-agent-commander-availability.mjs
++ */
++
++import { isAgentCommanderAvailable } from '../src/agent-commander.lib.mjs';
++
++async function main() {
++  console.log('Testing agent-commander availability...\n');
++
++  const isAvailable = await isAgentCommanderAvailable();
++
++  if (isAvailable) {
++    console.log('✅ agent-commander is AVAILABLE');
++    console.log('   The --use-agent-commander flag will work.');
++
++    // Try to get more info
++    try {
++      const agentCommander = await import('agent-commander');
++      console.log('\n   Exported functions:');
++      for (const key of Object.keys(agentCommander)) {
++        console.log(`   - ${key}`);
++      }
++    } catch (e) {
++      console.log(`   Warning: Could not inspect exports: ${e.message}`);
++    }
++  } else {
++    console.log('❌ agent-commander is NOT AVAILABLE');
++    console.log('   Install it with: npm install agent-commander');
++    console.log('   Or the --use-agent-commander flag will fail gracefully.');
++  }
++
++  console.log('\nDone.');
++}
++
++main().catch(console.error);
+diff --git a/experiments/test-solve-dry-run.mjs b/experiments/test-solve-dry-run.mjs
+new file mode 100644
+index 000000000..e89635ca0
+--- /dev/null
++++ b/experiments/test-solve-dry-run.mjs
+@@ -0,0 +1,90 @@
++#!/usr/bin/env node
++/**
++ * Experiment: Test solve.mjs with --use-agent-commander in dry-run mode
++ *
++ * This script tests that solve.mjs correctly handles the --use-agent-commander
++ * flag in dry-run mode (no actual tool execution).
++ *
++ * Usage:
++ *   node experiments/test-solve-dry-run.mjs
++ *
++ * Expected behavior:
++ *   - Without agent-commander installed: should fail gracefully with clear error message
++ *   - With agent-commander installed: should show the command that would be executed
++ */
++
++import { spawn } from 'child_process';
++import path from 'path';
++import { fileURLToPath } from 'url';
++
++const __dirname = path.dirname(fileURLToPath(import.meta.url));
++const solvePath = path.join(__dirname, '..', 'src', 'solve.mjs');
++
++// Test issue URL (public issue from this repo)
++const testIssueUrl = 'https://github.com/link-assistant/hive-mind/issues/1043';
++
++async function runTest(testName, args) {
++  console.log(`\n${'='.repeat(60)}`);
++  console.log(`Test: ${testName}`);
++  console.log(`Args: ${args.join(' ')}`);
++  console.log('='.repeat(60));
++
++  return new Promise((resolve, reject) => {
++    const child = spawn('node', [solvePath, ...args], {
++      stdio: ['pipe', 'pipe', 'pipe'],
++      env: { ...process.env },
++    });
++
++    let stdout = '';
++    let stderr = '';
++
++    child.stdout.on('data', data => {
++      stdout += data.toString();
++      process.stdout.write(data);
++    });
++
++    child.stderr.on('data', data => {
++      stderr += data.toString();
++      process.stderr.write(data);
++    });
++
++    child.on('close', code => {
++      console.log(`\nExit code: ${code}`);
++      resolve({ code, stdout, stderr });
++    });
++
++    child.on('error', error => {
++      reject(error);
++    });
++
++    // Timeout after 60 seconds
++    setTimeout(() => {
++      child.kill();
++      reject(new Error('Test timed out after 60 seconds'));
++    }, 60000);
++  });
++}
++
++async function main() {
++  console.log('Testing solve.mjs with --use-agent-commander flag\n');
++
++  // Test 1: Without --use-agent-commander (baseline)
++  try {
++    await runTest('Baseline: solve --dry-run (without --use-agent-commander)', [testIssueUrl, '--dry-run', '--skip-tool-connection-check']);
++  } catch (e) {
++    console.error(`Test failed: ${e.message}`);
++  }
++
++  // Test 2: With --use-agent-commander
++  try {
++    await runTest('Experimental: solve --dry-run --use-agent-commander', [testIssueUrl, '--dry-run', '--skip-tool-connection-check', '--use-agent-commander']);
++  } catch (e) {
++    console.error(`Test failed: ${e.message}`);
++  }
++
++  console.log('\n' + '='.repeat(60));
++  console.log('All tests completed.');
++  console.log('='.repeat(60));
++}
++
++main().catch(console.error);
+diff --git a/package-lock.json b/package-lock.json
+index ad42ec1df..955e9edba 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -13,7 +13,7 @@
+         "@secretlint/secretlint-rule-preset-recommend": "^11.2.5",
+         "@sentry/node": "^10.15.0",
+         "@sentry/profiling-node": "^10.15.0",
+-        "agent-commander": "^0.4.2",
++        "agent-commander": "^0.4.3",
+         "dayjs": "^1.11.19",
+         "decimal.js-light": "^2.5.1",
+         "lino-arguments": "^0.3.0",
+@@ -2137,9 +2137,9 @@
+       }
+     },
+     "node_modules/agent-commander": {
+-      "version": "0.4.2",
+-      "resolved": "https://registry.npmjs.org/agent-commander/-/agent-commander-0.4.2.tgz",
+-      "integrity": "sha512-LL18EToW7YgulAN8G1/lV6FqmTVeaU4dQofgqQEZ+Tvc5+fH/y3t/1AcsIkFAZ2ODEzGWdRGEFBNadmKnwn2dw==",
++      "version": "0.4.3",
++      "resolved": "https://registry.npmjs.org/agent-commander/-/agent-commander-0.4.3.tgz",
++      "integrity": "sha512-+dWTcWNlgSplrO9IebGlBcPa9rszPysGkpYuZoNXKRFbPSl1UVAyyIiQc3JyG9QGUgPIR5pX0R95dTt3TXEO5g==",
+       "license": "Unlicense",
+       "bin": {
+         "start-agent": "bin/start-agent.mjs",
+diff --git a/package.json b/package.json
+index e3f98ab2c..3f7e07984 100644
+--- a/package.json
++++ b/package.json
+@@ -72,7 +72,7 @@
+     "@secretlint/secretlint-rule-preset-recommend": "^11.2.5",
+     "@sentry/node": "^10.15.0",
+     "@sentry/profiling-node": "^10.15.0",
+-    "agent-commander": "^0.4.2",
++    "agent-commander": "^0.4.3",
+     "dayjs": "^1.11.19",
+     "decimal.js-light": "^2.5.1",
+     "lino-arguments": "^0.3.0",
+diff --git a/src/agent-commander.lib.mjs b/src/agent-commander.lib.mjs
+new file mode 100644
+index 000000000..a538b228f
+--- /dev/null
++++ b/src/agent-commander.lib.mjs
+@@ -0,0 +1,270 @@
++#!/usr/bin/env node
++/**
++ * Experimental agent-commander execution adapter.
++ *
++ * This module is only used when solve is called with --use-agent-commander.
++ * Default tool execution remains in claude.lib.mjs, codex.lib.mjs,
++ * opencode.lib.mjs, and agent.lib.mjs.
++ */
++
++import { detectUsageLimit } from './usage-limit.lib.mjs';
++
++export const AGENT_COMMANDER_TOOLS = new Set(['claude', 'codex', 'opencode', 'agent']);
++
++const defaultLog = async (message, options = {}) => {
++  if (options.verbose && !global.verboseMode) return;
++  if (options.level === 'error') {
++    console.error(message);
++  } else if (options.level === 'warning' || options.level === 'warn') {
++    console.warn(message);
++  } else {
++    console.log(message);
++  }
++};
++
++const getAgentCommander = async () => {
++  try {
++    return await import('agent-commander');
++  } catch (error) {
++    throw new Error(`agent-commander is not installed or cannot be loaded. Install it with: npm install agent-commander\nOriginal error: ${error.message}`);
++  }
++};
++
++export const isAgentCommanderAvailable = async () => {
++  try {
++    await getAgentCommander();
++    return true;
++  } catch {
++    return false;
++  }
++};
++
++export const getAgentCommanderToolName = (argv = {}) => argv.tool || 'claude';
++
++export const buildAgentCommanderToolOptions = (argv = {}, tool = getAgentCommanderToolName(argv)) => {
++  const options = {};
++
++  if (tool === 'claude') {
++    options.verbose = !!argv.verbose;
++    if (argv.fallbackModel) options.fallbackModel = argv.fallbackModel;
++  }
++
++  return options;
++};
++
++export const buildAgentCommanderControllerOptions = ({ tool, tempDir, prompt, systemPrompt, argv = {} }) => ({
++  tool,
++  workingDirectory: tempDir,
++  prompt,
++  systemPrompt,
++  model: argv.model,
++  json: tool !== 'agent',
++  resume: argv.resume,
++  toolOptions: buildAgentCommanderToolOptions(argv, tool),
++});
++
++export const validateAgentCommanderConnection = async ({ tool, model, log = defaultLog, agentCommanderModule = null }) => {
++  try {
++    const module = agentCommanderModule || (await getAgentCommander());
++    const { agent, isToolSupported } = module;
++    const toolName = tool || 'claude';
++
++    if (!AGENT_COMMANDER_TOOLS.has(toolName) || !isToolSupported({ toolName })) {
++      await log(`[agent-commander] Tool '${toolName}' is not supported`, { level: 'error' });
++      return false;
++    }
++
++    const controller = agent({
++      tool: toolName,
++      workingDirectory: process.cwd(),
++      prompt: 'connection check',
++      model,
++      json: toolName !== 'agent',
++      toolOptions: buildAgentCommanderToolOptions({ model }, toolName),
++    });
++    await controller.start({ dryRun: true, attached: false });
++    await log(`[agent-commander] ${toolName} command construction validated`, { verbose: true });
++    return true;
++  } catch (error) {
++    await log(`[agent-commander] Connection validation failed: ${error.message}`, { level: 'error' });
++    return false;
++  }
++};
++
++const getPromptModule = async tool => {
++  if (tool === 'claude') return await import('./claude.prompts.lib.mjs');
++  if (tool === 'codex') return await import('./codex.prompts.lib.mjs');
++  if (tool === 'opencode') return await import('./opencode.prompts.lib.mjs');
++  if (tool === 'agent') return await import('./agent.prompts.lib.mjs');
++  throw new Error(`Unsupported tool for agent-commander: ${tool}`);
++};
++
++export const getPlaywrightMcpAvailabilityCheck = async tool => {
++  if (tool === 'opencode') return (await import('./opencode.lib.mjs')).checkPlaywrightMcpAvailability;
++  if (tool === 'codex') return (await import('./codex.lib.mjs')).checkPlaywrightMcpAvailability;
++  if (tool === 'agent') return (await import('./agent.lib.mjs')).checkPlaywrightMcpAvailability;
++  return (await import('./claude.lib.mjs')).checkPlaywrightMcpAvailability;
++};
++
++export const resolvePlaywrightMcpForAgentCommander = async ({ argv, log = defaultLog, tool = getAgentCommanderToolName(argv) }) => {
++  if (argv.playwrightMcp === false) return;
++  if (!argv.promptPlaywrightMcp) {
++    await log('ℹ️  Playwright MCP explicitly disabled via --no-prompt-playwright-mcp', { verbose: true });
++    return;
++  }
++
++  const checkFn = await getPlaywrightMcpAvailabilityCheck(tool);
++  const available = await checkFn();
++  if (available) {
++    await log('🎭 Playwright MCP detected - enabling browser automation hints', { verbose: true });
++  } else {
++    await log('ℹ️  Playwright MCP not detected - browser automation hints will be disabled', { verbose: true });
++    argv.promptPlaywrightMcp = false;
++  }
++};
++
++const getParsedMessages = result => {
++  const parsed = result?.output?.parsed;
++  if (Array.isArray(parsed)) return parsed;
++  if (parsed && typeof parsed === 'object') return [parsed];
++  return [];
++};
++
++const extractResultSummary = (messages, plainOutput) => {
++  for (const message of [...messages].reverse()) {
++    if (typeof message?.result === 'string' && message.result.trim()) return message.result.trim();
++    if (typeof message?.summary === 'string' && message.summary.trim()) return message.summary.trim();
++    if (typeof message?.text === 'string' && message.text.trim()) return message.text.trim();
++    if (typeof message?.message === 'string' && message.message.trim()) return message.message.trim();
++    if (typeof message?.item?.content === 'string' && message.item.content.trim()) return message.item.content.trim();
++    if (Array.isArray(message?.item?.content)) {
++      const text = message.item.content
++        .map(part => part?.text || '')
++        .join('')
++        .trim();
++      if (text) return text;
++    }
++  }
++
++  return plainOutput?.trim() ? plainOutput.trim().slice(-4000) : null;
++};
++
++const hasErrorMessage = messages => messages.some(message => message?.is_error === true || message?.type === 'error' || message?.type === 'step_error' || message?.error);
++
++export const summarizeAgentCommanderResult = ({ result, tool }) => {
++  const plainOutput = result?.output?.plain || '';
++  const messages = getParsedMessages(result);
++  const usageLimit = detectUsageLimit(plainOutput);
++  const usage = result?.usage || null;
++  const resultMessage = [...messages].reverse().find(message => message?.type === 'result') || null;
++  const totalCost = typeof resultMessage?.total_cost_usd === 'number' ? resultMessage.total_cost_usd : null;
++  const publicPricingEstimate = tool === 'agent' && typeof usage?.totalCost === 'number' ? usage.totalCost : null;
++
++  return {
++    success: result?.exitCode === 0 && !usageLimit.isUsageLimit && !hasErrorMessage(messages),
++    sessionId: result?.sessionId || resultMessage?.session_id || null,
++    limitReached: usageLimit.isUsageLimit,
++    limitResetTime: usageLimit.resetTime,
++    limitTimezone: usageLimit.timezone,
++    anthropicTotalCostUSD: tool === 'claude' ? totalCost : null,
++    publicPricingEstimate,
++    pricingInfo: publicPricingEstimate !== null ? { totalCostUSD: publicPricingEstimate, source: 'agent-commander' } : null,
++    resultSummary: extractResultSummary(messages, plainOutput),
++    resultModelUsage: null,
++    streamTokenUsage: usage,
++    subAgentCalls: null,
++    errorDuringExecution: result?.exitCode !== 0 || hasErrorMessage(messages),
++    result: plainOutput,
++  };
++};
++
++export const executeWithAgentCommander = async params => {
++  const { agentCommanderModule = null, promptModule = null, log = defaultLog, argv, tempDir, workspaceTmpDir, ...promptParams } = params;
++  const tool = getAgentCommanderToolName(argv);
++  const module = agentCommanderModule || (await getAgentCommander());
++
++  if (!AGENT_COMMANDER_TOOLS.has(tool) || !module.isToolSupported({ toolName: tool })) {
++    throw new Error(`agent-commander does not support tool '${tool}'`);
++  }
++
++  const prompts = promptModule || (await getPromptModule(tool));
++  const promptBuilderParams = { ...promptParams, tempDir, workspaceTmpDir, argv };
++  const prompt = prompts.buildUserPrompt(promptBuilderParams);
++  const systemPrompt = prompts.buildSystemPrompt(promptBuilderParams);
++  const controllerOptions = buildAgentCommanderControllerOptions({ tool, tempDir, prompt, systemPrompt, argv });
++
++  if (argv.verbose) {
++    await log('\n[agent-commander] Final prompt structure:', { verbose: true });
++    await log(`   Tool: ${tool}`, { verbose: true });
++    await log(`   User prompt characters: ${prompt.length}`, { verbose: true });
++    await log(`   System prompt characters: ${systemPrompt.length}`, { verbose: true });
++  }
++
++  const controller = module.agent(controllerOptions);
++  const dryRun = !!(argv.dryRun || argv.onlyPrepareCommand);
++  await log(`\n[agent-commander] Starting ${tool} execution${dryRun ? ' (dry-run)' : ''}...`);
++  await controller.start({
++    dryRun,
++    attached: true,
++    onOutput: chunk => {
++      if (chunk.type === 'stderr') process.stderr.write(chunk.data);
++      else process.stdout.write(chunk.data);
++    },
++  });
++
++  if (dryRun) {
++    return {
++      success: true,
++      sessionId: null,
++      limitReached: false,
++      limitResetTime: null,
++      limitTimezone: null,
++      anthropicTotalCostUSD: null,
++      publicPricingEstimate: null,
++      pricingInfo: null,
++      resultSummary: null,
++    };
++  }
++
++  const result = await controller.stop();
++  await log(`[agent-commander] ${tool} exited with code ${result.exitCode}`);
++  return summarizeAgentCommanderResult({ result, tool });
++};
++
++export const checkForUncommittedChanges = async (tempDir, owner, repo, branchName, $, log = defaultLog, autoCommit = false, autoRestartEnabled = true) => {
++  await log('\n🔍 Checking for uncommitted changes...');
++  const gitStatusResult = await $({ cwd: tempDir })`git status --porcelain 2>&1`;
++  const statusOutput = gitStatusResult.stdout?.toString().trim() || '';
++
++  if (!statusOutput) {
++    await log('✅ No uncommitted changes found');
++    return false;
++  }
++
++  await log('📝 Found uncommitted changes');
++  await log('Changes:');
++  for (const line of statusOutput.split('\n')) await log(`   ${line}`);
++
++  if (autoCommit) {
++    await log('💾 Auto-committing changes (--auto-commit-uncommitted-changes is enabled)...');
++    const addResult = await $({ cwd: tempDir })`git add -A`;
++    if (addResult.code === 0) {
++      const commitResult = await $({ cwd: tempDir })`git commit -m ${'Auto-commit: Changes made through agent-commander during problem-solving session'}`;
++      if (commitResult.code === 0) {
++        const pushResult = await $({ cwd: tempDir })`git push origin ${branchName} 2>&1`;
++        await log(pushResult.code === 0 ? '✅ Changes pushed successfully' : `⚠️ Warning: Could not push changes: ${pushResult.stderr?.toString().trim() || pushResult.stdout?.toString().trim()}`, { level: pushResult.code === 0 ? 'info' : 'warning' });
++      }
++    }
++    return false;
++  }
++
++  if (autoRestartEnabled) {
++    await log('\n⚠️  IMPORTANT: Uncommitted changes detected!');
++    await log('   The agent-commander controlled tool made changes that were not committed.');
++    await log('\n🔄 AUTO-RESTART: Restarting the tool to handle uncommitted changes...\n');
++    return true;
++  }
++
++  await log('\n⚠️  Uncommitted changes detected but auto-restart is disabled.');
++  return false;
++};
+diff --git a/src/solve.config.lib.mjs b/src/solve.config.lib.mjs
+index ac7051c7e..89487f657 100644
+--- a/src/solve.config.lib.mjs
++++ b/src/solve.config.lib.mjs
+@@ -471,6 +471,12 @@ export const SOLVE_OPTION_DEFINITIONS = {
+     description: 'Guide AI to use agent-commander CLI (start-agent) instead of native tool-specific delegation for subagent work. Allows using any supported agent type (claude, opencode, codex, agent) with a unified API. Supported for --tool claude and --tool codex and requires agent-commander to be installed.',
+     default: false,
+   },
++  'use-agent-commander': {
++    type: 'boolean',
++    description: '[EXPERIMENTAL] Execute the selected AI tool through agent-commander instead of the embedded hive-mind tool adapter. Disabled by default.',
++    default: false,
++    hidden: true,
++  },
+   'auto-init-repository': {
+     type: 'boolean',
+     description: 'Automatically initialize empty repositories by creating a simple README.md file. Only works when you have write access to the repository. This allows branch creation and pull request workflows to proceed on repositories that have no commits.',
+diff --git a/src/solve.mjs b/src/solve.mjs
+index 1fc45ab37..dc0ef1c54 100755
+--- a/src/solve.mjs
++++ b/src/solve.mjs
+@@ -89,8 +89,13 @@ setupStdioLogInterceptor(); // Issue #1549: capture ALL terminal output in log f
+
+ // Early logs go to cwd; custom log dir takes effect after argv is parsed
+ // Conditionally import tool-specific functions after argv is parsed
++// If --use-agent-commander is enabled, use agent-commander's checkForUncommittedChanges
+ let checkForUncommittedChanges;
+-if (argv.tool === 'opencode') {
++let agentCommanderLib = null;
++if (argv.useAgentCommander) {
++  agentCommanderLib = await import('./agent-commander.lib.mjs');
++  checkForUncommittedChanges = agentCommanderLib.checkForUncommittedChanges;
++} else if (argv.tool === 'opencode') {
+   const opencodeLib = await import('./opencode.lib.mjs');
+   checkForUncommittedChanges = opencodeLib.checkForUncommittedChanges;
+ } else if (argv.tool === 'codex') {
+@@ -661,7 +666,49 @@ try {
+
+   // Execute tool command with all prompts and settings
+   let toolResult;
+-  if (argv.tool === 'opencode') {
++
++  // If --use-agent-commander is enabled, use agent-commander for all tools
++  if (argv.useAgentCommander) {
++    // Ensure agent-commander is available
++    if (!agentCommanderLib) {
++      agentCommanderLib = await import('./agent-commander.lib.mjs');
++    }
++
++    const isAvailable = await agentCommanderLib.isAgentCommanderAvailable();
++    if (!isAvailable) {
++      await log('\n[agent-commander] agent-commander is not installed.', { level: 'error' });
++      await log('   Install it with: npm install agent-commander', { level: 'error' });
++      await log('   Or remove the --use-agent-commander flag to use embedded tool logic.', { level: 'error' });
++      await safeExit(1, 'agent-commander not available');
++    }
++
++    await log(`\n[agent-commander] Using agent-commander for ${argv.tool || 'claude'} execution`);
++    await agentCommanderLib.resolvePlaywrightMcpForAgentCommander({ argv, log, tool: argv.tool || 'claude' });
++
++    toolResult = await agentCommanderLib.executeWithAgentCommander({
++      issueUrl,
++      issueNumber,
++      prNumber,
++      prUrl,
++      branchName,
++      tempDir,
++      workspaceTmpDir,
++      isContinueMode,
++      mergeStateStatus,
++      forkedRepo,
++      feedbackLines,
++      forkActionsUrl,
++      owner,
++      repo,
++      argv,
++      log,
++      setLogFile,
++      getLogFile,
++      formatAligned,
++      getResourceSnapshot,
++      $,
++    });
++  } else if (argv.tool === 'opencode') {
+     const opencodeLib = await import('./opencode.lib.mjs');
+     const { executeOpenCode, checkPlaywrightMcpAvailability: checkOpenCodePlaywrightMcp } = opencodeLib;
+     const opencodePath = process.env.OPENCODE_PATH || 'opencode';
+diff --git a/src/solve.restart-shared.lib.mjs b/src/solve.restart-shared.lib.mjs
+index e90ce3e5e..0f9725ab9 100644
+--- a/src/solve.restart-shared.lib.mjs
++++ b/src/solve.restart-shared.lib.mjs
+@@ -183,7 +183,34 @@ export const executeToolIteration = async params => {
+   await cascadePlaywrightMcpDisable(argv, log);
+
+   let toolResult;
+-  if (argv.tool === 'opencode') {
++  if (argv.useAgentCommander) {
++    const agentCommanderLib = await import('./agent-commander.lib.mjs');
++    await agentCommanderLib.resolvePlaywrightMcpForAgentCommander({ argv, log, tool: argv.tool || 'claude' });
++
++    toolResult = await agentCommanderLib.executeWithAgentCommander({
++      issueUrl,
++      issueNumber,
++      prNumber,
++      prUrl: `https://github.com/${owner}/${repo}/pull/${prNumber}`,
++      branchName,
++      tempDir,
++      workspaceTmpDir: params.workspaceTmpDir,
++      isContinueMode: true,
++      mergeStateStatus,
++      forkedRepo: argv.fork,
++      feedbackLines,
++      forkActionsUrl: null,
++      owner,
++      repo,
++      argv,
++      log,
++      formatAligned,
++      getResourceSnapshot,
++      setLogFile: () => {},
++      getLogFile: () => '',
++      $,
++    });
++  } else if (argv.tool === 'opencode') {
+     // Use OpenCode
+     const opencodeExecLib = await import('./opencode.lib.mjs');
+     const { executeOpenCode, checkPlaywrightMcpAvailability } = opencodeExecLib;
+diff --git a/src/solve.validation.lib.mjs b/src/solve.validation.lib.mjs
+index 6bd9e96a6..78ee23c8e 100644
+--- a/src/solve.validation.lib.mjs
++++ b/src/solve.validation.lib.mjs
+@@ -295,7 +295,18 @@ export const performSystemChecks = async (minDiskSpace = 2048, skipToolConnectio
+   // Skip tool connection validation if in dry-run mode or explicitly requested
+   if (!skipToolConnection) {
+     let isToolConnected = false;
+-    if (argv.tool === 'opencode') {
++    if (argv.useAgentCommander) {
++      const agentCommanderLib = await import('./agent-commander.lib.mjs');
++      isToolConnected = await agentCommanderLib.validateAgentCommanderConnection({
++        tool: argv.tool || 'claude',
++        model,
++        log,
++      });
++      if (!isToolConnected) {
++        await log('❌ Cannot proceed without agent-commander tool connection', { level: 'error' });
++        return false;
++      }
++    } else if (argv.tool === 'opencode') {
+       // Validate OpenCode connection
+       const opencodeLib = await import('./opencode.lib.mjs');
+       isToolConnected = await opencodeLib.validateOpenCodeConnection(model);
+diff --git a/tests/test-agent-commander-option.mjs b/tests/test-agent-commander-option.mjs
+new file mode 100644
+index 000000000..e7ea7156a
+--- /dev/null
++++ b/tests/test-agent-commander-option.mjs
+@@ -0,0 +1,172 @@
++#!/usr/bin/env node
++/**
++ * @hive-mind-test-suite default
++ */
++
++import assert from 'node:assert/strict';
++import { stdout } from 'node:process';
++
++import { SOLVE_OPTION_DEFINITIONS } from '../src/solve.config.lib.mjs';
++import { getSolvePassthroughOptionNames } from '../src/hive.config.lib.mjs';
++import { AGENT_COMMANDER_TOOLS, buildAgentCommanderControllerOptions, buildAgentCommanderToolOptions, executeWithAgentCommander, summarizeAgentCommanderResult, validateAgentCommanderConnection } from '../src/agent-commander.lib.mjs';
++
++const logs = [];
++const log = async message => {
++  logs.push(String(message));
++};
++
++assert.deepEqual([...AGENT_COMMANDER_TOOLS].sort(), ['agent', 'claude', 'codex', 'opencode']);
++
++const flagDefinition = SOLVE_OPTION_DEFINITIONS['use-agent-commander'];
++assert.equal(flagDefinition.type, 'boolean');
++assert.equal(flagDefinition.default, false);
++assert.equal(flagDefinition.hidden, true);
++assert.ok(getSolvePassthroughOptionNames().includes('use-agent-commander'), 'hive should forward --use-agent-commander to solve workers');
++
++assert.deepEqual(buildAgentCommanderToolOptions({ verbose: true, fallbackModel: 'opus' }, 'claude'), {
++  verbose: true,
++  fallbackModel: 'opus',
++});
++assert.deepEqual(buildAgentCommanderToolOptions({ verbose: true, fallbackModel: 'opus' }, 'codex'), {});
++
++const claudeOptions = buildAgentCommanderControllerOptions({
++  tool: 'claude',
++  tempDir: '/tmp/repo',
++  prompt: 'user prompt',
++  systemPrompt: 'system prompt',
++  argv: {
++    model: 'sonnet',
++    resume: 'session-123',
++    verbose: true,
++    fallbackModel: 'opus',
++  },
++});
++
++assert.equal(claudeOptions.tool, 'claude');
++assert.equal(claudeOptions.workingDirectory, '/tmp/repo');
++assert.equal(claudeOptions.model, 'sonnet');
++assert.equal(claudeOptions.resume, 'session-123');
++assert.equal(claudeOptions.json, true);
++assert.deepEqual(claudeOptions.toolOptions, { verbose: true, fallbackModel: 'opus' });
++
++const agentOptions = buildAgentCommanderControllerOptions({
++  tool: 'agent',
++  tempDir: '/tmp/repo',
++  prompt: 'user prompt',
++  systemPrompt: 'system prompt',
++  argv: { model: 'opus' },
++});
++assert.equal(agentOptions.json, false, 'native agent output is already parsed by agent-commander');
++
++const validationCapture = {};
++const validationModule = {
++  isToolSupported: ({ toolName }) => toolName === 'opencode',
++  agent: options => {
++    validationCapture.options = options;
++    return {
++      start: async options => {
++        validationCapture.start = options;
++      },
++    };
++  },
++};
++
++assert.equal(
++  await validateAgentCommanderConnection({
++    tool: 'opencode',
++    model: 'grok-code',
++    log,
++    agentCommanderModule: validationModule,
++  }),
++  true
++);
++assert.equal(validationCapture.options.tool, 'opencode');
++assert.equal(validationCapture.options.model, 'grok-code');
++assert.deepEqual(validationCapture.start, { dryRun: true, attached: false });
++
++const executionCapture = {};
++const executionModule = {
++  isToolSupported: ({ toolName }) => AGENT_COMMANDER_TOOLS.has(toolName),
++  agent: options => {
++    executionCapture.options = options;
++    return {
++      start: async options => {
++        executionCapture.start = options;
++      },
++      stop: async () => ({
++        exitCode: 0,
++        sessionId: 'codex-session-1',
++        output: {
++          plain: '{"type":"result","summary":"done from codex"}\n',
++          parsed: [{ type: 'result', summary: 'done from codex', session_id: 'codex-session-1' }],
++        },
++        usage: {
++          inputTokens: 11,
++          outputTokens: 7,
++        },
++      }),
++    };
++  },
++};
++
++const promptModule = {
++  buildUserPrompt: params => `issue ${params.issueNumber} in ${params.workspaceTmpDir}`,
++  buildSystemPrompt: params => `system for ${params.argv.tool}`,
++};
++
++const result = await executeWithAgentCommander({
++  agentCommanderModule: executionModule,
++  promptModule,
++  issueUrl: 'https://github.com/link-assistant/hive-mind/issues/1043',
++  issueNumber: 1043,
++  prNumber: 1044,
++  prUrl: 'https://github.com/link-assistant/hive-mind/pull/1044',
++  branchName: 'issue-1043-824a8917a5fe',
++  tempDir: '/tmp/repo',
++  workspaceTmpDir: '/tmp/repo/tmp',
++  isContinueMode: false,
++  mergeStateStatus: null,
++  forkedRepo: null,
++  feedbackLines: [],
++  forkActionsUrl: null,
++  owner: 'link-assistant',
++  repo: 'hive-mind',
++  argv: {
++    tool: 'codex',
++    model: 'gpt-5.5',
++    resume: 'codex-session-1',
++    verbose: false,
++  },
++  log,
++});
++
++assert.equal(executionCapture.options.tool, 'codex');
++assert.equal(executionCapture.options.workingDirectory, '/tmp/repo');
++assert.equal(executionCapture.options.prompt, 'issue 1043 in /tmp/repo/tmp');
++assert.equal(executionCapture.options.systemPrompt, 'system for codex');
++assert.equal(executionCapture.options.model, 'gpt-5.5');
++assert.equal(executionCapture.options.resume, 'codex-session-1');
++assert.equal(executionCapture.options.json, true);
++assert.equal(executionCapture.start.dryRun, false);
++assert.equal(executionCapture.start.attached, true);
++assert.equal(typeof executionCapture.start.onOutput, 'function');
++assert.equal(result.success, true);
++assert.equal(result.sessionId, 'codex-session-1');
++assert.equal(result.resultSummary, 'done from codex');
++assert.deepEqual(result.streamTokenUsage, { inputTokens: 11, outputTokens: 7 });
++
++const claudeSummary = summarizeAgentCommanderResult({
++  tool: 'claude',
++  result: {
++    exitCode: 0,
++    output: {
++      plain: '',
++      parsed: [{ type: 'result', result: 'done from claude', session_id: 'claude-session-1', total_cost_usd: 0.12 }],
++    },
++  },
++});
++assert.equal(claudeSummary.sessionId, 'claude-session-1');
++assert.equal(claudeSummary.anthropicTotalCostUSD, 0.12);
++assert.equal(claudeSummary.resultSummary, 'done from claude');
++
++stdout.write('agent-commander option tests passed\n');

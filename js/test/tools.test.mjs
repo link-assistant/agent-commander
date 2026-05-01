@@ -175,11 +175,10 @@ test('claudeTool - buildArgs with replay-user-messages', () => {
   assert.ok(args.includes('--replay-user-messages'));
 });
 
-test('claudeTool - buildArgs always includes dangerously-skip-permissions (not configurable)', () => {
-  // dangerouslySkipPermissions is always enabled and not configurable
+test('claudeTool - buildArgs includes dangerously-skip-permissions by default', () => {
   const args = claudeTool.buildArgs({});
   assert.ok(args.includes('--dangerously-skip-permissions'));
-  // Even if someone tries to pass the option, it should be ignored (the option doesn't exist anymore)
+
   const argsWithAnyOption = claudeTool.buildArgs({ someUnknownOption: false });
   assert.ok(argsWithAnyOption.includes('--dangerously-skip-permissions'));
 });

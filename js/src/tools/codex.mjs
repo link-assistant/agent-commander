@@ -3,6 +3,8 @@
  * Based on hive-mind's codex.lib.mjs implementation
  */
 
+import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
+
 /**
  * Available Codex model configurations
  * Maps aliases to full model IDs
@@ -58,10 +60,23 @@ export function mapModelToId(options) {
  * @param {boolean} [options.json] - JSON output mode
  * @param {string} [options.resume] - Resume session/thread ID
  * @param {boolean} [options.readOnly] - Use Codex read-only sandbox
+ * @param {string} [options.sandboxMode] - Explicit Codex sandbox mode
+ * @param {string} [options.approvalMode] - Explicit Codex approval mode
+ * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
+ * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
-  const { model, json = true, resume, readOnly = false } = options;
+  const {
+    model,
+    json = true,
+    resume,
+    readOnly = false,
+    sandboxMode,
+    approvalMode,
+    extraArgs = [],
+    skipDefaultSafetyFlags = false,
+  } = options;
 
   const args = ['exec'];
 
@@ -82,9 +97,15 @@ export function buildArgs(options) {
   args.push('--skip-git-repo-check');
   if (readOnly) {
     args.push('--sandbox', 'read-only');
-  } else {
+  } else if (sandboxMode) {
+    args.push('--sandbox', sandboxMode);
+  }
+
+  if (!readOnly && !sandboxMode && !approvalMode && !skipDefaultSafetyFlags) {
     args.push('--dangerously-bypass-approvals-and-sandbox');
   }
+
+  args.push(...normalizeExtraArgs(extraArgs));
 
   return args;
 }
@@ -101,12 +122,23 @@ export function buildArgs(options) {
  * @param {boolean} [options.json] - JSON output mode
  * @param {string} [options.resume] - Resume session ID
  * @param {boolean} [options.readOnly] - Use Codex read-only sandbox
+ * @param {string} [options.executable='codex'] - Executable path/name
+ * @param {Object|Array} [options.extraEnv] - Environment variables for the tool
+ * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
+ * @param {string} [options.sandboxMode] - Explicit Codex sandbox mode
+ * @param {string} [options.approvalMode] - Explicit Codex approval mode
+ * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {
-  // eslint-disable-next-line no-unused-vars
-  const { workingDirectory, prompt, promptFile, systemPrompt, ...argOptions } =
-    options;
+  const {
+    prompt,
+    promptFile,
+    systemPrompt,
+    executable = 'codex',
+    extraEnv,
+    ...argOptions
+  } = options;
   const args = buildArgs(argOptions);
 
   // Codex expects prompt via stdin, combine system and user prompts
@@ -118,22 +150,18 @@ export function buildCommand(options) {
   const inputCommand = promptFile
     ? `cat ${escapeArg(promptFile)}`
     : `printf '%s' '${combinedPrompt.replace(/'/g, "'\\''")}'`;
-  const executable = argOptions.readOnly
-    ? 'codex --ask-for-approval never'
-    : 'codex';
-  return `${inputCommand} | ${executable} ${args.map(escapeArg).join(' ')}`.trim();
-}
-
-/**
- * Escape an argument for shell usage
- * @param {string} arg - Argument to escape
- * @returns {string} Escaped argument
- */
-function escapeArg(arg) {
-  if (/["\s$`\\]/.test(arg)) {
-    return `"${arg.replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`').replace(/\\/g, '\\\\')}"`;
+  const prefixArgs = [];
+  if (argOptions.readOnly) {
+    prefixArgs.push('--ask-for-approval', 'never');
+  } else if (argOptions.approvalMode) {
+    prefixArgs.push('--ask-for-approval', argOptions.approvalMode);
   }
-  return arg;
+
+  return `${inputCommand} | ${buildCommandHead({
+    executable,
+    extraEnv,
+    prefixArgs,
+  })} ${args.map(escapeArg).join(' ')}`.trim();
 }
 
 /**

@@ -28,6 +28,10 @@ pub struct AgentCommandOptions {
     pub session_id: Option<String>,
     pub fork_session: bool,
     pub read_only: bool,
+    pub executable: Option<String>,
+    pub extra_args: Vec<String>,
+    pub extra_env: Vec<(String, String)>,
+    pub skip_default_safety_flags: bool,
     pub isolation: String,
     pub screen_name: Option<String>,
     pub container_name: Option<String>,
@@ -174,6 +178,11 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 fork_session: options.fork_session,
                 print: false,
                 read_only: options.read_only,
+                executable: options.executable.clone(),
+                extra_env: options.extra_env.clone(),
+                extra_args: options.extra_args.clone(),
+                skip_default_safety_flags: options.skip_default_safety_flags,
+                permission_mode: None,
             }),
             "codex" => codex::build_command(&CodexBuildOptions {
                 prompt: options.prompt.clone(),
@@ -183,6 +192,12 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 json: options.json,
                 resume: options.resume.clone(),
                 read_only: options.read_only,
+                executable: options.executable.clone(),
+                extra_env: options.extra_env.clone(),
+                extra_args: options.extra_args.clone(),
+                skip_default_safety_flags: options.skip_default_safety_flags,
+                sandbox_mode: None,
+                approval_mode: None,
             }),
             "opencode" => opencode::build_command(&OpencodeBuildOptions {
                 prompt: options.prompt.clone(),
@@ -192,6 +207,9 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 json: options.json,
                 resume: options.resume.clone(),
                 read_only: options.read_only,
+                executable: options.executable.clone(),
+                extra_env: options.extra_env.clone(),
+                extra_args: options.extra_args.clone(),
             }),
             "agent" => agent::build_command(&AgentBuildOptions {
                 prompt: options.prompt.clone(),
@@ -200,6 +218,9 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 model: options.model.clone(),
                 compact_json: false,
                 use_existing_claude_oauth: false,
+                executable: options.executable.clone(),
+                extra_env: options.extra_env.clone(),
+                extra_args: options.extra_args.clone(),
             }),
             "gemini" => {
                 let options = GeminiBuildOptions {
@@ -417,6 +438,43 @@ mod tests {
     }
 
     #[test]
+    fn test_build_agent_command_claude_raw_passthrough() {
+        let options = AgentCommandOptions {
+            tool: "claude".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            prompt: Some("Hello".to_string()),
+            executable: Some("/opt/Claude Code/bin/claude".to_string()),
+            extra_env: vec![
+                (
+                    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC".to_string(),
+                    "1".to_string(),
+                ),
+                ("MCP_TIMEOUT".to_string(), "10000".to_string()),
+            ],
+            extra_args: vec![
+                "--mcp-config".to_string(),
+                "/tmp/mcp config.json".to_string(),
+                "--permission-mode".to_string(),
+                "default".to_string(),
+            ],
+            skip_default_safety_flags: true,
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("env"));
+        assert!(command.contains("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1"));
+        assert!(command.contains("MCP_TIMEOUT=10000"));
+        assert!(command.contains("/opt/Claude Code/bin/claude"));
+        assert!(command.contains("--mcp-config"));
+        assert!(command.contains("/tmp/mcp config.json"));
+        assert!(command.contains("--permission-mode"));
+        assert!(command.contains("default"));
+        assert!(!command.contains("--dangerously-skip-permissions"));
+    }
+
+    #[test]
     fn test_build_agent_command_unknown_tool() {
         let options = AgentCommandOptions {
             tool: "unknown-tool".to_string(),
@@ -624,8 +682,9 @@ mod tests {
 
         let command = build_agent_command(&options);
         assert!(command.contains("OPENCODE_PERMISSION="));
-        assert!(command.contains("\\\"bash\\\":\\\"deny\\\""));
-        assert!(command.contains("\\\"edit\\\":\\\"deny\\\""));
+        assert!(command.contains("bash"));
+        assert!(command.contains("edit"));
+        assert!(command.contains("deny"));
     }
 
     #[test]

@@ -51,6 +51,10 @@ Common options:
 - `--prompt-file <path>`: read prompt input from a file for stdin-based tools
 - `--model <name>`: tool-specific model alias or full model name
 - `--read-only` or `--plan-only`: enforce native planning/no-write mode when supported
+- `--tool-executable <path>`: override the native executable for `claude`, `codex`, `opencode`, or `agent`
+- `--tool-env <KEY=VALUE>`: add an environment variable to the native tool process, repeatable
+- `--tool-arg <arg>`: append a raw native tool argument, repeatable
+- `--skip-default-safety-flags`: suppress default Claude/Codex autonomous bypass flags
 - `--isolation <mode>`: `none`, `screen`, or `docker`
 - `--dry-run`: print the command without executing it
 
@@ -102,6 +106,24 @@ const controller = agent({
     fallbackModel: 'sonnet',
     appendSystemPrompt: 'Prefer concise findings.',
     replayUserMessages: true,
+  },
+});
+```
+
+For parity with fast-moving native CLIs, pass raw executable, environment, and argument overrides through `toolOptions`:
+
+```javascript
+const controller = agent({
+  tool: 'codex',
+  workingDirectory: '/tmp/project',
+  promptFile: '/tmp/agent-prompt.txt',
+  toolOptions: {
+    executable: '/opt/codex/bin/codex',
+    extraEnv: { CODEX_HOME: '/tmp/codex-home' },
+    extraArgs: ['--config', 'model_reasoning_effort="high"'],
+    skipDefaultSafetyFlags: true,
+    sandboxMode: 'workspace-write',
+    approvalMode: 'never',
   },
 });
 ```

@@ -35,6 +35,19 @@ For `claude`, `codex`, `opencode`, and `agent`, the controllers also write in-me
 
 For `codex`, `opencode`, and `agent`, the temporary file contains the system prompt followed by a blank line and then the user prompt. For `claude`, the temporary file contains the user prompt and the system prompt remains a Claude CLI system-prompt argument.
 
+## Native Tool Passthrough
+
+Both packages expose raw passthrough controls for the native `claude`, `codex`, `opencode`, and `agent` commands. These controls cover fast-moving upstream features without forcing every native CLI option into agent-commander's typed API:
+
+- JavaScript `toolOptions.executable` / Rust `AgentOptions.executable` / CLI `--tool-executable`
+- JavaScript `toolOptions.extraEnv` / Rust `AgentOptions.extra_env` / CLI `--tool-env KEY=VALUE`
+- JavaScript `toolOptions.extraArgs` / Rust `AgentOptions.extra_args` / CLI `--tool-arg`
+- JavaScript `toolOptions.skipDefaultSafetyFlags` / Rust `AgentOptions.skip_default_safety_flags` / CLI `--skip-default-safety-flags`
+
+Passthrough environment variables are attached to the native tool side of prompt pipelines, so `cat prompt.txt | env KEY=value codex exec ...` applies `KEY` to `codex` without altering prompt-file reads. Raw arguments are appended after typed arguments, allowing callers to override or extend native CLI behavior such as MCP config, reasoning config, permission modes, sandbox modes, approval modes, and custom config paths.
+
+Claude and Codex builders also expose typed `permissionMode` / `permission_mode`, `sandboxMode` / `sandbox_mode`, and `approvalMode` / `approval_mode` fields for callers that build commands directly.
+
 ## Claude Options
 
 Both packages expose Claude-specific options for model fallback, session management, prompt appending, verbose mode, and replaying user messages:

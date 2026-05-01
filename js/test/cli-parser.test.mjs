@@ -232,6 +232,35 @@ test('parseStartAgentArgs - with read-only flag', () => {
   assert.strictEqual(result.readOnly, true);
 });
 
+test('parseStartAgentArgs - with repeated raw passthrough options', () => {
+  const args = [
+    '--tool',
+    'claude',
+    '--working-directory',
+    '/tmp/test',
+    '--tool-executable',
+    '/opt/claude',
+    '--tool-env',
+    'MCP_TIMEOUT=10000',
+    '--tool-env',
+    'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1',
+    '--tool-arg',
+    '--mcp-config',
+    '--tool-arg',
+    '/tmp/mcp.json',
+    '--skip-default-safety-flags',
+  ];
+  const result = parseStartAgentArgs(args);
+
+  assert.strictEqual(result.toolExecutable, '/opt/claude');
+  assert.deepStrictEqual(result.toolEnv, [
+    'MCP_TIMEOUT=10000',
+    'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1',
+  ]);
+  assert.deepStrictEqual(result.toolArgs, ['--mcp-config', '/tmp/mcp.json']);
+  assert.strictEqual(result.skipDefaultSafetyFlags, true);
+});
+
 test('parseStartAgentArgs - plan-only aliases read-only', () => {
   const args = [
     '--tool',
