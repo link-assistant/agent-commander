@@ -3,6 +3,8 @@
  * Based on Google's official gemini-cli: https://github.com/google-gemini/gemini-cli
  */
 
+import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
+
 /**
  * Available Gemini model configurations
  * Maps aliases to full model IDs
@@ -47,6 +49,8 @@ export function mapModelToId(options) {
  * @param {boolean} [options.debug] - Enable debug output
  * @param {boolean} [options.checkpointing] - Save project snapshot before file modifications
  * @param {boolean} [options.interactive] - Start interactive session with initial prompt
+ * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
+ * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
@@ -60,6 +64,8 @@ export function buildArgs(options) {
     debug = false,
     checkpointing = false,
     interactive = false,
+    extraArgs = [],
+    skipDefaultSafetyFlags = false,
   } = options;
 
   const args = [];
@@ -71,7 +77,7 @@ export function buildArgs(options) {
 
   if (readOnly) {
     args.push('--approval-mode', 'plan');
-  } else if (yolo) {
+  } else if (yolo && !skipDefaultSafetyFlags) {
     // Enable yolo mode for autonomous execution (auto-approve all tool calls)
     args.push('--yolo');
   }
@@ -105,6 +111,8 @@ export function buildArgs(options) {
     }
   }
 
+  args.push(...normalizeExtraArgs(extraArgs));
+
   return args;
 }
 
@@ -122,11 +130,24 @@ export function buildArgs(options) {
  * @param {boolean} [options.debug] - Enable debug output
  * @param {boolean} [options.checkpointing] - Save project snapshot
  * @param {boolean} [options.interactive] - Start interactive session
+ * @param {string} [options.promptFile] - File containing combined prompt input
+ * @param {string} [options.executable='gemini'] - Executable path/name
+ * @param {Object|Array} [options.extraEnv] - Environment variables for the tool
+ * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
+ * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {
-  // eslint-disable-next-line no-unused-vars
-  const { workingDirectory, systemPrompt, prompt, ...argOptions } = options;
+  const {
+    prompt,
+    promptFile,
+    systemPrompt,
+    executable = 'gemini',
+    extraEnv,
+    // eslint-disable-next-line no-unused-vars
+    workingDirectory,
+    ...argOptions
+  } = options;
 
   // Gemini CLI supports system prompt via GEMINI_SYSTEM_PROMPT env var
   // or via .gemini/system.md file. For now, combine with user prompt.
@@ -134,21 +155,18 @@ export function buildCommand(options) {
     ? `${systemPrompt}\n\n${prompt || ''}`
     : prompt || '';
 
-  const args = buildArgs({ ...argOptions, prompt: combinedPrompt });
-  return `gemini ${args.map(escapeArg).join(' ')}`.trim();
-}
+  const args = buildArgs({
+    ...argOptions,
+    prompt: promptFile ? undefined : combinedPrompt,
+  });
+  const command =
+    `${buildCommandHead({ executable, extraEnv })} ${args.map(escapeArg).join(' ')}`.trim();
 
-/**
- * Escape an argument for shell usage
- * @param {string} arg - Argument to escape
- * @returns {string} Escaped argument
- */
-function escapeArg(arg) {
-  // If argument contains spaces, quotes, or special chars, wrap in quotes
-  if (/["\s$`\\]/.test(arg)) {
-    return `"${arg.replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`').replace(/\\/g, '\\\\')}"`;
+  if (promptFile) {
+    return `cat ${escapeArg(promptFile)} | ${command}`;
   }
-  return arg;
+
+  return command;
 }
 
 /**

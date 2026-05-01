@@ -1,0 +1,132 @@
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling libc v0.2.186
+   Compiling quote v1.0.45
+   Compiling parking_lot_core v0.9.12
+   Compiling cfg-if v1.0.4
+   Compiling scopeguard v1.2.0
+   Compiling smallvec v1.15.1
+   Compiling lock_api v0.4.14
+   Compiling serde_core v1.0.228
+   Compiling zmij v1.0.21
+   Compiling bytes v1.11.1
+   Compiling pin-project-lite v0.2.17
+   Compiling serde_json v1.0.149
+   Compiling thiserror v2.0.18
+   Compiling serde v1.0.228
+   Compiling itoa v1.0.18
+   Compiling memchr v2.8.0
+   Compiling futures-core v0.3.32
+   Compiling syn v2.0.117
+   Compiling errno v0.3.14
+   Compiling signal-hook-registry v1.4.8
+   Compiling mio v1.2.0
+   Compiling parking_lot v0.12.5
+   Compiling socket2 v0.6.3
+   Compiling tokio-macros v2.7.0
+   Compiling serde_derive v1.0.228
+   Compiling thiserror-impl v2.0.18
+   Compiling tokio v1.52.1
+   Compiling agent-commander v0.1.0 (/tmp/gh-issue-solver-1777636839591/rust)
+   Compiling tokio-stream v0.1.18
+   Compiling tokio-test v0.4.5
+error[E0560]: struct `GeminiBuildOptions` has no field named `extra_args`
+   --> tests/gemini_tests.rs:111:9
+    |
+111 |         extra_args: vec!["--telemetry".to_string(), "false".to_string()],
+    |         ^^^^^^^^^^ `GeminiBuildOptions` does not have this field
+    |
+    = note: available fields are: `prompt`, `system_prompt`, `model`, `json`, `yolo` ... and 5 others
+
+error[E0560]: struct `QwenBuildOptions` has no field named `extra_args`
+   --> tests/qwen_tests.rs:130:9
+    |
+130 |         extra_args: vec![
+    |         ^^^^^^^^^^ `QwenBuildOptions` does not have this field
+    |
+    = note: available fields are: `prompt`, `system_prompt`, `model`, `json`, `stream_json` ... and 7 others
+
+error[E0560]: struct `QwenBuildOptions` has no field named `prompt_file`
+   --> tests/qwen_tests.rs:260:9
+    |
+260 |         prompt_file: Some("/tmp/qwen prompt.txt".to_string()),
+    |         ^^^^^^^^^^^ `QwenBuildOptions` does not have this field
+    |
+    = note: available fields are: `model`, `json`, `stream_json`, `include_partial_messages`, `yolo` ... and 5 others
+
+error[E0560]: struct `QwenBuildOptions` has no field named `executable`
+   --> tests/qwen_tests.rs:261:9
+    |
+261 |         executable: Some("/opt/qwen code/qwen".to_string()),
+    |         ^^^^^^^^^^ `QwenBuildOptions` does not have this field
+    |
+    = note: available fields are: `model`, `json`, `stream_json`, `include_partial_messages`, `yolo` ... and 5 others
+
+error[E0560]: struct `QwenBuildOptions` has no field named `extra_env`
+   --> tests/qwen_tests.rs:262:9
+    |
+262 |         extra_env: vec![("QWEN_HOME".to_string(), "/tmp/qwen home".to_string())],
+    |         ^^^^^^^^^ `QwenBuildOptions` does not have this field
+    |
+    = note: available fields are: `model`, `json`, `stream_json`, `include_partial_messages`, `yolo` ... and 5 others
+
+error[E0560]: struct `QwenBuildOptions` has no field named `extra_args`
+   --> tests/qwen_tests.rs:263:9
+    |
+263 |         extra_args: vec!["--approval-mode".to_string(), "default".to_string()],
+    |         ^^^^^^^^^^ `QwenBuildOptions` does not have this field
+    |
+    = note: available fields are: `model`, `json`, `stream_json`, `include_partial_messages`, `yolo` ... and 5 others
+
+error[E0560]: struct `QwenBuildOptions` has no field named `skip_default_safety_flags`
+   --> tests/qwen_tests.rs:264:9
+    |
+264 |         skip_default_safety_flags: true,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ `QwenBuildOptions` does not have this field
+    |
+    = note: available fields are: `model`, `json`, `stream_json`, `include_partial_messages`, `yolo` ... and 5 others
+
+error[E0560]: struct `GeminiBuildOptions` has no field named `prompt_file`
+   --> tests/gemini_tests.rs:200:9
+    |
+200 |         prompt_file: Some("/tmp/gemini prompt.txt".to_string()),
+    |         ^^^^^^^^^^^ `GeminiBuildOptions` does not have this field
+    |
+    = note: available fields are: `model`, `json`, `yolo`, `read_only`, `sandbox` ... and 3 others
+
+error[E0560]: struct `GeminiBuildOptions` has no field named `executable`
+   --> tests/gemini_tests.rs:201:9
+    |
+201 |         executable: Some("/opt/gemini cli/gemini".to_string()),
+    |         ^^^^^^^^^^ `GeminiBuildOptions` does not have this field
+    |
+    = note: available fields are: `model`, `json`, `yolo`, `read_only`, `sandbox` ... and 3 others
+
+error[E0560]: struct `GeminiBuildOptions` has no field named `extra_env`
+   --> tests/gemini_tests.rs:202:9
+    |
+202 |         extra_env: vec![("GEMINI_HOME".to_string(), "/tmp/gemini home".to_string())],
+    |         ^^^^^^^^^ `GeminiBuildOptions` does not have this field
+    |
+    = note: available fields are: `model`, `json`, `yolo`, `read_only`, `sandbox` ... and 3 others
+
+error[E0560]: struct `GeminiBuildOptions` has no field named `extra_args`
+   --> tests/gemini_tests.rs:203:9
+    |
+203 |         extra_args: vec!["--telemetry".to_string(), "false".to_string()],
+    |         ^^^^^^^^^^ `GeminiBuildOptions` does not have this field
+    |
+    = note: available fields are: `model`, `json`, `yolo`, `read_only`, `sandbox` ... and 3 others
+
+error[E0560]: struct `GeminiBuildOptions` has no field named `skip_default_safety_flags`
+   --> tests/gemini_tests.rs:204:9
+    |
+204 |         skip_default_safety_flags: true,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ `GeminiBuildOptions` does not have this field
+    |
+    = note: available fields are: `model`, `json`, `yolo`, `read_only`, `sandbox` ... and 3 others
+
+For more information about this error, try `rustc --explain E0560`.
+error: could not compile `agent-commander` (test "qwen_tests") due to 6 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `agent-commander` (test "gemini_tests") due to 6 previous errors

@@ -124,6 +124,22 @@ fn test_build_args_with_include_partial_messages() {
     assert!(args.contains(&"--include-partial-messages".to_string()));
 }
 
+#[test]
+fn test_build_args_appends_extra_raw_args() {
+    let options = QwenBuildOptions {
+        extra_args: vec![
+            "--checkpointing".to_string(),
+            "--approval-mode".to_string(),
+            "default".to_string(),
+        ],
+        ..QwenBuildOptions::new()
+    };
+    let args = build_args(&options);
+    assert!(args.contains(&"--checkpointing".to_string()));
+    assert!(args.contains(&"--approval-mode".to_string()));
+    assert!(args.contains(&"default".to_string()));
+}
+
 // Output parsing tests
 #[test]
 fn test_parse_output_with_ndjson() {
@@ -234,6 +250,31 @@ fn test_build_command_combines_system_and_user_prompt() {
     let cmd = build_command(&options);
     assert!(cmd.contains("You are helpful"));
     assert!(cmd.contains("Review code"));
+}
+
+#[test]
+fn test_build_command_reads_prompt_file_with_passthrough_options() {
+    let options = QwenBuildOptions {
+        prompt: Some("inline prompt".to_string()),
+        system_prompt: Some("system prompt".to_string()),
+        prompt_file: Some("/tmp/qwen prompt.txt".to_string()),
+        executable: Some("/opt/qwen code/qwen".to_string()),
+        extra_env: vec![("QWEN_HOME".to_string(), "/tmp/qwen home".to_string())],
+        extra_args: vec!["--approval-mode".to_string(), "default".to_string()],
+        skip_default_safety_flags: true,
+        ..QwenBuildOptions::new()
+    };
+    let cmd = build_command(&options);
+    assert!(cmd.starts_with("cat "));
+    assert!(cmd.contains("/tmp/qwen prompt.txt"));
+    assert!(cmd.contains("| env QWEN_HOME="));
+    assert!(cmd.contains("/tmp/qwen home"));
+    assert!(cmd.contains("/opt/qwen code/qwen"));
+    assert!(cmd.contains("--approval-mode"));
+    assert!(cmd.contains("default"));
+    assert!(!cmd.contains("inline prompt"));
+    assert!(!cmd.contains("system prompt"));
+    assert!(!cmd.contains("--yolo"));
 }
 
 // Tool configuration tests

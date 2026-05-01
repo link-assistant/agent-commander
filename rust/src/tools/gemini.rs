@@ -2,6 +2,7 @@
 //! Based on Google's official gemini-cli: https://github.com/google-gemini/gemini-cli
 
 use crate::streaming::parse_ndjson;
+use crate::tools::shell::{build_command_head, escape_arg};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -43,6 +44,7 @@ pub fn map_model_to_id(model: &str) -> String {
 #[derive(Debug, Clone, Default)]
 pub struct GeminiBuildOptions {
     pub prompt: Option<String>,
+    pub prompt_file: Option<String>,
     pub system_prompt: Option<String>,
     pub model: Option<String>,
     pub json: bool,
@@ -52,6 +54,10 @@ pub struct GeminiBuildOptions {
     pub debug: bool,
     pub checkpointing: bool,
     pub interactive: bool,
+    pub executable: Option<String>,
+    pub extra_env: Vec<(String, String)>,
+    pub extra_args: Vec<String>,
+    pub skip_default_safety_flags: bool,
 }
 
 impl GeminiBuildOptions {
@@ -83,7 +89,7 @@ pub fn build_args(options: &GeminiBuildOptions) -> Vec<String> {
     if options.read_only {
         args.push("--approval-mode".to_string());
         args.push("plan".to_string());
-    } else if options.yolo {
+    } else if options.yolo && !options.skip_default_safety_flags {
         // Enable yolo mode for autonomous execution (auto-approve all tool calls)
         args.push("--yolo".to_string());
     }
@@ -119,26 +125,9 @@ pub fn build_args(options: &GeminiBuildOptions) -> Vec<String> {
         args.push(prompt.clone());
     }
 
-    args
-}
+    args.extend(options.extra_args.clone());
 
-/// Escape an argument for shell usage
-fn escape_arg(arg: &str) -> String {
-    if arg.contains('"')
-        || arg.contains(char::is_whitespace)
-        || arg.contains('$')
-        || arg.contains('`')
-        || arg.contains('\\')
-    {
-        let escaped = arg
-            .replace('\\', "\\\\")
-            .replace('"', "\\\"")
-            .replace('$', "\\$")
-            .replace('`', "\\`");
-        format!("\"{}\"", escaped)
-    } else {
-        arg.to_string()
-    }
+    args
 }
 
 /// Build complete command string for Gemini CLI
@@ -151,11 +140,15 @@ fn escape_arg(arg: &str) -> String {
 pub fn build_command(options: &GeminiBuildOptions) -> String {
     // Gemini CLI supports system prompt via GEMINI_SYSTEM_PROMPT env var
     // or via .gemini/system.md file. For now, combine with user prompt.
-    let combined_prompt = match (&options.system_prompt, &options.prompt) {
-        (Some(sys), Some(prompt)) => Some(format!("{}\n\n{}", sys, prompt)),
-        (Some(sys), None) => Some(sys.clone()),
-        (None, Some(prompt)) => Some(prompt.clone()),
-        (None, None) => None,
+    let combined_prompt = if options.prompt_file.is_some() {
+        None
+    } else {
+        match (&options.system_prompt, &options.prompt) {
+            (Some(sys), Some(prompt)) => Some(format!("{}\n\n{}", sys, prompt)),
+            (Some(sys), None) => Some(sys.clone()),
+            (None, Some(prompt)) => Some(prompt.clone()),
+            (None, None) => None,
+        }
     };
 
     let modified_options = GeminiBuildOptions {
@@ -166,7 +159,20 @@ pub fn build_command(options: &GeminiBuildOptions) -> String {
 
     let args = build_args(&modified_options);
     let args_str: Vec<String> = args.iter().map(|a| escape_arg(a)).collect();
-    format!("gemini {}", args_str.join(" ")).trim().to_string()
+    let executable = options.executable.as_deref().unwrap_or("gemini");
+    let command = format!(
+        "{} {}",
+        build_command_head(executable, &options.extra_env, &[]),
+        args_str.join(" ")
+    )
+    .trim()
+    .to_string();
+
+    if let Some(prompt_file) = &options.prompt_file {
+        return format!("cat {} | {}", escape_arg(prompt_file), command);
+    }
+
+    command
 }
 
 /// Parse JSON messages from Gemini CLI output

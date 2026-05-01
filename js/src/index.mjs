@@ -7,6 +7,8 @@
  * - codex: OpenAI Codex CLI
  * - opencode: OpenCode CLI
  * - agent: @link-assistant/agent (unrestricted OpenCode fork)
+ * - qwen: Qwen Code CLI
+ * - gemini: Gemini CLI
  */
 
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -27,7 +29,14 @@ import { getTool, isToolSupported } from './tools/index.mjs';
 import { createOutputStream, createInputStream } from './streaming/index.mjs';
 import { buildNormalizedResultMetadata } from './result-metadata.mjs';
 
-const PROMPT_FILE_TOOLS = new Set(['claude', 'codex', 'opencode', 'agent']);
+const PROMPT_FILE_TOOLS = new Set([
+  'claude',
+  'codex',
+  'opencode',
+  'agent',
+  'qwen',
+  'gemini',
+]);
 
 /**
  * Determine whether the tool can read prompt input from stdin.
@@ -129,7 +138,7 @@ function parseJsonMessages(options) {
 /**
  * Create an agent controller
  * @param {Object} options - Agent configuration
- * @param {string} options.tool - CLI tool to use (e.g., 'claude', 'codex', 'opencode', 'agent')
+ * @param {string} options.tool - CLI tool to use (e.g., 'claude', 'codex', 'opencode', 'agent', 'qwen', 'gemini')
  * @param {string} options.workingDirectory - Working directory for the agent
  * @param {string} [options.prompt] - Prompt for the agent
  * @param {string} [options.promptFile] - File containing prompt input for stdin-based tools

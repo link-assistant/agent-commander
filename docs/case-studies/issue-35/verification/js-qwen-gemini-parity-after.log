@@ -1,0 +1,644 @@
+TAP version 13
+# Subtest: buildAgentCommand - basic no isolation with known tool (claude)
+ok 1 - buildAgentCommand - basic no isolation with known tool (claude)
+  ---
+  duration_ms: 1.923732
+  ...
+# Subtest: buildAgentCommand - with system prompt (claude)
+ok 2 - buildAgentCommand - with system prompt (claude)
+  ---
+  duration_ms: 1.117438
+  ...
+# Subtest: buildAgentCommand - unknown tool uses generic format
+ok 3 - buildAgentCommand - unknown tool uses generic format
+  ---
+  duration_ms: 0.208142
+  ...
+# Subtest: buildAgentCommand - screen isolation
+ok 4 - buildAgentCommand - screen isolation
+  ---
+  duration_ms: 0.172046
+  ...
+# Subtest: buildAgentCommand - docker isolation
+ok 5 - buildAgentCommand - docker isolation
+  ---
+  duration_ms: 0.141051
+  ...
+# Subtest: buildAgentCommand - with model (claude)
+ok 6 - buildAgentCommand - with model (claude)
+  ---
+  duration_ms: 0.113119
+  ...
+# Subtest: buildAgentCommand - with codex tool
+ok 7 - buildAgentCommand - with codex tool
+  ---
+  duration_ms: 0.28783
+  ...
+# Subtest: buildAgentCommand - codex can read prompt from file
+ok 8 - buildAgentCommand - codex can read prompt from file
+  ---
+  duration_ms: 0.16746
+  ...
+# Subtest: buildAgentCommand - claude can read prompt from file
+ok 9 - buildAgentCommand - claude can read prompt from file
+  ---
+  duration_ms: 0.245657
+  ...
+# Subtest: buildAgentCommand - qwen can read prompt from file
+ok 10 - buildAgentCommand - qwen can read prompt from file
+  ---
+  duration_ms: 0.350093
+  ...
+# Subtest: buildAgentCommand - gemini can read prompt from file
+ok 11 - buildAgentCommand - gemini can read prompt from file
+  ---
+  duration_ms: 0.230925
+  ...
+# Subtest: buildAgentCommand - with agent tool
+ok 12 - buildAgentCommand - with agent tool
+  ---
+  duration_ms: 0.17398
+  ...
+# Subtest: buildAgentCommand - with opencode tool
+ok 13 - buildAgentCommand - with opencode tool
+  ---
+  duration_ms: 0.176995
+  ...
+# Subtest: buildAgentCommand - claude read-only uses plan permission mode
+ok 14 - buildAgentCommand - claude read-only uses plan permission mode
+  ---
+  duration_ms: 0.22699
+  ...
+# Subtest: buildAgentCommand - claude supports raw passthrough options
+ok 15 - buildAgentCommand - claude supports raw passthrough options
+  ---
+  duration_ms: 0.329943
+  ...
+# Subtest: buildAgentCommand - codex read-only uses sandbox and no approvals
+ok 16 - buildAgentCommand - codex read-only uses sandbox and no approvals
+  ---
+  duration_ms: 0.245837
+  ...
+# Subtest: buildAgentCommand - codex applies env to the tool side of prompt pipe
+ok 17 - buildAgentCommand - codex applies env to the tool side of prompt pipe
+  ---
+  duration_ms: 0.154701
+  ...
+# Subtest: buildAgentCommand - qwen applies env to the tool side of prompt pipe
+ok 18 - buildAgentCommand - qwen applies env to the tool side of prompt pipe
+  ---
+  duration_ms: 0.22114
+  ...
+# Subtest: buildAgentCommand - gemini applies env to the tool side of prompt pipe
+ok 19 - buildAgentCommand - gemini applies env to the tool side of prompt pipe
+  ---
+  duration_ms: 0.178406
+  ...
+# Subtest: buildAgentCommand - opencode read-only denies shell and edits
+ok 20 - buildAgentCommand - opencode read-only denies shell and edits
+  ---
+  duration_ms: 0.225447
+  ...
+# Subtest: buildAgentCommand - read-only still works with screen isolation
+ok 21 - buildAgentCommand - read-only still works with screen isolation
+  ---
+  duration_ms: 0.152748
+  ...
+# Subtest: buildAgentCommand - read-only rejects unsupported agent tool
+ok 22 - buildAgentCommand - read-only rejects unsupported agent tool
+  ---
+  duration_ms: 0.388261
+  ...
+# Subtest: buildScreenStopCommand
+ok 23 - buildScreenStopCommand
+  ---
+  duration_ms: 0.093539
+  ...
+# Subtest: buildDockerStopCommand
+ok 24 - buildDockerStopCommand
+  ---
+  duration_ms: 0.084306
+  ...
+# Subtest: buildPipedCommand - basic
+ok 25 - buildPipedCommand - basic
+  ---
+  duration_ms: 0.164105
+  ...
+# Subtest: buildPipedCommand - escapes single quotes
+ok 26 - buildPipedCommand - escapes single quotes
+  ---
+  duration_ms: 0.134951
+  ...
+# Dry run - command that would be executed:
+# bash -c "cd /tmp/test && echo --prompt \\"Hello\\""
+# Dry run - command that would be executed:
+# screen -S "test-session" -X quit
+# Subtest: agent - throws without tool
+ok 27 - agent - throws without tool
+  ---
+  duration_ms: 1.525127
+  ...
+# Subtest: agent - throws without workingDirectory
+ok 28 - agent - throws without workingDirectory
+  ---
+  duration_ms: 0.15383
+  ...
+# Subtest: agent - throws for screen isolation without screenName
+ok 29 - agent - throws for screen isolation without screenName
+  ---
+  duration_ms: 0.094591
+  ...
+# Subtest: agent - throws for docker isolation without containerName
+ok 30 - agent - throws for docker isolation without containerName
+  ---
+  duration_ms: 0.128182
+  ...
+# Subtest: agent - creates controller with valid options
+ok 31 - agent - creates controller with valid options
+  ---
+  duration_ms: 0.252467
+  ...
+# Subtest: agent - start in dry-run mode
+ok 32 - agent - start in dry-run mode
+  ---
+  duration_ms: 1.173332
+  ...
+# Subtest: agent - stop throws for no isolation without start
+ok 33 - agent - stop throws for no isolation without start
+  ---
+  duration_ms: 0.437443
+  ...
+# Subtest: agent - stop in dry-run mode with screen
+ok 34 - agent - stop in dry-run mode with screen
+  ---
+  duration_ms: 1.053883
+  ...
+# Subtest: agent - start and stop with no isolation
+ok 35 - agent - start and stop with no isolation
+  ---
+  duration_ms: 23.969643
+  ...
+# Subtest: agent - stdin tools handle large shell-sensitive prompts through a file
+ok 36 - agent - stdin tools handle large shell-sensitive prompts through a file
+  ---
+  duration_ms: 123.56646
+  ...
+# Subtest: agent - stop includes normalized metadata for Claude JSON result output
+ok 37 - agent - stop includes normalized metadata for Claude JSON result output
+  ---
+  duration_ms: 20.368625
+  ...
+# Subtest: listTools - returns all available tools
+ok 38 - listTools - returns all available tools
+  ---
+  duration_ms: 1.177979
+  ...
+# Subtest: isToolSupported - returns true for supported tools
+ok 39 - isToolSupported - returns true for supported tools
+  ---
+  duration_ms: 0.188451
+  ...
+# Subtest: isToolSupported - returns false for unsupported tools
+ok 40 - isToolSupported - returns false for unsupported tools
+  ---
+  duration_ms: 0.095652
+  ...
+# Subtest: getTool - returns tool configuration
+ok 41 - getTool - returns tool configuration
+  ---
+  duration_ms: 0.092338
+  ...
+# Subtest: getTool - throws for unknown tool
+ok 42 - getTool - throws for unknown tool
+  ---
+  duration_ms: 0.399367
+  ...
+# Subtest: claudeTool - mapModelToId with alias
+ok 43 - claudeTool - mapModelToId with alias
+  ---
+  duration_ms: 0.147451
+  ...
+# Subtest: claudeTool - mapModelToId with new opus 4.7 alias
+ok 44 - claudeTool - mapModelToId with new opus 4.7 alias
+  ---
+  duration_ms: 0.080219
+  ...
+# Subtest: claudeTool - mapModelToId with full ID
+ok 45 - claudeTool - mapModelToId with full ID
+  ---
+  duration_ms: 0.111647
+  ...
+# Subtest: claudeTool - buildArgs with prompt
+ok 46 - claudeTool - buildArgs with prompt
+  ---
+  duration_ms: 0.251565
+  ...
+# Subtest: claudeTool - buildArgs with model
+ok 47 - claudeTool - buildArgs with model
+  ---
+  duration_ms: 0.169002
+  ...
+# Subtest: claudeTool - parseOutput with NDJSON
+ok 48 - claudeTool - parseOutput with NDJSON
+  ---
+  duration_ms: 0.211266
+  ...
+# Subtest: claudeTool - extractSessionId
+ok 49 - claudeTool - extractSessionId
+  ---
+  duration_ms: 0.226359
+  ...
+# Subtest: claudeTool - buildArgs includes --dangerously-skip-permissions by default
+ok 50 - claudeTool - buildArgs includes --dangerously-skip-permissions by default
+  ---
+  duration_ms: 0.09366
+  ...
+# Subtest: claudeTool - buildArgs uses stream-json output format
+ok 51 - claudeTool - buildArgs uses stream-json output format
+  ---
+  duration_ms: 0.192848
+  ...
+# Subtest: claudeTool - buildArgs with fallback model
+ok 52 - claudeTool - buildArgs with fallback model
+  ---
+  duration_ms: 0.110304
+  ...
+# Subtest: claudeTool - buildArgs with append-system-prompt
+ok 53 - claudeTool - buildArgs with append-system-prompt
+  ---
+  duration_ms: 0.175812
+  ...
+# Subtest: claudeTool - buildArgs with session management
+ok 54 - claudeTool - buildArgs with session management
+  ---
+  duration_ms: 0.112027
+  ...
+# Subtest: claudeTool - buildArgs with verbose mode
+ok 55 - claudeTool - buildArgs with verbose mode
+  ---
+  duration_ms: 0.215251
+  ...
+# Subtest: claudeTool - buildArgs with input format stream-json
+ok 56 - claudeTool - buildArgs with input format stream-json
+  ---
+  duration_ms: 0.164926
+  ...
+# Subtest: claudeTool - buildArgs with replay-user-messages
+ok 57 - claudeTool - buildArgs with replay-user-messages
+  ---
+  duration_ms: 0.144846
+  ...
+# Subtest: claudeTool - buildArgs includes dangerously-skip-permissions by default
+ok 58 - claudeTool - buildArgs includes dangerously-skip-permissions by default
+  ---
+  duration_ms: 0.088182
+  ...
+# Subtest: claudeTool - read-only uses plan mode without permission bypass
+ok 59 - claudeTool - read-only uses plan mode without permission bypass
+  ---
+  duration_ms: 0.103985
+  ...
+# Subtest: claudeTool - supportsJsonInput is true
+ok 60 - claudeTool - supportsJsonInput is true
+  ---
+  duration_ms: 0.079528
+  ...
+# Subtest: claudeTool - supports all new capability flags
+ok 61 - claudeTool - supports all new capability flags
+  ---
+  duration_ms: 0.077316
+  ...
+# Subtest: codexTool - mapModelToId with alias
+ok 62 - codexTool - mapModelToId with alias
+  ---
+  duration_ms: 0.083706
+  ...
+# Subtest: codexTool - buildArgs includes exec mode
+ok 63 - codexTool - buildArgs includes exec mode
+  ---
+  duration_ms: 0.088853
+  ...
+# Subtest: codexTool - read-only uses sandbox without bypass
+ok 64 - codexTool - read-only uses sandbox without bypass
+  ---
+  duration_ms: 0.122522
+  ...
+# Subtest: codexTool - extractSessionId with thread_id
+ok 65 - codexTool - extractSessionId with thread_id
+  ---
+  duration_ms: 0.17426
+  ...
+# Subtest: codexTool - mapModelToId with gpt-5.5 family aliases
+ok 66 - codexTool - mapModelToId with gpt-5.5 family aliases
+  ---
+  duration_ms: 0.083174
+  ...
+# Subtest: codexTool - default model is gpt-5.5
+ok 67 - codexTool - default model is gpt-5.5
+  ---
+  duration_ms: 0.07417
+  ...
+# Subtest: opencodeTool - mapModelToId with alias
+ok 68 - opencodeTool - mapModelToId with alias
+  ---
+  duration_ms: 0.080941
+  ...
+# Subtest: opencodeTool - buildArgs includes run mode
+ok 69 - opencodeTool - buildArgs includes run mode
+  ---
+  duration_ms: 0.166989
+  ...
+# Subtest: agentTool - mapModelToId with alias
+ok 70 - agentTool - mapModelToId with alias
+  ---
+  duration_ms: 0.155833
+  ...
+# Subtest: agentTool - buildArgs with model
+ok 71 - agentTool - buildArgs with model
+  ---
+  duration_ms: 0.560347
+  ...
+# Subtest: agentTool - extractUsage from step_finish events
+ok 72 - agentTool - extractUsage from step_finish events
+  ---
+  duration_ms: 0.32155
+  ...
+# Subtest: agentTool - detectErrors finds error messages
+ok 73 - agentTool - detectErrors finds error messages
+  ---
+  duration_ms: 0.164365
+  ...
+# Subtest: agentTool - detectErrors returns false for normal output
+ok 74 - agentTool - detectErrors returns false for normal output
+  ---
+  duration_ms: 0.093539
+  ...
+# Subtest: agentTool - mapModelToId with nemotron-3-super-free (new default)
+ok 75 - agentTool - mapModelToId with nemotron-3-super-free (new default)
+  ---
+  duration_ms: 0.058999
+  ...
+# Subtest: agentTool - default model is nemotron-3-super-free
+ok 76 - agentTool - default model is nemotron-3-super-free
+  ---
+  duration_ms: 0.059499
+  ...
+# Subtest: agentTool - mapModelToId keeps deprecated qwen3.6-plus-free for backward compatibility
+ok 77 - agentTool - mapModelToId keeps deprecated qwen3.6-plus-free for backward compatibility
+  ---
+  duration_ms: 0.053941
+  ...
+# Subtest: qwenTool - mapModelToId with alias
+ok 78 - qwenTool - mapModelToId with alias
+  ---
+  duration_ms: 0.08045
+  ...
+# Subtest: qwenTool - mapModelToId with full ID
+ok 79 - qwenTool - mapModelToId with full ID
+  ---
+  duration_ms: 0.058067
+  ...
+# Subtest: qwenTool - buildArgs with prompt
+ok 80 - qwenTool - buildArgs with prompt
+  ---
+  duration_ms: 0.238998
+  ...
+# Subtest: qwenTool - buildArgs with model
+ok 81 - qwenTool - buildArgs with model
+  ---
+  duration_ms: 0.182972
+  ...
+# Subtest: qwenTool - buildArgs uses stream-json output format by default
+ok 82 - qwenTool - buildArgs uses stream-json output format by default
+  ---
+  duration_ms: 0.10118
+  ...
+# Subtest: qwenTool - buildArgs with json output format
+ok 83 - qwenTool - buildArgs with json output format
+  ---
+  duration_ms: 0.120159
+  ...
+# Subtest: qwenTool - buildArgs includes --yolo by default
+ok 84 - qwenTool - buildArgs includes --yolo by default
+  ---
+  duration_ms: 0.090035
+  ...
+# Subtest: qwenTool - buildArgs with --resume
+ok 85 - qwenTool - buildArgs with --resume
+  ---
+  duration_ms: 0.094722
+  ...
+# Subtest: qwenTool - buildArgs with --continue
+ok 86 - qwenTool - buildArgs with --continue
+  ---
+  duration_ms: 0.06771
+  ...
+# Subtest: qwenTool - buildArgs with --all-files
+ok 87 - qwenTool - buildArgs with --all-files
+  ---
+  duration_ms: 4.798816
+  ...
+# Subtest: qwenTool - buildArgs with --include-directories
+ok 88 - qwenTool - buildArgs with --include-directories
+  ---
+  duration_ms: 0.309052
+  ...
+# Subtest: qwenTool - buildArgs with --include-partial-messages
+ok 89 - qwenTool - buildArgs with --include-partial-messages
+  ---
+  duration_ms: 0.311506
+  ...
+# Subtest: qwenTool - buildArgs appends extra raw args
+ok 90 - qwenTool - buildArgs appends extra raw args
+  ---
+  duration_ms: 0.189052
+  ...
+# Subtest: qwenTool - parseOutput with NDJSON
+ok 91 - qwenTool - parseOutput with NDJSON
+  ---
+  duration_ms: 0.194702
+  ...
+# Subtest: qwenTool - extractSessionId
+ok 92 - qwenTool - extractSessionId
+  ---
+  duration_ms: 0.161782
+  ...
+# Subtest: qwenTool - extractSessionId with sessionId format
+ok 93 - qwenTool - extractSessionId with sessionId format
+  ---
+  duration_ms: 0.115091
+  ...
+# Subtest: qwenTool - extractUsage from output
+ok 94 - qwenTool - extractUsage from output
+  ---
+  duration_ms: 0.22158
+  ...
+# Subtest: qwenTool - extractUsage calculates total if not provided
+ok 95 - qwenTool - extractUsage calculates total if not provided
+  ---
+  duration_ms: 0.144406
+  ...
+# Subtest: qwenTool - detectErrors finds error messages
+ok 96 - qwenTool - detectErrors finds error messages
+  ---
+  duration_ms: 0.211827
+  ...
+# Subtest: qwenTool - detectErrors with error field
+ok 97 - qwenTool - detectErrors with error field
+  ---
+  duration_ms: 0.096835
+  ...
+# Subtest: qwenTool - detectErrors returns false for normal output
+ok 98 - qwenTool - detectErrors returns false for normal output
+  ---
+  duration_ms: 0.094772
+  ...
+# Subtest: qwenTool - capability flags are correct
+ok 99 - qwenTool - capability flags are correct
+  ---
+  duration_ms: 0.058497
+  ...
+# Subtest: qwenTool - buildCommand constructs correct command
+ok 100 - qwenTool - buildCommand constructs correct command
+  ---
+  duration_ms: 0.451194
+  ...
+# Subtest: qwenTool - buildCommand combines system and user prompt
+ok 101 - qwenTool - buildCommand combines system and user prompt
+  ---
+  duration_ms: 0.151667
+  ...
+# Subtest: qwenTool - buildCommand reads prompt file with passthrough options
+ok 102 - qwenTool - buildCommand reads prompt file with passthrough options
+  ---
+  duration_ms: 0.277384
+  ...
+# Subtest: geminiTool - mapModelToId with alias
+ok 103 - geminiTool - mapModelToId with alias
+  ---
+  duration_ms: 3.276943
+  ...
+# Subtest: geminiTool - mapModelToId with full ID
+ok 104 - geminiTool - mapModelToId with full ID
+  ---
+  duration_ms: 0.200399
+  ...
+# Subtest: geminiTool - buildArgs with prompt
+ok 105 - geminiTool - buildArgs with prompt
+  ---
+  duration_ms: 0.210154
+  ...
+# Subtest: geminiTool - buildArgs with model
+ok 106 - geminiTool - buildArgs with model
+  ---
+  duration_ms: 0.162332
+  ...
+# Subtest: geminiTool - buildArgs with yolo mode
+ok 107 - geminiTool - buildArgs with yolo mode
+  ---
+  duration_ms: 0.085889
+  ...
+# Subtest: geminiTool - buildArgs with sandbox mode
+ok 108 - geminiTool - buildArgs with sandbox mode
+  ---
+  duration_ms: 0.952984
+  ...
+# Subtest: geminiTool - buildArgs with json output
+ok 109 - geminiTool - buildArgs with json output
+  ---
+  duration_ms: 0.277234
+  ...
+# Subtest: geminiTool - buildArgs with debug mode
+ok 110 - geminiTool - buildArgs with debug mode
+  ---
+  duration_ms: 0.113429
+  ...
+# Subtest: geminiTool - buildArgs with checkpointing
+ok 111 - geminiTool - buildArgs with checkpointing
+  ---
+  duration_ms: 0.10718
+  ...
+# Subtest: geminiTool - buildArgs with interactive mode
+ok 112 - geminiTool - buildArgs with interactive mode
+  ---
+  duration_ms: 0.171576
+  ...
+# Subtest: geminiTool - buildArgs appends extra raw args
+ok 113 - geminiTool - buildArgs appends extra raw args
+  ---
+  duration_ms: 0.085788
+  ...
+# Subtest: geminiTool - parseOutput with NDJSON
+ok 114 - geminiTool - parseOutput with NDJSON
+  ---
+  duration_ms: 0.243243
+  ...
+# Subtest: geminiTool - extractSessionId
+ok 115 - geminiTool - extractSessionId
+  ---
+  duration_ms: 0.140951
+  ...
+# Subtest: geminiTool - extractSessionId with conversation_id
+ok 116 - geminiTool - extractSessionId with conversation_id
+  ---
+  duration_ms: 0.105187
+  ...
+# Subtest: geminiTool - extractUsage with standard format
+ok 117 - geminiTool - extractUsage with standard format
+  ---
+  duration_ms: 0.196434
+  ...
+# Subtest: geminiTool - extractUsage with Gemini format
+ok 118 - geminiTool - extractUsage with Gemini format
+  ---
+  duration_ms: 0.13398
+  ...
+# Subtest: geminiTool - detectErrors with error
+ok 119 - geminiTool - detectErrors with error
+  ---
+  duration_ms: 0.161822
+  ...
+# Subtest: geminiTool - detectErrors returns false for normal output
+ok 120 - geminiTool - detectErrors returns false for normal output
+  ---
+  duration_ms: 0.096705
+  ...
+# Subtest: geminiTool - supportsYolo is true
+ok 121 - geminiTool - supportsYolo is true
+  ---
+  duration_ms: 0.066279
+  ...
+# Subtest: geminiTool - supportsSandbox is true
+ok 122 - geminiTool - supportsSandbox is true
+  ---
+  duration_ms: 0.062813
+  ...
+# Subtest: geminiTool - supportsCheckpointing is true
+ok 123 - geminiTool - supportsCheckpointing is true
+  ---
+  duration_ms: 0.10716
+  ...
+# Subtest: geminiTool - supportsDebug is true
+ok 124 - geminiTool - supportsDebug is true
+  ---
+  duration_ms: 0.079629
+  ...
+# Subtest: geminiTool - default model is gemini-2.5-flash
+ok 125 - geminiTool - default model is gemini-2.5-flash
+  ---
+  duration_ms: 0.06741
+  ...
+# Subtest: geminiTool - buildCommand reads prompt file with passthrough options
+ok 126 - geminiTool - buildCommand reads prompt file with passthrough options
+  ---
+  duration_ms: 1.64767
+  ...
+1..126
+# tests 126
+# suites 0
+# pass 126
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 256.745023

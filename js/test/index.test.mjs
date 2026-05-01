@@ -130,12 +130,14 @@ test(
   { skip: process.platform === 'win32' || isDeno },
   async (t) => {
     const binDir = await mkdtemp(join(tmpdir(), 'agent-commander-test-bin-'));
-    const fakeAgent = join(binDir, 'agent');
-    await writeFile(
-      fakeAgent,
-      '#!/usr/bin/env bash\nwc -c | tr -d "[:space:]"\n'
-    );
-    await chmod(fakeAgent, 0o755);
+    for (const tool of ['agent', 'qwen', 'gemini']) {
+      const fakeTool = join(binDir, tool);
+      await writeFile(
+        fakeTool,
+        '#!/usr/bin/env bash\nwc -c | tr -d "[:space:]"\n'
+      );
+      await chmod(fakeTool, 0o755);
+    }
 
     const previousPath = process.env.PATH || '';
     process.env.PATH = `${binDir}:${previousPath}`;
@@ -144,21 +146,27 @@ test(
       await rm(binDir, { recursive: true, force: true });
     });
 
-    const prompt = `${'x'.repeat(3 * 1024 * 1024)}\n' "$HOME" \`pwd\``;
-    const systemPrompt = 'system instructions';
-    const expectedBytes = Buffer.byteLength(`${systemPrompt}\n\n${prompt}`);
-    const controller = agent({
-      tool: 'agent',
-      workingDirectory: '/tmp',
-      prompt,
-      systemPrompt,
-    });
+    for (const tool of ['agent', 'qwen', 'gemini']) {
+      const prompt = `${'x'.repeat(3 * 1024 * 1024)}\n' "$HOME" \`pwd\``;
+      const systemPrompt = 'system instructions';
+      const expectedBytes = Buffer.byteLength(`${systemPrompt}\n\n${prompt}`);
+      const controller = agent({
+        tool,
+        workingDirectory: '/tmp',
+        prompt,
+        systemPrompt,
+      });
 
-    await controller.start({ attached: false });
-    const result = await controller.stop();
+      await controller.start({ attached: false });
+      const result = await controller.stop();
 
-    assert.strictEqual(result.exitCode, 0);
-    assert.strictEqual(result.output.plain.trim(), String(expectedBytes));
+      assert.strictEqual(result.exitCode, 0, `tool: ${tool}`);
+      assert.strictEqual(
+        result.output.plain.trim(),
+        String(expectedBytes),
+        `tool: ${tool}`
+      );
+    }
   }
 );
 

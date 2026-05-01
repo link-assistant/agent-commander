@@ -1,0 +1,852 @@
+TAP version 13
+# Subtest: buildAgentCommand - basic no isolation with known tool (claude)
+ok 1 - buildAgentCommand - basic no isolation with known tool (claude)
+  ---
+  duration_ms: 1.490015
+  ...
+# Subtest: buildAgentCommand - with system prompt (claude)
+ok 2 - buildAgentCommand - with system prompt (claude)
+  ---
+  duration_ms: 0.184436
+  ...
+# Subtest: buildAgentCommand - unknown tool uses generic format
+ok 3 - buildAgentCommand - unknown tool uses generic format
+  ---
+  duration_ms: 1.347352
+  ...
+# Subtest: buildAgentCommand - screen isolation
+ok 4 - buildAgentCommand - screen isolation
+  ---
+  duration_ms: 0.186398
+  ...
+# Subtest: buildAgentCommand - docker isolation
+ok 5 - buildAgentCommand - docker isolation
+  ---
+  duration_ms: 0.127541
+  ...
+# Subtest: buildAgentCommand - with model (claude)
+ok 6 - buildAgentCommand - with model (claude)
+  ---
+  duration_ms: 0.244605
+  ...
+# Subtest: buildAgentCommand - with codex tool
+ok 7 - buildAgentCommand - with codex tool
+  ---
+  duration_ms: 0.287609
+  ...
+# Subtest: buildAgentCommand - codex can read prompt from file
+ok 8 - buildAgentCommand - codex can read prompt from file
+  ---
+  duration_ms: 0.163424
+  ...
+# Subtest: buildAgentCommand - claude can read prompt from file
+ok 9 - buildAgentCommand - claude can read prompt from file
+  ---
+  duration_ms: 0.230274
+  ...
+# Subtest: buildAgentCommand - qwen can read prompt from file
+not ok 10 - buildAgentCommand - qwen can read prompt from file
+  ---
+  duration_ms: 10.046868
+  location: '/tmp/gh-issue-solver-1777636839591/js/test/command-builder.test.mjs:151:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+
+      assert.ok(command.includes('cat'))
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777636839591/js/test/command-builder.test.mjs:162:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: buildAgentCommand - gemini can read prompt from file
+not ok 11 - buildAgentCommand - gemini can read prompt from file
+  ---
+  duration_ms: 1.132861
+  location: '/tmp/gh-issue-solver-1777636839591/js/test/command-builder.test.mjs:169:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+
+      assert.ok(command.includes('cat'))
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777636839591/js/test/command-builder.test.mjs:180:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: buildAgentCommand - with agent tool
+ok 12 - buildAgentCommand - with agent tool
+  ---
+  duration_ms: 0.372015
+  ...
+# Subtest: buildAgentCommand - with opencode tool
+ok 13 - buildAgentCommand - with opencode tool
+  ---
+  duration_ms: 0.248281
+  ...
+# Subtest: buildAgentCommand - claude read-only uses plan permission mode
+ok 14 - buildAgentCommand - claude read-only uses plan permission mode
+  ---
+  duration_ms: 0.26821
+  ...
+# Subtest: buildAgentCommand - claude supports raw passthrough options
+ok 15 - buildAgentCommand - claude supports raw passthrough options
+  ---
+  duration_ms: 1.65512
+  ...
+# Subtest: buildAgentCommand - codex read-only uses sandbox and no approvals
+ok 16 - buildAgentCommand - codex read-only uses sandbox and no approvals
+  ---
+  duration_ms: 0.312047
+  ...
+# Subtest: buildAgentCommand - codex applies env to the tool side of prompt pipe
+ok 17 - buildAgentCommand - codex applies env to the tool side of prompt pipe
+  ---
+  duration_ms: 0.149814
+  ...
+# Subtest: buildAgentCommand - qwen applies env to the tool side of prompt pipe
+not ok 18 - buildAgentCommand - qwen applies env to the tool side of prompt pipe
+  ---
+  duration_ms: 0.775027
+  location: '/tmp/gh-issue-solver-1777636839591/js/test/command-builder.test.mjs:295:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+
+      assert.ok(command.includes('cat'))
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777636839591/js/test/command-builder.test.mjs:307:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: buildAgentCommand - gemini applies env to the tool side of prompt pipe
+not ok 19 - buildAgentCommand - gemini applies env to the tool side of prompt pipe
+  ---
+  duration_ms: 0.894956
+  location: '/tmp/gh-issue-solver-1777636839591/js/test/command-builder.test.mjs:318:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+
+      assert.ok(command.includes('cat'))
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777636839591/js/test/command-builder.test.mjs:330:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: buildAgentCommand - opencode read-only denies shell and edits
+ok 20 - buildAgentCommand - opencode read-only denies shell and edits
+  ---
+  duration_ms: 0.259667
+  ...
+# Subtest: buildAgentCommand - read-only still works with screen isolation
+ok 21 - buildAgentCommand - read-only still works with screen isolation
+  ---
+  duration_ms: 0.112218
+  ...
+# Subtest: buildAgentCommand - read-only rejects unsupported agent tool
+ok 22 - buildAgentCommand - read-only rejects unsupported agent tool
+  ---
+  duration_ms: 0.397403
+  ...
+# Subtest: buildScreenStopCommand
+ok 23 - buildScreenStopCommand
+  ---
+  duration_ms: 0.095392
+  ...
+# Subtest: buildDockerStopCommand
+ok 24 - buildDockerStopCommand
+  ---
+  duration_ms: 0.053961
+  ...
+# Subtest: buildPipedCommand - basic
+ok 25 - buildPipedCommand - basic
+  ---
+  duration_ms: 0.058747
+  ...
+# Subtest: buildPipedCommand - escapes single quotes
+ok 26 - buildPipedCommand - escapes single quotes
+  ---
+  duration_ms: 0.061262
+  ...
+# Dry run - command that would be executed:
+# bash -c "cd /tmp/test && echo --prompt \\"Hello\\""
+# Dry run - command that would be executed:
+# screen -S "test-session" -X quit
+# Subtest: agent - throws without tool
+ok 27 - agent - throws without tool
+  ---
+  duration_ms: 1.285038
+  ...
+# Subtest: agent - throws without workingDirectory
+ok 28 - agent - throws without workingDirectory
+  ---
+  duration_ms: 0.148722
+  ...
+# Subtest: agent - throws for screen isolation without screenName
+ok 29 - agent - throws for screen isolation without screenName
+  ---
+  duration_ms: 0.152867
+  ...
+# Subtest: agent - throws for docker isolation without containerName
+ok 30 - agent - throws for docker isolation without containerName
+  ---
+  duration_ms: 0.196053
+  ...
+# Subtest: agent - creates controller with valid options
+ok 31 - agent - creates controller with valid options
+  ---
+  duration_ms: 0.310915
+  ...
+# Subtest: agent - start in dry-run mode
+ok 32 - agent - start in dry-run mode
+  ---
+  duration_ms: 1.22612
+  ...
+# Subtest: agent - stop throws for no isolation without start
+ok 33 - agent - stop throws for no isolation without start
+  ---
+  duration_ms: 0.410443
+  ...
+# Subtest: agent - stop in dry-run mode with screen
+ok 34 - agent - stop in dry-run mode with screen
+  ---
+  duration_ms: 1.015647
+  ...
+# Subtest: agent - start and stop with no isolation
+ok 35 - agent - start and stop with no isolation
+  ---
+  duration_ms: 11.134594
+  ...
+# Subtest: agent - stdin tools handle large shell-sensitive prompts through a file
+    # Subtest: agent
+    ok 1 - agent
+      ---
+      duration_ms: 35.188994
+      ...
+    # Subtest: qwen
+    not ok 2 - qwen
+      ---
+      duration_ms: 43.642654
+      location: '/tmp/gh-issue-solver-1777636839591/js/test/index.test.mjs:150:15'
+      failureType: 'testCodeFailure'
+      error: 'spawn E2BIG'
+      code: 'E2BIG'
+      stack: |-
+        ChildProcess.spawn (node:internal/child_process:420:11)
+        spawn (node:child_process:762:9)
+        startCommand (file:///tmp/gh-issue-solver-1777636839591/js/src/executor.mjs:67:17)
+        async Object.start (file:///tmp/gh-issue-solver-1777636839591/js/src/index.mjs:324:25)
+        async TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777636839591/js/test/index.test.mjs:163:9)
+        async Test.run (node:internal/test_runner/test:797:9)
+        async TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777636839591/js/test/index.test.mjs:150:7)
+        async Test.run (node:internal/test_runner/test:797:9)
+        async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+      ...
+    # Subtest: gemini
+    not ok 3 - gemini
+      ---
+      duration_ms: 30.737238
+      location: '/tmp/gh-issue-solver-1777636839591/js/test/index.test.mjs:150:15'
+      failureType: 'testCodeFailure'
+      error: 'spawn E2BIG'
+      code: 'E2BIG'
+      stack: |-
+        ChildProcess.spawn (node:internal/child_process:420:11)
+        spawn (node:child_process:762:9)
+        startCommand (file:///tmp/gh-issue-solver-1777636839591/js/src/executor.mjs:67:17)
+        async Object.start (file:///tmp/gh-issue-solver-1777636839591/js/src/index.mjs:324:25)
+        async TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777636839591/js/test/index.test.mjs:163:9)
+        async Test.run (node:internal/test_runner/test:797:9)
+        async TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777636839591/js/test/index.test.mjs:150:7)
+        async Test.run (node:internal/test_runner/test:797:9)
+        async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+      ...
+    1..3
+not ok 36 - agent - stdin tools handle large shell-sensitive prompts through a file
+  ---
+  duration_ms: 117.942307
+  location: '/tmp/gh-issue-solver-1777636839591/js/test/index.test.mjs:128:1'
+  failureType: 'subtestsFailed'
+  error: '2 subtests failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# Subtest: agent - stop includes normalized metadata for Claude JSON result output
+ok 37 - agent - stop includes normalized metadata for Claude JSON result output
+  ---
+  duration_ms: 19.340765
+  ...
+# Subtest: listTools - returns all available tools
+ok 38 - listTools - returns all available tools
+  ---
+  duration_ms: 1.358859
+  ...
+# Subtest: isToolSupported - returns true for supported tools
+ok 39 - isToolSupported - returns true for supported tools
+  ---
+  duration_ms: 0.208651
+  ...
+# Subtest: isToolSupported - returns false for unsupported tools
+ok 40 - isToolSupported - returns false for unsupported tools
+  ---
+  duration_ms: 0.122153
+  ...
+# Subtest: getTool - returns tool configuration
+ok 41 - getTool - returns tool configuration
+  ---
+  duration_ms: 0.171757
+  ...
+# Subtest: getTool - throws for unknown tool
+ok 42 - getTool - throws for unknown tool
+  ---
+  duration_ms: 0.495269
+  ...
+# Subtest: claudeTool - mapModelToId with alias
+ok 43 - claudeTool - mapModelToId with alias
+  ---
+  duration_ms: 0.138376
+  ...
+# Subtest: claudeTool - mapModelToId with new opus 4.7 alias
+ok 44 - claudeTool - mapModelToId with new opus 4.7 alias
+  ---
+  duration_ms: 0.127631
+  ...
+# Subtest: claudeTool - mapModelToId with full ID
+ok 45 - claudeTool - mapModelToId with full ID
+  ---
+  duration_ms: 0.171176
+  ...
+# Subtest: claudeTool - buildArgs with prompt
+ok 46 - claudeTool - buildArgs with prompt
+  ---
+  duration_ms: 0.291275
+  ...
+# Subtest: claudeTool - buildArgs with model
+ok 47 - claudeTool - buildArgs with model
+  ---
+  duration_ms: 1.409463
+  ...
+# Subtest: claudeTool - parseOutput with NDJSON
+ok 48 - claudeTool - parseOutput with NDJSON
+  ---
+  duration_ms: 0.279677
+  ...
+# Subtest: claudeTool - extractSessionId
+ok 49 - claudeTool - extractSessionId
+  ---
+  duration_ms: 0.17482
+  ...
+# Subtest: claudeTool - buildArgs includes --dangerously-skip-permissions by default
+ok 50 - claudeTool - buildArgs includes --dangerously-skip-permissions by default
+  ---
+  duration_ms: 0.124205
+  ...
+# Subtest: claudeTool - buildArgs uses stream-json output format
+ok 51 - claudeTool - buildArgs uses stream-json output format
+  ---
+  duration_ms: 0.174581
+  ...
+# Subtest: claudeTool - buildArgs with fallback model
+ok 52 - claudeTool - buildArgs with fallback model
+  ---
+  duration_ms: 0.131516
+  ...
+# Subtest: claudeTool - buildArgs with append-system-prompt
+ok 53 - claudeTool - buildArgs with append-system-prompt
+  ---
+  duration_ms: 0.168482
+  ...
+# Subtest: claudeTool - buildArgs with session management
+ok 54 - claudeTool - buildArgs with session management
+  ---
+  duration_ms: 0.117325
+  ...
+# Subtest: claudeTool - buildArgs with verbose mode
+ok 55 - claudeTool - buildArgs with verbose mode
+  ---
+  duration_ms: 0.184224
+  ...
+# Subtest: claudeTool - buildArgs with input format stream-json
+ok 56 - claudeTool - buildArgs with input format stream-json
+  ---
+  duration_ms: 0.123073
+  ...
+# Subtest: claudeTool - buildArgs with replay-user-messages
+ok 57 - claudeTool - buildArgs with replay-user-messages
+  ---
+  duration_ms: 0.148692
+  ...
+# Subtest: claudeTool - buildArgs includes dangerously-skip-permissions by default
+ok 58 - claudeTool - buildArgs includes dangerously-skip-permissions by default
+  ---
+  duration_ms: 0.096274
+  ...
+# Subtest: claudeTool - read-only uses plan mode without permission bypass
+ok 59 - claudeTool - read-only uses plan mode without permission bypass
+  ---
+  duration_ms: 0.090214
+  ...
+# Subtest: claudeTool - supportsJsonInput is true
+ok 60 - claudeTool - supportsJsonInput is true
+  ---
+  duration_ms: 0.059668
+  ...
+# Subtest: claudeTool - supports all new capability flags
+ok 61 - claudeTool - supports all new capability flags
+  ---
+  duration_ms: 0.095313
+  ...
+# Subtest: codexTool - mapModelToId with alias
+ok 62 - codexTool - mapModelToId with alias
+  ---
+  duration_ms: 0.081141
+  ...
+# Subtest: codexTool - buildArgs includes exec mode
+ok 63 - codexTool - buildArgs includes exec mode
+  ---
+  duration_ms: 0.115632
+  ...
+# Subtest: codexTool - read-only uses sandbox without bypass
+ok 64 - codexTool - read-only uses sandbox without bypass
+  ---
+  duration_ms: 0.082222
+  ...
+# Subtest: codexTool - extractSessionId with thread_id
+ok 65 - codexTool - extractSessionId with thread_id
+  ---
+  duration_ms: 0.166198
+  ...
+# Subtest: codexTool - mapModelToId with gpt-5.5 family aliases
+ok 66 - codexTool - mapModelToId with gpt-5.5 family aliases
+  ---
+  duration_ms: 0.091957
+  ...
+# Subtest: codexTool - default model is gpt-5.5
+ok 67 - codexTool - default model is gpt-5.5
+  ---
+  duration_ms: 0.065047
+  ...
+# Subtest: opencodeTool - mapModelToId with alias
+ok 68 - opencodeTool - mapModelToId with alias
+  ---
+  duration_ms: 0.084106
+  ...
+# Subtest: opencodeTool - buildArgs includes run mode
+ok 69 - opencodeTool - buildArgs includes run mode
+  ---
+  duration_ms: 0.166157
+  ...
+# Subtest: agentTool - mapModelToId with alias
+ok 70 - agentTool - mapModelToId with alias
+  ---
+  duration_ms: 0.135041
+  ...
+# Subtest: agentTool - buildArgs with model
+ok 71 - agentTool - buildArgs with model
+  ---
+  duration_ms: 0.426847
+  ...
+# Subtest: agentTool - extractUsage from step_finish events
+ok 72 - agentTool - extractUsage from step_finish events
+  ---
+  duration_ms: 0.324263
+  ...
+# Subtest: agentTool - detectErrors finds error messages
+ok 73 - agentTool - detectErrors finds error messages
+  ---
+  duration_ms: 1.742792
+  ...
+# Subtest: agentTool - detectErrors returns false for normal output
+ok 74 - agentTool - detectErrors returns false for normal output
+  ---
+  duration_ms: 0.182313
+  ...
+# Subtest: agentTool - mapModelToId with nemotron-3-super-free (new default)
+ok 75 - agentTool - mapModelToId with nemotron-3-super-free (new default)
+  ---
+  duration_ms: 0.078137
+  ...
+# Subtest: agentTool - default model is nemotron-3-super-free
+ok 76 - agentTool - default model is nemotron-3-super-free
+  ---
+  duration_ms: 0.056944
+  ...
+# Subtest: agentTool - mapModelToId keeps deprecated qwen3.6-plus-free for backward compatibility
+ok 77 - agentTool - mapModelToId keeps deprecated qwen3.6-plus-free for backward compatibility
+  ---
+  duration_ms: 0.070706
+  ...
+# Subtest: qwenTool - mapModelToId with alias
+ok 78 - qwenTool - mapModelToId with alias
+  ---
+  duration_ms: 0.098877
+  ...
+# Subtest: qwenTool - mapModelToId with full ID
+ok 79 - qwenTool - mapModelToId with full ID
+  ---
+  duration_ms: 0.074282
+  ...
+# Subtest: qwenTool - buildArgs with prompt
+ok 80 - qwenTool - buildArgs with prompt
+  ---
+  duration_ms: 0.202061
+  ...
+# Subtest: qwenTool - buildArgs with model
+ok 81 - qwenTool - buildArgs with model
+  ---
+  duration_ms: 0.172066
+  ...
+# Subtest: qwenTool - buildArgs uses stream-json output format by default
+ok 82 - qwenTool - buildArgs uses stream-json output format by default
+  ---
+  duration_ms: 0.097576
+  ...
+# Subtest: qwenTool - buildArgs with json output format
+ok 83 - qwenTool - buildArgs with json output format
+  ---
+  duration_ms: 0.089654
+  ...
+# Subtest: qwenTool - buildArgs includes --yolo by default
+ok 84 - qwenTool - buildArgs includes --yolo by default
+  ---
+  duration_ms: 0.071657
+  ...
+# Subtest: qwenTool - buildArgs with --resume
+ok 85 - qwenTool - buildArgs with --resume
+  ---
+  duration_ms: 0.106069
+  ...
+# Subtest: qwenTool - buildArgs with --continue
+ok 86 - qwenTool - buildArgs with --continue
+  ---
+  duration_ms: 0.076273
+  ...
+# Subtest: qwenTool - buildArgs with --all-files
+ok 87 - qwenTool - buildArgs with --all-files
+  ---
+  duration_ms: 6.512733
+  ...
+# Subtest: qwenTool - buildArgs with --include-directories
+ok 88 - qwenTool - buildArgs with --include-directories
+  ---
+  duration_ms: 0.30853
+  ...
+# Subtest: qwenTool - buildArgs with --include-partial-messages
+ok 89 - qwenTool - buildArgs with --include-partial-messages
+  ---
+  duration_ms: 0.117675
+  ...
+# Subtest: qwenTool - buildArgs appends extra raw args
+not ok 90 - qwenTool - buildArgs appends extra raw args
+  ---
+  duration_ms: 7.320489
+  location: '/tmp/gh-issue-solver-1777636839591/js/test/tools.test.mjs:409:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+
+      assert.ok(args.includes('--checkpointing'))
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777636839591/js/test/tools.test.mjs:413:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: qwenTool - parseOutput with NDJSON
+ok 91 - qwenTool - parseOutput with NDJSON
+  ---
+  duration_ms: 0.233098
+  ...
+# Subtest: qwenTool - extractSessionId
+ok 92 - qwenTool - extractSessionId
+  ---
+  duration_ms: 0.193139
+  ...
+# Subtest: qwenTool - extractSessionId with sessionId format
+ok 93 - qwenTool - extractSessionId with sessionId format
+  ---
+  duration_ms: 0.097937
+  ...
+# Subtest: qwenTool - extractUsage from output
+ok 94 - qwenTool - extractUsage from output
+  ---
+  duration_ms: 0.205397
+  ...
+# Subtest: qwenTool - extractUsage calculates total if not provided
+ok 95 - qwenTool - extractUsage calculates total if not provided
+  ---
+  duration_ms: 0.102813
+  ...
+# Subtest: qwenTool - detectErrors finds error messages
+ok 96 - qwenTool - detectErrors finds error messages
+  ---
+  duration_ms: 0.119908
+  ...
+# Subtest: qwenTool - detectErrors with error field
+ok 97 - qwenTool - detectErrors with error field
+  ---
+  duration_ms: 2.024162
+  ...
+# Subtest: qwenTool - detectErrors returns false for normal output
+ok 98 - qwenTool - detectErrors returns false for normal output
+  ---
+  duration_ms: 0.172707
+  ...
+# Subtest: qwenTool - capability flags are correct
+ok 99 - qwenTool - capability flags are correct
+  ---
+  duration_ms: 0.094921
+  ...
+# Subtest: qwenTool - buildCommand constructs correct command
+ok 100 - qwenTool - buildCommand constructs correct command
+  ---
+  duration_ms: 0.324034
+  ...
+# Subtest: qwenTool - buildCommand combines system and user prompt
+ok 101 - qwenTool - buildCommand combines system and user prompt
+  ---
+  duration_ms: 0.130595
+  ...
+# Subtest: qwenTool - buildCommand reads prompt file with passthrough options
+not ok 102 - qwenTool - buildCommand reads prompt file with passthrough options
+  ---
+  duration_ms: 1.420491
+  location: '/tmp/gh-issue-solver-1777636839591/js/test/tools.test.mjs:510:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+
+      assert.ok(cmd.startsWith('cat '))
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777636839591/js/test/tools.test.mjs:522:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: geminiTool - mapModelToId with alias
+ok 103 - geminiTool - mapModelToId with alias
+  ---
+  duration_ms: 0.157524
+  ...
+# Subtest: geminiTool - mapModelToId with full ID
+ok 104 - geminiTool - mapModelToId with full ID
+  ---
+  duration_ms: 0.155923
+  ...
+# Subtest: geminiTool - buildArgs with prompt
+ok 105 - geminiTool - buildArgs with prompt
+  ---
+  duration_ms: 0.1409
+  ...
+# Subtest: geminiTool - buildArgs with model
+ok 106 - geminiTool - buildArgs with model
+  ---
+  duration_ms: 2.301116
+  ...
+# Subtest: geminiTool - buildArgs with yolo mode
+ok 107 - geminiTool - buildArgs with yolo mode
+  ---
+  duration_ms: 0.24057
+  ...
+# Subtest: geminiTool - buildArgs with sandbox mode
+ok 108 - geminiTool - buildArgs with sandbox mode
+  ---
+  duration_ms: 0.065328
+  ...
+# Subtest: geminiTool - buildArgs with json output
+ok 109 - geminiTool - buildArgs with json output
+  ---
+  duration_ms: 0.066408
+  ...
+# Subtest: geminiTool - buildArgs with debug mode
+ok 110 - geminiTool - buildArgs with debug mode
+  ---
+  duration_ms: 0.044167
+  ...
+# Subtest: geminiTool - buildArgs with checkpointing
+ok 111 - geminiTool - buildArgs with checkpointing
+  ---
+  duration_ms: 0.038919
+  ...
+# Subtest: geminiTool - buildArgs with interactive mode
+ok 112 - geminiTool - buildArgs with interactive mode
+  ---
+  duration_ms: 0.064315
+  ...
+# Subtest: geminiTool - buildArgs appends extra raw args
+not ok 113 - geminiTool - buildArgs appends extra raw args
+  ---
+  duration_ms: 0.871702
+  location: '/tmp/gh-issue-solver-1777636839591/js/test/tools.test.mjs:613:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+
+      assert.ok(args.includes('--telemetry'))
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777636839591/js/test/tools.test.mjs:618:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: geminiTool - parseOutput with NDJSON
+ok 114 - geminiTool - parseOutput with NDJSON
+  ---
+  duration_ms: 0.190806
+  ...
+# Subtest: geminiTool - extractSessionId
+ok 115 - geminiTool - extractSessionId
+  ---
+  duration_ms: 0.075693
+  ...
+# Subtest: geminiTool - extractSessionId with conversation_id
+ok 116 - geminiTool - extractSessionId with conversation_id
+  ---
+  duration_ms: 0.059128
+  ...
+# Subtest: geminiTool - extractUsage with standard format
+ok 117 - geminiTool - extractUsage with standard format
+  ---
+  duration_ms: 0.122803
+  ...
+# Subtest: geminiTool - extractUsage with Gemini format
+ok 118 - geminiTool - extractUsage with Gemini format
+  ---
+  duration_ms: 0.088421
+  ...
+# Subtest: geminiTool - detectErrors with error
+ok 119 - geminiTool - detectErrors with error
+  ---
+  duration_ms: 0.095101
+  ...
+# Subtest: geminiTool - detectErrors returns false for normal output
+ok 120 - geminiTool - detectErrors returns false for normal output
+  ---
+  duration_ms: 0.061623
+  ...
+# Subtest: geminiTool - supportsYolo is true
+ok 121 - geminiTool - supportsYolo is true
+  ---
+  duration_ms: 0.059389
+  ...
+# Subtest: geminiTool - supportsSandbox is true
+ok 122 - geminiTool - supportsSandbox is true
+  ---
+  duration_ms: 0.063625
+  ...
+# Subtest: geminiTool - supportsCheckpointing is true
+ok 123 - geminiTool - supportsCheckpointing is true
+  ---
+  duration_ms: 0.057406
+  ...
+# Subtest: geminiTool - supportsDebug is true
+ok 124 - geminiTool - supportsDebug is true
+  ---
+  duration_ms: 0.05381
+  ...
+# Subtest: geminiTool - default model is gemini-2.5-flash
+ok 125 - geminiTool - default model is gemini-2.5-flash
+  ---
+  duration_ms: 0.049634
+  ...
+# Subtest: geminiTool - buildCommand reads prompt file with passthrough options
+not ok 126 - geminiTool - buildCommand reads prompt file with passthrough options
+  ---
+  duration_ms: 1.15231
+  location: '/tmp/gh-issue-solver-1777636839591/js/test/tools.test.mjs:693:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+
+      assert.ok(cmd.startsWith('cat '))
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777636839591/js/test/tools.test.mjs:705:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+1..126
+# tests 129
+# suites 0
+# pass 118
+# fail 11
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 230.283201

@@ -3,6 +3,7 @@
 //! Qwen Code is an open-source AI agent optimized for Qwen3-Coder models
 
 use crate::streaming::parse_ndjson;
+use crate::tools::shell::{build_command_head, escape_arg};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -39,6 +40,7 @@ pub fn map_model_to_id(model: &str) -> String {
 #[derive(Debug, Clone, Default)]
 pub struct QwenBuildOptions {
     pub prompt: Option<String>,
+    pub prompt_file: Option<String>,
     pub system_prompt: Option<String>,
     pub model: Option<String>,
     pub json: bool,
@@ -50,6 +52,10 @@ pub struct QwenBuildOptions {
     pub continue_session: bool,
     pub all_files: bool,
     pub include_directories: Vec<String>,
+    pub executable: Option<String>,
+    pub extra_env: Vec<(String, String)>,
+    pub extra_args: Vec<String>,
+    pub skip_default_safety_flags: bool,
 }
 
 impl QwenBuildOptions {
@@ -103,7 +109,7 @@ pub fn build_args(options: &QwenBuildOptions) -> Vec<String> {
     if options.read_only {
         args.push("--approval-mode".to_string());
         args.push("plan".to_string());
-    } else if options.yolo {
+    } else if options.yolo && !options.skip_default_safety_flags {
         // Auto-approve all actions for autonomous execution
         args.push("--yolo".to_string());
     }
@@ -126,26 +132,9 @@ pub fn build_args(options: &QwenBuildOptions) -> Vec<String> {
         args.push(dir.clone());
     }
 
-    args
-}
+    args.extend(options.extra_args.clone());
 
-/// Escape an argument for shell usage
-fn escape_arg(arg: &str) -> String {
-    if arg.contains('"')
-        || arg.contains(char::is_whitespace)
-        || arg.contains('$')
-        || arg.contains('`')
-        || arg.contains('\\')
-    {
-        let escaped = arg
-            .replace('\\', "\\\\")
-            .replace('"', "\\\"")
-            .replace('$', "\\$")
-            .replace('`', "\\`");
-        format!("\"{}\"", escaped)
-    } else {
-        arg.to_string()
-    }
+    args
 }
 
 /// Build complete command string for Qwen Code
@@ -160,20 +149,37 @@ pub fn build_command(options: &QwenBuildOptions) -> String {
     let mut combined_options = options.clone();
 
     // Combine system prompt with user prompt if provided
-    match (&options.system_prompt, &options.prompt) {
-        (Some(sys), Some(prompt)) => {
-            combined_options.prompt = Some(format!("{}\n\n{}", sys, prompt));
+    if options.prompt_file.is_some() {
+        combined_options.prompt = None;
+    } else {
+        match (&options.system_prompt, &options.prompt) {
+            (Some(sys), Some(prompt)) => {
+                combined_options.prompt = Some(format!("{}\n\n{}", sys, prompt));
+            }
+            (Some(sys), None) => {
+                combined_options.prompt = Some(sys.clone());
+            }
+            _ => {}
         }
-        (Some(sys), None) => {
-            combined_options.prompt = Some(sys.clone());
-        }
-        _ => {}
     }
     combined_options.system_prompt = None;
 
     let args = build_args(&combined_options);
     let args_str: Vec<String> = args.iter().map(|a| escape_arg(a)).collect();
-    format!("qwen {}", args_str.join(" ")).trim().to_string()
+    let executable = options.executable.as_deref().unwrap_or("qwen");
+    let command = format!(
+        "{} {}",
+        build_command_head(executable, &options.extra_env, &[]),
+        args_str.join(" ")
+    )
+    .trim()
+    .to_string();
+
+    if let Some(prompt_file) = &options.prompt_file {
+        return format!("cat {} | {}", escape_arg(prompt_file), command);
+    }
+
+    command
 }
 
 /// Parse JSON messages from Qwen Code output

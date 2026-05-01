@@ -1,0 +1,42 @@
+
+> agent-commander@0.6.0 check
+> npm run lint && npm run format:check && npm run check:duplication
+
+
+> agent-commander@0.6.0 lint
+> eslint .
+
+
+/tmp/gh-issue-solver-1777636839591/js/src/index.mjs
+  156:8   warning  Function 'agent' has too many lines (276). Maximum allowed is 150   max-lines-per-function
+  242:43  warning  Async arrow function has a complexity of 22. Maximum allowed is 15  complexity
+  347:41  warning  Async arrow function has a complexity of 21. Maximum allowed is 15  complexity
+
+/tmp/gh-issue-solver-1777636839591/js/src/result-metadata.mjs
+  178:1  warning  Function 'extractResultModelUsage' has a complexity of 26. Maximum allowed is 15   complexity
+  214:1  warning  Function 'extractSubAgentCalls' has a complexity of 24. Maximum allowed is 15      complexity
+  247:1  warning  Function 'extractErrorFromMessages' has a complexity of 24. Maximum allowed is 15  complexity
+
+/tmp/gh-issue-solver-1777636839591/js/src/tools/claude.mjs
+  68:8  warning  Function 'buildArgs' has a complexity of 26. Maximum allowed is 15  complexity
+
+/tmp/gh-issue-solver-1777636839591/js/src/tools/gemini.mjs
+   56:8  warning  Function 'buildArgs' has a complexity of 20. Maximum allowed is 15     complexity
+  231:8  warning  Function 'extractUsage' has a complexity of 16. Maximum allowed is 15  complexity
+
+/tmp/gh-issue-solver-1777636839591/js/src/tools/qwen.mjs
+  54:8  warning  Function 'buildArgs' has a complexity of 25. Maximum allowed is 15  complexity
+
+✖ 10 problems (0 errors, 10 warnings)
+
+
+> agent-commander@0.6.0 format:check
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+
+> agent-commander@0.6.0 check:duplication
+> jscpd .
+
+[3m[90mDetection time:[39m[23m: 0.195ms

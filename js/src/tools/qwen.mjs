@@ -4,6 +4,8 @@
  * Qwen Code is an open-source AI agent optimized for Qwen3-Coder models
  */
 
+import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
+
 /**
  * Available Qwen Code model configurations
  * Maps aliases to full model IDs
@@ -45,6 +47,8 @@ export function mapModelToId(options) {
  * @param {boolean} [options.continueSession] - Continue most recent session
  * @param {boolean} [options.allFiles] - Include all files in context
  * @param {string[]} [options.includeDirectories] - Directories to include
+ * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
+ * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
@@ -60,6 +64,8 @@ export function buildArgs(options) {
     continueSession = false,
     allFiles = false,
     includeDirectories,
+    extraArgs = [],
+    skipDefaultSafetyFlags = false,
   } = options;
 
   const args = [];
@@ -89,7 +95,7 @@ export function buildArgs(options) {
 
   if (readOnly) {
     args.push('--approval-mode', 'plan');
-  } else if (yolo) {
+  } else if (yolo && !skipDefaultSafetyFlags) {
     // Auto-approve all actions for autonomous execution
     args.push('--yolo');
   }
@@ -112,6 +118,8 @@ export function buildArgs(options) {
     }
   }
 
+  args.push(...normalizeExtraArgs(extraArgs));
+
   return args;
 }
 
@@ -131,33 +139,41 @@ export function buildArgs(options) {
  * @param {boolean} [options.continueSession] - Continue most recent session
  * @param {boolean} [options.allFiles] - Include all files in context
  * @param {string[]} [options.includeDirectories] - Directories to include
+ * @param {string} [options.promptFile] - File containing combined prompt input
+ * @param {string} [options.executable='qwen'] - Executable path/name
+ * @param {Object|Array} [options.extraEnv] - Environment variables for the tool
+ * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
+ * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {
-  // eslint-disable-next-line no-unused-vars
-  const { workingDirectory, systemPrompt, ...argOptions } = options;
+  const {
+    prompt,
+    promptFile,
+    systemPrompt,
+    executable = 'qwen',
+    extraEnv,
+    // eslint-disable-next-line no-unused-vars
+    workingDirectory,
+    ...argOptions
+  } = options;
 
   // Combine system prompt with user prompt if provided
-  if (systemPrompt && argOptions.prompt) {
-    argOptions.prompt = `${systemPrompt}\n\n${argOptions.prompt}`;
-  } else if (systemPrompt) {
-    argOptions.prompt = systemPrompt;
+  const combinedPrompt = systemPrompt
+    ? `${systemPrompt}\n\n${prompt || ''}`
+    : prompt || '';
+  const args = buildArgs({
+    ...argOptions,
+    prompt: promptFile ? undefined : combinedPrompt,
+  });
+  const command =
+    `${buildCommandHead({ executable, extraEnv })} ${args.map(escapeArg).join(' ')}`.trim();
+
+  if (promptFile) {
+    return `cat ${escapeArg(promptFile)} | ${command}`;
   }
 
-  const args = buildArgs(argOptions);
-  return `qwen ${args.map(escapeArg).join(' ')}`.trim();
-}
-
-/**
- * Escape an argument for shell usage
- * @param {string} arg - Argument to escape
- * @returns {string} Escaped argument
- */
-function escapeArg(arg) {
-  if (/["\s$`\\]/.test(arg)) {
-    return `"${arg.replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`').replace(/\\/g, '\\\\')}"`;
-  }
-  return arg;
+  return command;
 }
 
 /**

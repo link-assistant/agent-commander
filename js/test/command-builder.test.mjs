@@ -148,6 +148,42 @@ test('buildAgentCommand - claude can read prompt from file', () => {
   assert.ok(!command.includes(inlinePrompt));
 });
 
+test('buildAgentCommand - qwen can read prompt from file', () => {
+  const inlinePrompt = "Secret prompt with 'quotes', $HOME, and `pwd`";
+  const command = buildAgentCommand({
+    tool: 'qwen',
+    workingDirectory: '/tmp/test',
+    prompt: inlinePrompt,
+    systemPrompt: 'System instructions',
+    promptFile: '/tmp/agent prompt.txt',
+    isolation: 'none',
+  });
+
+  assert.ok(command.includes('cat'));
+  assert.ok(command.includes('/tmp/agent prompt.txt'));
+  assert.ok(command.includes('qwen'));
+  assert.ok(!command.includes(inlinePrompt));
+  assert.ok(!command.includes('System instructions'));
+});
+
+test('buildAgentCommand - gemini can read prompt from file', () => {
+  const inlinePrompt = "Secret prompt with 'quotes', $HOME, and `pwd`";
+  const command = buildAgentCommand({
+    tool: 'gemini',
+    workingDirectory: '/tmp/test',
+    prompt: inlinePrompt,
+    systemPrompt: 'System instructions',
+    promptFile: '/tmp/agent prompt.txt',
+    isolation: 'none',
+  });
+
+  assert.ok(command.includes('cat'));
+  assert.ok(command.includes('/tmp/agent prompt.txt'));
+  assert.ok(command.includes('gemini'));
+  assert.ok(!command.includes(inlinePrompt));
+  assert.ok(!command.includes('System instructions'));
+});
+
 test('buildAgentCommand - with agent tool', () => {
   const command = buildAgentCommand({
     tool: 'agent',
@@ -254,6 +290,51 @@ test('buildAgentCommand - codex applies env to the tool side of prompt pipe', ()
   assert.ok(command.includes('--config'));
   assert.ok(command.includes('model_reasoning_effort='));
   assert.ok(!command.includes('--dangerously-bypass-approvals-and-sandbox'));
+});
+
+test('buildAgentCommand - qwen applies env to the tool side of prompt pipe', () => {
+  const command = buildAgentCommand({
+    tool: 'qwen',
+    workingDirectory: '/tmp/test',
+    promptFile: '/tmp/prompt.txt',
+    executable: '/opt/qwen code/qwen',
+    extraEnv: [['QWEN_HOME', '/tmp/qwen home']],
+    extraArgs: ['--checkpointing', '--approval-mode', 'default'],
+    skipDefaultSafetyFlags: true,
+    isolation: 'none',
+  });
+
+  assert.ok(command.includes('cat'));
+  assert.ok(command.includes('/tmp/prompt.txt'));
+  assert.ok(command.includes('| env QWEN_HOME='));
+  assert.ok(command.includes('/tmp/qwen home'));
+  assert.ok(command.includes('/opt/qwen code/qwen'));
+  assert.ok(command.includes('--checkpointing'));
+  assert.ok(command.includes('--approval-mode'));
+  assert.ok(command.includes('default'));
+  assert.ok(!command.includes('--yolo'));
+});
+
+test('buildAgentCommand - gemini applies env to the tool side of prompt pipe', () => {
+  const command = buildAgentCommand({
+    tool: 'gemini',
+    workingDirectory: '/tmp/test',
+    promptFile: '/tmp/prompt.txt',
+    executable: '/opt/gemini cli/gemini',
+    extraEnv: [['GEMINI_HOME', '/tmp/gemini home']],
+    extraArgs: ['--telemetry', 'false'],
+    skipDefaultSafetyFlags: true,
+    isolation: 'none',
+  });
+
+  assert.ok(command.includes('cat'));
+  assert.ok(command.includes('/tmp/prompt.txt'));
+  assert.ok(command.includes('| env GEMINI_HOME='));
+  assert.ok(command.includes('/tmp/gemini home'));
+  assert.ok(command.includes('/opt/gemini cli/gemini'));
+  assert.ok(command.includes('--telemetry'));
+  assert.ok(command.includes('false'));
+  assert.ok(!command.includes('--yolo'));
 });
 
 test('buildAgentCommand - opencode read-only denies shell and edits', () => {
