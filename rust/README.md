@@ -43,10 +43,10 @@ Common options:
 - `--prompt-file <path>`: read prompt input from a file for stdin-based tools
 - `--model <name>`: tool-specific model alias or full model name
 - `--read-only` or `--plan-only`: enforce native planning/no-write mode when supported
-- `--tool-executable <path>`: override the native executable for `claude`, `codex`, `opencode`, or `agent`
+- `--tool-executable <path>`: override the native executable for any supported tool
 - `--tool-env <KEY=VALUE>`: add an environment variable to the native tool process, repeatable
 - `--tool-arg <arg>`: append a raw native tool argument, repeatable
-- `--skip-default-safety-flags`: suppress default Claude/Codex autonomous bypass flags
+- `--skip-default-safety-flags`: suppress default autonomous safety bypass flags, including Qwen/Gemini `--yolo`
 - `--isolation <mode>`: `none`, `screen`, or `docker`
 - `--dry-run`: print the command without executing it
 
@@ -85,9 +85,9 @@ async fn main() -> Result<(), String> {
 
 `result.metadata` is a normalized summary for `claude`, `codex`, `opencode`, and `agent` runs. It includes success and error classification, session ID, usage-limit reset details, result summary, cost estimates, stream token usage, optional model usage, and sub-agent call summaries. `result.usage` exposes the aggregated stream token usage as JSON for parity with the JavaScript package.
 
-For large generated prompts, set `prompt_file` or let the controller create a temporary prompt file automatically for `claude`, `codex`, `opencode`, and `agent`.
+For large generated prompts, set `prompt_file` or let the controller create a temporary prompt file automatically for `claude`, `codex`, `opencode`, `agent`, `qwen`, and `gemini`.
 
-For parity with fast-moving native CLIs, set raw executable, environment, and argument overrides on `AgentOptions`:
+For parity with fast-moving native CLIs, set raw executable, environment, and argument overrides for any supported tool on `AgentOptions`:
 
 ```rust
 let mut controller = agent(AgentOptions {

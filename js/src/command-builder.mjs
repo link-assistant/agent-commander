@@ -7,7 +7,7 @@ import { isToolSupported, getTool } from './tools/index.mjs';
 /**
  * Build the command for executing an agent
  * @param {Object} options - Command options
- * @param {string} options.tool - The CLI tool to use (e.g., 'claude', 'codex', 'opencode', 'agent')
+ * @param {string} options.tool - The CLI tool to use (e.g., 'claude', 'codex', 'opencode', 'agent', 'qwen', 'gemini')
  * @param {string} options.workingDirectory - Working directory path
  * @param {string} [options.prompt] - Prompt for the agent
  * @param {string} [options.promptFile] - File containing prompt input for stdin-based tools

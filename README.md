@@ -165,10 +165,10 @@ start-agent --tool claude --working-directory "/tmp/dir" --prompt "Solve the iss
 - `--session-id <uuid>` - Use a specific session ID (Claude only, must be valid UUID)
 - `--fork-session` - Create new session ID when resuming (Claude only)
 - `--replay-user-messages` - Re-emit user messages on stdout (Claude only, streaming mode)
-- `--tool-executable <path>` - Override the native tool executable for `claude`, `codex`, `opencode`, or `agent`
+- `--tool-executable <path>` - Override the native tool executable for any supported tool
 - `--tool-env <KEY=VALUE>` - Add an environment variable to the native tool process (repeatable)
 - `--tool-arg <arg>` - Append a raw native tool argument after agent-commander's typed arguments (repeatable)
-- `--skip-default-safety-flags` - Suppress default autonomous bypass flags so callers can provide their own permission, sandbox, or approval flags
+- `--skip-default-safety-flags` - Suppress default autonomous bypass flags, including Qwen/Gemini `--yolo`, so callers can provide their own permission, sandbox, or approval flags
 - `--isolation <mode>` - Isolation mode: none, screen, docker (default: none)
 - `--screen-name <name>` - Screen session name (required for screen isolation)
 - `--container-name <name>` - Container name (required for docker isolation)
@@ -547,6 +547,7 @@ Creates an agent controller.
 - `options.workingDirectory` (string, required) - Working directory
 - `options.prompt` (string, optional) - Prompt for the agent
 - `options.systemPrompt` (string, optional) - System prompt
+- `options.promptFile` (string, optional) - File containing prompt input for stdin-based tools
 - `options.model` (string, optional) - Model alias or full ID
 - `options.json` (boolean, optional) - Enable JSON output mode
 - `options.resume` (string, optional) - Resume session ID (tool-specific)
@@ -555,10 +556,10 @@ Creates an agent controller.
 - `options.screenName` (string, optional) - Screen session name (required for screen isolation)
 - `options.containerName` (string, optional) - Container name (required for docker isolation)
 - `options.toolOptions` (object, optional) - Additional tool-specific options
-  - `executable` (string, optional) - Override the native executable path/name for `claude`, `codex`, `opencode`, or `agent`
+  - `executable` (string, optional) - Override the native executable path/name for any supported tool
   - `extraEnv` (object or `KEY=VALUE` / `[key, value]` array, optional) - Environment variables applied to the native tool process
   - `extraArgs` (string array, optional) - Raw native tool arguments appended after typed agent-commander arguments
-  - `skipDefaultSafetyFlags` (boolean, optional) - Do not add default Claude/Codex autonomous safety bypass flags
+  - `skipDefaultSafetyFlags` (boolean, optional) - Do not add default autonomous safety bypass flags such as Claude/Codex bypass flags or Qwen/Gemini `--yolo`
   - `permissionMode` (string, optional) - Explicit Claude permission mode
   - `sandboxMode` (string, optional) - Explicit Codex sandbox mode
   - `approvalMode` (string, optional) - Explicit Codex approval mode

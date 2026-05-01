@@ -260,18 +260,20 @@ async fn test_agent_stdin_tools_handle_large_shell_sensitive_prompts_through_fil
             .as_nanos()
     ));
     std::fs::create_dir_all(&temp_dir).unwrap();
-    let fake_agent = temp_dir.join("agent");
-    std::fs::write(
-        &fake_agent,
-        "#!/usr/bin/env bash\nwc -c | tr -d \"[:space:]\"\n",
-    )
-    .unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut permissions = std::fs::metadata(&fake_agent).unwrap().permissions();
-        permissions.set_mode(0o755);
-        std::fs::set_permissions(&fake_agent, permissions).unwrap();
+    for tool in ["agent", "qwen", "gemini"] {
+        let fake_tool = temp_dir.join(tool);
+        std::fs::write(
+            &fake_tool,
+            "#!/usr/bin/env bash\nwc -c | tr -d \"[:space:]\"\n",
+        )
+        .unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = std::fs::metadata(&fake_tool).unwrap().permissions();
+            permissions.set_mode(0o755);
+            std::fs::set_permissions(&fake_tool, permissions).unwrap();
+        }
     }
 
     let _path_lock = PATH_LOCK.lock().await;
@@ -282,30 +284,37 @@ async fn test_agent_stdin_tools_handle_large_shell_sensitive_prompts_through_fil
         temp_dir,
     };
 
-    let prompt = format!("{}\n' \"$HOME\" `pwd`", "x".repeat(3 * 1024 * 1024));
-    let system_prompt = "system instructions".to_string();
-    let expected_bytes = format!("{}\n\n{}", system_prompt, prompt).len();
-    let options = AgentOptions {
-        tool: "agent".to_string(),
-        working_directory: "/tmp".to_string(),
-        prompt: Some(prompt),
-        system_prompt: Some(system_prompt),
-        isolation: "none".to_string(),
-        ..Default::default()
-    };
-    let mut controller = agent(options).unwrap();
-
-    controller
-        .start(AgentStartOptions {
-            attached: false,
+    for tool in ["agent", "qwen", "gemini"] {
+        let prompt = format!("{}\n' \"$HOME\" `pwd`", "x".repeat(3 * 1024 * 1024));
+        let system_prompt = "system instructions".to_string();
+        let expected_bytes = format!("{}\n\n{}", system_prompt, prompt).len();
+        let options = AgentOptions {
+            tool: tool.to_string(),
+            working_directory: "/tmp".to_string(),
+            prompt: Some(prompt),
+            system_prompt: Some(system_prompt),
+            isolation: "none".to_string(),
             ..Default::default()
-        })
-        .await
-        .unwrap();
-    let result = controller.stop(AgentStopOptions::default()).await.unwrap();
+        };
+        let mut controller = agent(options).unwrap();
 
-    assert_eq!(result.exit_code, 0);
-    assert_eq!(result.plain_output.trim(), expected_bytes.to_string());
+        controller
+            .start(AgentStartOptions {
+                attached: false,
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        let result = controller.stop(AgentStopOptions::default()).await.unwrap();
+
+        assert_eq!(result.exit_code, 0, "tool: {}", tool);
+        assert_eq!(
+            result.plain_output.trim(),
+            expected_bytes.to_string(),
+            "tool: {}",
+            tool
+        );
+    }
 }
 
 #[tokio::test]

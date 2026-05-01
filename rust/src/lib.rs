@@ -6,6 +6,8 @@
 //! - codex: OpenAI Codex CLI
 //! - opencode: OpenCode CLI
 //! - agent: @link-assistant/agent (unrestricted OpenCode fork)
+//! - qwen: Qwen Code CLI
+//! - gemini: Gemini CLI
 
 pub mod cli_parser;
 pub mod command_builder;
@@ -52,7 +54,7 @@ pub use tools::{
 /// Agent options for creating a controller
 #[derive(Debug, Clone, Default)]
 pub struct AgentOptions {
-    /// CLI tool to use (e.g., 'claude', 'codex', 'opencode', 'agent')
+    /// CLI tool to use (e.g., 'claude', 'codex', 'opencode', 'agent', 'qwen', 'gemini')
     pub tool: String,
     /// Working directory for the agent
     pub working_directory: String,
@@ -143,7 +145,10 @@ pub struct Agent {
 }
 
 fn supports_prompt_file_input(tool: &str) -> bool {
-    matches!(tool, "claude" | "codex" | "opencode" | "agent")
+    matches!(
+        tool,
+        "claude" | "codex" | "opencode" | "agent" | "qwen" | "gemini"
+    )
 }
 
 fn build_prompt_file_content(

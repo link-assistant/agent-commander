@@ -406,6 +406,15 @@ test('qwenTool - buildArgs with --include-partial-messages', () => {
   assert.ok(args.includes('--include-partial-messages'));
 });
 
+test('qwenTool - buildArgs appends extra raw args', () => {
+  const args = qwenTool.buildArgs({
+    extraArgs: ['--checkpointing', '--approval-mode', 'default'],
+  });
+  assert.ok(args.includes('--checkpointing'));
+  assert.ok(args.includes('--approval-mode'));
+  assert.ok(args.includes('default'));
+});
+
 test('qwenTool - parseOutput with NDJSON', () => {
   const output = '{"type":"message","content":"Hello"}\n{"type":"done"}';
   const messages = qwenTool.parseOutput({ output });
@@ -497,6 +506,30 @@ test('qwenTool - buildCommand combines system and user prompt', () => {
   assert.ok(cmd.includes('You are helpful'));
   assert.ok(cmd.includes('Review code'));
 });
+
+test('qwenTool - buildCommand reads prompt file with passthrough options', () => {
+  const cmd = qwenTool.buildCommand({
+    workingDirectory: '/tmp/project',
+    prompt: 'inline prompt',
+    systemPrompt: 'system prompt',
+    promptFile: '/tmp/qwen prompt.txt',
+    executable: '/opt/qwen code/qwen',
+    extraEnv: [['QWEN_HOME', '/tmp/qwen home']],
+    extraArgs: ['--approval-mode', 'default'],
+    skipDefaultSafetyFlags: true,
+  });
+
+  assert.ok(cmd.startsWith('cat '));
+  assert.ok(cmd.includes('/tmp/qwen prompt.txt'));
+  assert.ok(cmd.includes('| env QWEN_HOME='));
+  assert.ok(cmd.includes('/tmp/qwen home'));
+  assert.ok(cmd.includes('/opt/qwen code/qwen'));
+  assert.ok(cmd.includes('--approval-mode'));
+  assert.ok(cmd.includes('default'));
+  assert.ok(!cmd.includes('inline prompt'));
+  assert.ok(!cmd.includes('system prompt'));
+  assert.ok(!cmd.includes('--yolo'));
+});
 // Gemini tool tests
 test('geminiTool - mapModelToId with alias', () => {
   assert.strictEqual(
@@ -577,6 +610,15 @@ test('geminiTool - buildArgs with interactive mode', () => {
   assert.ok(!args.includes('-p'));
 });
 
+test('geminiTool - buildArgs appends extra raw args', () => {
+  const args = geminiTool.buildArgs({
+    extraArgs: ['--telemetry', 'false'],
+    yolo: false,
+  });
+  assert.ok(args.includes('--telemetry'));
+  assert.ok(args.includes('false'));
+});
+
 test('geminiTool - parseOutput with NDJSON', () => {
   const output = '{"type":"message","content":"Hello"}\n{"type":"done"}';
   const messages = geminiTool.parseOutput({ output });
@@ -646,4 +688,28 @@ test('geminiTool - supportsDebug is true', () => {
 
 test('geminiTool - default model is gemini-2.5-flash', () => {
   assert.strictEqual(geminiTool.defaultModel, 'gemini-2.5-flash');
+});
+
+test('geminiTool - buildCommand reads prompt file with passthrough options', () => {
+  const cmd = geminiTool.buildCommand({
+    workingDirectory: '/tmp/project',
+    prompt: 'inline prompt',
+    systemPrompt: 'system prompt',
+    promptFile: '/tmp/gemini prompt.txt',
+    executable: '/opt/gemini cli/gemini',
+    extraEnv: [['GEMINI_HOME', '/tmp/gemini home']],
+    extraArgs: ['--telemetry', 'false'],
+    skipDefaultSafetyFlags: true,
+  });
+
+  assert.ok(cmd.startsWith('cat '));
+  assert.ok(cmd.includes('/tmp/gemini prompt.txt'));
+  assert.ok(cmd.includes('| env GEMINI_HOME='));
+  assert.ok(cmd.includes('/tmp/gemini home'));
+  assert.ok(cmd.includes('/opt/gemini cli/gemini'));
+  assert.ok(cmd.includes('--telemetry'));
+  assert.ok(cmd.includes('false'));
+  assert.ok(!cmd.includes('inline prompt'));
+  assert.ok(!cmd.includes('system prompt'));
+  assert.ok(!cmd.includes('--yolo'));
 });

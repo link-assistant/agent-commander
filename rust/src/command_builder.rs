@@ -225,10 +225,15 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
             "gemini" => {
                 let options = GeminiBuildOptions {
                     prompt: options.prompt.clone(),
+                    prompt_file: options.prompt_file.clone(),
                     system_prompt: options.system_prompt.clone(),
                     model: options.model.clone(),
                     json: options.json,
                     read_only: options.read_only,
+                    executable: options.executable.clone(),
+                    extra_env: options.extra_env.clone(),
+                    extra_args: options.extra_args.clone(),
+                    skip_default_safety_flags: options.skip_default_safety_flags,
                     ..GeminiBuildOptions::new()
                 };
                 gemini::build_command(&options)
@@ -236,11 +241,16 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
             "qwen" => {
                 let options = QwenBuildOptions {
                     prompt: options.prompt.clone(),
+                    prompt_file: options.prompt_file.clone(),
                     system_prompt: options.system_prompt.clone(),
                     model: options.model.clone(),
                     json: options.json,
                     resume: options.resume.clone(),
                     read_only: options.read_only,
+                    executable: options.executable.clone(),
+                    extra_env: options.extra_env.clone(),
+                    extra_args: options.extra_args.clone(),
+                    skip_default_safety_flags: options.skip_default_safety_flags,
                     ..QwenBuildOptions::new()
                 };
                 qwen::build_command(&options)
@@ -475,6 +485,61 @@ mod tests {
     }
 
     #[test]
+    fn test_build_agent_command_qwen_raw_passthrough() {
+        let options = AgentCommandOptions {
+            tool: "qwen".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            prompt_file: Some("/tmp/prompt.txt".to_string()),
+            executable: Some("/opt/qwen code/qwen".to_string()),
+            extra_env: vec![("QWEN_HOME".to_string(), "/tmp/qwen home".to_string())],
+            extra_args: vec![
+                "--checkpointing".to_string(),
+                "--approval-mode".to_string(),
+                "default".to_string(),
+            ],
+            skip_default_safety_flags: true,
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("cat"));
+        assert!(command.contains("/tmp/prompt.txt"));
+        assert!(command.contains("| env QWEN_HOME="));
+        assert!(command.contains("/tmp/qwen home"));
+        assert!(command.contains("/opt/qwen code/qwen"));
+        assert!(command.contains("--checkpointing"));
+        assert!(command.contains("--approval-mode"));
+        assert!(command.contains("default"));
+        assert!(!command.contains("--yolo"));
+    }
+
+    #[test]
+    fn test_build_agent_command_gemini_raw_passthrough() {
+        let options = AgentCommandOptions {
+            tool: "gemini".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            prompt_file: Some("/tmp/prompt.txt".to_string()),
+            executable: Some("/opt/gemini cli/gemini".to_string()),
+            extra_env: vec![("GEMINI_HOME".to_string(), "/tmp/gemini home".to_string())],
+            extra_args: vec!["--telemetry".to_string(), "false".to_string()],
+            skip_default_safety_flags: true,
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("cat"));
+        assert!(command.contains("/tmp/prompt.txt"));
+        assert!(command.contains("| env GEMINI_HOME="));
+        assert!(command.contains("/tmp/gemini home"));
+        assert!(command.contains("/opt/gemini cli/gemini"));
+        assert!(command.contains("--telemetry"));
+        assert!(command.contains("false"));
+        assert!(!command.contains("--yolo"));
+    }
+
+    #[test]
     fn test_build_agent_command_unknown_tool() {
         let options = AgentCommandOptions {
             tool: "unknown-tool".to_string(),
@@ -599,6 +664,48 @@ mod tests {
         assert!(command.contains("--system-prompt"));
         assert!(command.contains("You are helpful"));
         assert!(!command.contains(inline_prompt));
+    }
+
+    #[test]
+    fn test_build_agent_command_qwen_prompt_file() {
+        let inline_prompt = "Secret prompt with 'quotes', $HOME, and `pwd`";
+        let options = AgentCommandOptions {
+            tool: "qwen".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            prompt: Some(inline_prompt.to_string()),
+            system_prompt: Some("System instructions".to_string()),
+            prompt_file: Some("/tmp/agent prompt.txt".to_string()),
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("cat"));
+        assert!(command.contains("/tmp/agent prompt.txt"));
+        assert!(command.contains("qwen"));
+        assert!(!command.contains(inline_prompt));
+        assert!(!command.contains("System instructions"));
+    }
+
+    #[test]
+    fn test_build_agent_command_gemini_prompt_file() {
+        let inline_prompt = "Secret prompt with 'quotes', $HOME, and `pwd`";
+        let options = AgentCommandOptions {
+            tool: "gemini".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            prompt: Some(inline_prompt.to_string()),
+            system_prompt: Some("System instructions".to_string()),
+            prompt_file: Some("/tmp/agent prompt.txt".to_string()),
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("cat"));
+        assert!(command.contains("/tmp/agent prompt.txt"));
+        assert!(command.contains("gemini"));
+        assert!(!command.contains(inline_prompt));
+        assert!(!command.contains("System instructions"));
     }
 
     #[test]
