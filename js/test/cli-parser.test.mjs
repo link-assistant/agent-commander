@@ -190,6 +190,20 @@ test('parseStartAgentArgs - with append-system-prompt', () => {
   assert.strictEqual(result.appendSystemPrompt, 'Extra instructions here');
 });
 
+test('parseStartAgentArgs - with prompt-file', () => {
+  const args = [
+    '--tool',
+    'codex',
+    '--working-directory',
+    '/tmp/test',
+    '--prompt-file',
+    '/tmp/prompt.txt',
+  ];
+  const result = parseStartAgentArgs(args);
+
+  assert.strictEqual(result.promptFile, '/tmp/prompt.txt');
+});
+
 test('parseStartAgentArgs - with verbose and replay-user-messages', () => {
   const args = [
     '--tool',
@@ -244,4 +258,5 @@ test('parseStartAgentArgs - defaults for new options', () => {
   assert.strictEqual(result.resume, undefined);
   assert.strictEqual(result.sessionId, undefined);
   assert.strictEqual(result.appendSystemPrompt, undefined);
+  assert.strictEqual(result.promptFile, undefined);
 });

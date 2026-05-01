@@ -4,7 +4,12 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert';
+import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { agent } from '../src/index.mjs';
+
+const isDeno = typeof globalThis.Deno !== 'undefined';
 
 test('agent - throws without tool', () => {
   assert.throws(() => {
@@ -117,5 +122,42 @@ test(
     assert.ok(result.output);
     assert.ok(result.output.plain);
     assert.ok(result.output.plain.includes('Hello World'));
+  }
+);
+
+test(
+  'agent - stdin tools handle large shell-sensitive prompts through a file',
+  { skip: process.platform === 'win32' || isDeno },
+  async (t) => {
+    const binDir = await mkdtemp(join(tmpdir(), 'agent-commander-test-bin-'));
+    const fakeAgent = join(binDir, 'agent');
+    await writeFile(
+      fakeAgent,
+      '#!/usr/bin/env bash\nwc -c | tr -d "[:space:]"\n'
+    );
+    await chmod(fakeAgent, 0o755);
+
+    const previousPath = process.env.PATH || '';
+    process.env.PATH = `${binDir}:${previousPath}`;
+    t.after(async () => {
+      process.env.PATH = previousPath;
+      await rm(binDir, { recursive: true, force: true });
+    });
+
+    const prompt = `${'x'.repeat(3 * 1024 * 1024)}\n' "$HOME" \`pwd\``;
+    const systemPrompt = 'system instructions';
+    const expectedBytes = Buffer.byteLength(`${systemPrompt}\n\n${prompt}`);
+    const controller = agent({
+      tool: 'agent',
+      workingDirectory: '/tmp',
+      prompt,
+      systemPrompt,
+    });
+
+    await controller.start({ attached: false });
+    const result = await controller.stop();
+
+    assert.strictEqual(result.exitCode, 0);
+    assert.strictEqual(result.output.plain.trim(), String(expectedBytes));
   }
 );

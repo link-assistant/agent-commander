@@ -37,6 +37,7 @@ async function main() {
       tool: options.tool,
       workingDirectory: options.workingDirectory,
       prompt: options.prompt,
+      promptFile: options.promptFile,
       systemPrompt: options.systemPrompt,
       model: options.model,
       resume: options.resume,

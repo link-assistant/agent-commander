@@ -98,6 +98,7 @@ export function buildArgs(options) {
  * @param {Object} options - Options
  * @param {string} options.workingDirectory - Working directory
  * @param {string} [options.prompt] - User prompt
+ * @param {string} [options.promptFile] - File containing combined prompt input
  * @param {string} [options.systemPrompt] - System prompt
  * @param {string} [options.model] - Model to use
  * @param {boolean} [options.compactJson] - Use compact JSON output
@@ -106,7 +107,8 @@ export function buildArgs(options) {
  */
 export function buildCommand(options) {
   // eslint-disable-next-line no-unused-vars
-  const { workingDirectory, prompt, systemPrompt, ...argOptions } = options;
+  const { workingDirectory, prompt, promptFile, systemPrompt, ...argOptions } =
+    options;
   const args = buildArgs(argOptions);
 
   // Agent expects prompt via stdin, combine system and user prompts
@@ -115,8 +117,10 @@ export function buildCommand(options) {
     : prompt || '';
 
   // Build command with stdin piping
-  const escapedPrompt = combinedPrompt.replace(/'/g, "'\\''");
-  return `printf '%s' '${escapedPrompt}' | agent ${args.map(escapeArg).join(' ')}`.trim();
+  const inputCommand = promptFile
+    ? `cat ${escapeArg(promptFile)}`
+    : `printf '%s' '${combinedPrompt.replace(/'/g, "'\\''")}'`;
+  return `${inputCommand} | agent ${args.map(escapeArg).join(' ')}`.trim();
 }
 
 /**

@@ -14,6 +14,9 @@ pub mod streaming;
 pub mod tools;
 
 use serde_json::Value;
+use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
+use tokio::io::AsyncWriteExt;
 
 pub use cli_parser::{
     parse_args, parse_start_agent_args, parse_stop_agent_args, show_start_agent_help,
@@ -50,6 +53,8 @@ pub struct AgentOptions {
     pub working_directory: String,
     /// Prompt for the agent
     pub prompt: Option<String>,
+    /// File containing prompt input for stdin-based tools
+    pub prompt_file: Option<String>,
     /// System prompt for the agent
     pub system_prompt: Option<String>,
     /// Append to the default system prompt (tool-specific)
@@ -117,6 +122,40 @@ pub struct Agent {
     process_handle: Option<ProcessHandle>,
     output_stream: Option<JsonOutputStream>,
     session_id: Option<String>,
+    prompt_temp_dir: Option<PathBuf>,
+}
+
+fn supports_prompt_file_input(tool: &str) -> bool {
+    matches!(tool, "claude" | "codex" | "opencode" | "agent")
+}
+
+fn build_prompt_file_content(
+    tool: &str,
+    prompt: Option<&str>,
+    system_prompt: Option<&str>,
+) -> String {
+    if tool == "claude" {
+        return prompt.unwrap_or_default().to_string();
+    }
+
+    match (system_prompt, prompt) {
+        (Some(system_prompt), Some(prompt)) => format!("{}\n\n{}", system_prompt, prompt),
+        (Some(system_prompt), None) => system_prompt.to_string(),
+        (None, Some(prompt)) => prompt.to_string(),
+        (None, None) => String::new(),
+    }
+}
+
+fn should_create_prompt_file(options: &AgentOptions, dry_run: bool) -> bool {
+    if dry_run || options.prompt_file.is_some() || !supports_prompt_file_input(&options.tool) {
+        return false;
+    }
+
+    if options.tool == "claude" {
+        return options.prompt.is_some();
+    }
+
+    options.prompt.is_some() || options.system_prompt.is_some()
 }
 
 impl Agent {
@@ -150,7 +189,56 @@ impl Agent {
             process_handle: None,
             output_stream: None,
             session_id: None,
+            prompt_temp_dir: None,
         })
+    }
+
+    async fn cleanup_prompt_temp_dir(&mut self) {
+        if let Some(dir) = self.prompt_temp_dir.take() {
+            let _ = tokio::fs::remove_dir_all(dir).await;
+        }
+    }
+
+    async fn prepare_prompt_file(&mut self, dry_run: bool) -> Result<Option<String>, String> {
+        if !should_create_prompt_file(&self.options, dry_run) {
+            return Ok(self.options.prompt_file.clone());
+        }
+
+        let unique_id = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|e| e.to_string())?
+            .as_nanos();
+        let temp_dir = std::env::temp_dir().join(format!(
+            "agent-commander-{}-{}",
+            std::process::id(),
+            unique_id
+        ));
+        tokio::fs::create_dir(&temp_dir)
+            .await
+            .map_err(|e| e.to_string())?;
+        self.prompt_temp_dir = Some(temp_dir.clone());
+        let prompt_file = temp_dir.join("prompt.txt");
+        let content = build_prompt_file_content(
+            &self.options.tool,
+            self.options.prompt.as_deref(),
+            self.options.system_prompt.as_deref(),
+        );
+
+        let mut open_options = tokio::fs::OpenOptions::new();
+        open_options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            open_options.mode(0o600);
+        }
+        let mut file = open_options
+            .open(&prompt_file)
+            .await
+            .map_err(|e| e.to_string())?;
+        file.write_all(content.as_bytes())
+            .await
+            .map_err(|e| e.to_string())?;
+
+        Ok(Some(prompt_file.to_string_lossy().into_owned()))
     }
 
     /// Start the agent (non-blocking)
@@ -166,12 +254,31 @@ impl Agent {
             self.output_stream = Some(create_output_stream());
         }
 
+        let prepared_prompt_file = match self.prepare_prompt_file(start_options.dry_run).await {
+            Ok(prompt_file) => prompt_file,
+            Err(error) => {
+                self.cleanup_prompt_temp_dir().await;
+                return Err(error);
+            }
+        };
+        let prompt_handled_by_temp_file =
+            prepared_prompt_file.is_some() && self.options.prompt_file.is_none();
+
         // Build the command
         let command_options = AgentCommandOptions {
             tool: self.options.tool.clone(),
             working_directory: self.options.working_directory.clone(),
-            prompt: self.options.prompt.clone(),
-            system_prompt: self.options.system_prompt.clone(),
+            prompt: if prompt_handled_by_temp_file {
+                None
+            } else {
+                self.options.prompt.clone()
+            },
+            prompt_file: prepared_prompt_file,
+            system_prompt: if prompt_handled_by_temp_file && self.options.tool != "claude" {
+                None
+            } else {
+                self.options.system_prompt.clone()
+            },
             append_system_prompt: self.options.append_system_prompt.clone(),
             model: self.options.model.clone(),
             fallback_model: self.options.fallback_model.clone(),
@@ -198,9 +305,10 @@ impl Agent {
 
         if start_options.detached {
             // For detached mode, use execute_detached
-            execute_detached(&command)
-                .await
-                .map_err(|e| e.to_string())?;
+            if let Err(error) = execute_detached(&command).await.map_err(|e| e.to_string()) {
+                self.cleanup_prompt_temp_dir().await;
+                return Err(error);
+            }
             println!("Agent started in detached mode");
             if self.options.isolation == "screen" {
                 if let Some(ref name) = self.options.screen_name {
@@ -213,9 +321,16 @@ impl Agent {
             }
         } else {
             // For attached mode, start command without waiting
-            let handle = start_command(&command, start_options.attached)
+            let handle = match start_command(&command, start_options.attached)
                 .await
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| e.to_string())
+            {
+                Ok(handle) => handle,
+                Err(error) => {
+                    self.cleanup_prompt_temp_dir().await;
+                    return Err(error);
+                }
+            };
             self.process_handle = Some(handle);
         }
 
@@ -254,9 +369,17 @@ impl Agent {
                 return Ok(AgentResult::default());
             }
 
-            let result = execute_command(&stop_command, false, true)
+            let result = match execute_command(&stop_command, false, true)
                 .await
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| e.to_string())
+            {
+                Ok(result) => result,
+                Err(error) => {
+                    self.cleanup_prompt_temp_dir().await;
+                    return Err(error);
+                }
+            };
+            self.cleanup_prompt_temp_dir().await;
 
             return Ok(AgentResult {
                 exit_code: result.exit_code,
@@ -268,13 +391,23 @@ impl Agent {
 
         // For no isolation, wait for process to complete and collect output
         if self.options.isolation == "none" || self.options.isolation.is_empty() {
+            if self.process_handle.is_none() {
+                self.cleanup_prompt_temp_dir().await;
+                return Err("Agent not started or already stopped".to_string());
+            }
             let handle = self
                 .process_handle
                 .as_mut()
                 .ok_or("Agent not started or already stopped")?;
 
             // Wait for the process to exit
-            let exit_code = handle.wait_for_exit().await.map_err(|e| e.to_string())?;
+            let exit_code = match handle.wait_for_exit().await.map_err(|e| e.to_string()) {
+                Ok(exit_code) => exit_code,
+                Err(error) => {
+                    self.cleanup_prompt_temp_dir().await;
+                    return Err(error);
+                }
+            };
 
             let (stdout, stderr, _) = handle.get_output();
 
@@ -315,12 +448,14 @@ impl Agent {
                 }
             }
 
-            return Ok(AgentResult {
+            let result = AgentResult {
                 exit_code,
                 plain_output,
                 parsed_output,
                 session_id: self.session_id.clone(),
-            });
+            };
+            self.cleanup_prompt_temp_dir().await;
+            return Ok(result);
         }
 
         Err(format!(

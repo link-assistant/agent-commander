@@ -153,6 +153,7 @@ export function buildArgs(options) {
  * @param {Object} options - Options
  * @param {string} options.workingDirectory - Working directory
  * @param {string} [options.prompt] - User prompt
+ * @param {string} [options.promptFile] - File containing prompt input
  * @param {string} [options.systemPrompt] - System prompt
  * @param {string} [options.appendSystemPrompt] - System prompt to append to default
  * @param {string} [options.model] - Model to use
@@ -170,9 +171,18 @@ export function buildArgs(options) {
  */
 export function buildCommand(options) {
   // eslint-disable-next-line no-unused-vars
-  const { workingDirectory, ...argOptions } = options;
-  const args = buildArgs(argOptions);
-  return `claude ${args.map(escapeArg).join(' ')}`.trim();
+  const { workingDirectory, prompt, promptFile, ...argOptions } = options;
+  const args = buildArgs({
+    ...argOptions,
+    prompt: promptFile ? undefined : prompt,
+  });
+  const command = `claude ${args.map(escapeArg).join(' ')}`.trim();
+
+  if (promptFile) {
+    return `cat ${escapeArg(promptFile)} | ${command}`;
+  }
+
+  return command;
 }
 
 /**

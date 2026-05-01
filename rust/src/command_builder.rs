@@ -16,6 +16,7 @@ pub struct AgentCommandOptions {
     pub tool: String,
     pub working_directory: String,
     pub prompt: Option<String>,
+    pub prompt_file: Option<String>,
     pub system_prompt: Option<String>,
     pub append_system_prompt: Option<String>,
     pub model: Option<String>,
@@ -159,6 +160,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
         match options.tool.as_str() {
             "claude" => claude::build_command(&ClaudeBuildOptions {
                 prompt: options.prompt.clone(),
+                prompt_file: options.prompt_file.clone(),
                 system_prompt: options.system_prompt.clone(),
                 append_system_prompt: options.append_system_prompt.clone(),
                 model: options.model.clone(),
@@ -175,6 +177,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
             }),
             "codex" => codex::build_command(&CodexBuildOptions {
                 prompt: options.prompt.clone(),
+                prompt_file: options.prompt_file.clone(),
                 system_prompt: options.system_prompt.clone(),
                 model: options.model.clone(),
                 json: options.json,
@@ -183,6 +186,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
             }),
             "opencode" => opencode::build_command(&OpencodeBuildOptions {
                 prompt: options.prompt.clone(),
+                prompt_file: options.prompt_file.clone(),
                 system_prompt: options.system_prompt.clone(),
                 model: options.model.clone(),
                 json: options.json,
@@ -191,6 +195,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
             }),
             "agent" => agent::build_command(&AgentBuildOptions {
                 prompt: options.prompt.clone(),
+                prompt_file: options.prompt_file.clone(),
                 system_prompt: options.system_prompt.clone(),
                 model: options.model.clone(),
                 compact_json: false,
@@ -492,6 +497,50 @@ mod tests {
         assert!(command.contains("codex"));
         assert!(command.contains("exec"));
         assert!(command.contains("--json"));
+    }
+
+    #[test]
+    fn test_build_agent_command_codex_prompt_file() {
+        let inline_prompt = "Secret prompt with 'quotes', $HOME, and `pwd`";
+        let options = AgentCommandOptions {
+            tool: "codex".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            prompt: Some(inline_prompt.to_string()),
+            system_prompt: Some("System instructions".to_string()),
+            prompt_file: Some("/tmp/agent prompt.txt".to_string()),
+            json: true,
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("cat"));
+        assert!(command.contains("/tmp/agent prompt.txt"));
+        assert!(command.contains("codex"));
+        assert!(!command.contains(inline_prompt));
+        assert!(!command.contains("System instructions"));
+    }
+
+    #[test]
+    fn test_build_agent_command_claude_prompt_file() {
+        let inline_prompt = "Secret prompt with 'quotes', $HOME, and `pwd`";
+        let options = AgentCommandOptions {
+            tool: "claude".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            prompt: Some(inline_prompt.to_string()),
+            system_prompt: Some("You are helpful".to_string()),
+            prompt_file: Some("/tmp/agent prompt.txt".to_string()),
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("cat"));
+        assert!(command.contains("/tmp/agent prompt.txt"));
+        assert!(command.contains("claude"));
+        assert!(command.contains("--system-prompt"));
+        assert!(command.contains("You are helpful"));
+        assert!(!command.contains(inline_prompt));
     }
 
     #[test]

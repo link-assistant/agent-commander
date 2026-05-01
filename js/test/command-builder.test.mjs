@@ -111,6 +111,43 @@ test('buildAgentCommand - with codex tool', () => {
   assert.ok(command.includes('--json'));
 });
 
+test('buildAgentCommand - codex can read prompt from file', () => {
+  const inlinePrompt = "Secret prompt with 'quotes', $HOME, and `pwd`";
+  const command = buildAgentCommand({
+    tool: 'codex',
+    workingDirectory: '/tmp/test',
+    prompt: inlinePrompt,
+    systemPrompt: 'System instructions',
+    promptFile: '/tmp/agent prompt.txt',
+    isolation: 'none',
+  });
+
+  assert.ok(command.includes('cat'));
+  assert.ok(command.includes('/tmp/agent prompt.txt'));
+  assert.ok(command.includes('codex'));
+  assert.ok(!command.includes(inlinePrompt));
+  assert.ok(!command.includes('System instructions'));
+});
+
+test('buildAgentCommand - claude can read prompt from file', () => {
+  const inlinePrompt = "Secret prompt with 'quotes', $HOME, and `pwd`";
+  const command = buildAgentCommand({
+    tool: 'claude',
+    workingDirectory: '/tmp/test',
+    prompt: inlinePrompt,
+    systemPrompt: 'You are helpful',
+    promptFile: '/tmp/agent prompt.txt',
+    isolation: 'none',
+  });
+
+  assert.ok(command.includes('cat'));
+  assert.ok(command.includes('/tmp/agent prompt.txt'));
+  assert.ok(command.includes('claude'));
+  assert.ok(command.includes('--system-prompt'));
+  assert.ok(command.includes('You are helpful'));
+  assert.ok(!command.includes(inlinePrompt));
+});
+
 test('buildAgentCommand - with agent tool', () => {
   const command = buildAgentCommand({
     tool: 'agent',

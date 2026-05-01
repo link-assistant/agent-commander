@@ -73,6 +73,7 @@ pub struct StartAgentOptions {
     pub tool: Option<String>,
     pub working_directory: Option<String>,
     pub prompt: Option<String>,
+    pub prompt_file: Option<String>,
     pub system_prompt: Option<String>,
     pub append_system_prompt: Option<String>,
     pub model: Option<String>,
@@ -122,6 +123,7 @@ pub fn parse_start_agent_args(args: &[String]) -> StartAgentOptions {
         tool: parsed.get("tool").cloned(),
         working_directory: parsed.get("working-directory").cloned(),
         prompt: parsed.get("prompt").cloned(),
+        prompt_file: parsed.get("prompt-file").cloned(),
         system_prompt: parsed.get("system-prompt").cloned(),
         append_system_prompt: parsed.get("append-system-prompt").cloned(),
         model: parsed.get("model").cloned(),
@@ -171,6 +173,7 @@ Options:
   --tool <name>                    CLI tool to use (e.g., 'claude') [required]
   --working-directory <path>       Working directory for the agent [required]
   --prompt <text>                  Prompt for the agent
+  --prompt-file <path>             Read prompt input from a file
   --system-prompt <text>           System prompt for the agent
   --append-system-prompt <text>    Append to the default system prompt
   --model <model>                  Model to use (e.g., 'sonnet', 'opus', 'haiku')
@@ -485,6 +488,21 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_start_agent_args_with_prompt_file() {
+        let args: Vec<String> = vec![
+            "--tool".into(),
+            "codex".into(),
+            "--working-directory".into(),
+            "/tmp/test".into(),
+            "--prompt-file".into(),
+            "/tmp/prompt.txt".into(),
+        ];
+        let result = parse_start_agent_args(&args);
+
+        assert_eq!(result.prompt_file, Some("/tmp/prompt.txt".to_string()));
+    }
+
+    #[test]
     fn test_parse_start_agent_args_with_verbose_and_replay_user_messages() {
         let args: Vec<String> = vec![
             "--tool".into(),
@@ -518,6 +536,7 @@ mod tests {
         assert!(result.resume.is_none());
         assert!(result.session_id.is_none());
         assert!(result.append_system_prompt.is_none());
+        assert!(result.prompt_file.is_none());
     }
 
     #[test]

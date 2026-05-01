@@ -2,6 +2,20 @@
 
 use agent_commander::{agent, AgentOptions, AgentStartOptions, AgentStopOptions};
 
+#[cfg(not(target_os = "windows"))]
+struct PathGuard {
+    previous_path: String,
+    temp_dir: std::path::PathBuf,
+}
+
+#[cfg(not(target_os = "windows"))]
+impl Drop for PathGuard {
+    fn drop(&mut self) {
+        std::env::set_var("PATH", &self.previous_path);
+        let _ = std::fs::remove_dir_all(&self.temp_dir);
+    }
+}
+
 #[test]
 fn test_agent_throws_without_tool() {
     let options = AgentOptions {
@@ -139,6 +153,7 @@ fn test_agent_options_default() {
     assert!(options.isolation.is_empty());
     assert!(!options.json);
     assert!(options.prompt.is_none());
+    assert!(options.prompt_file.is_none());
     assert!(options.model.is_none());
     assert!(options.fallback_model.is_none());
     assert!(!options.verbose);
@@ -228,4 +243,63 @@ async fn test_agent_start_and_stop_with_no_isolation() {
 
     assert_eq!(result.exit_code, 0);
     assert!(result.plain_output.contains("Hello World"));
+}
+
+#[tokio::test]
+#[cfg(not(target_os = "windows"))]
+async fn test_agent_stdin_tools_handle_large_shell_sensitive_prompts_through_file() {
+    let temp_dir = std::env::temp_dir().join(format!(
+        "agent-commander-test-bin-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&temp_dir).unwrap();
+    let fake_agent = temp_dir.join("agent");
+    std::fs::write(
+        &fake_agent,
+        "#!/usr/bin/env bash\nwc -c | tr -d \"[:space:]\"\n",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = std::fs::metadata(&fake_agent).unwrap().permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&fake_agent, permissions).unwrap();
+    }
+
+    let previous_path = std::env::var("PATH").unwrap_or_default();
+    std::env::set_var("PATH", format!("{}:{}", temp_dir.display(), previous_path));
+    let _path_guard = PathGuard {
+        previous_path,
+        temp_dir,
+    };
+
+    let prompt = format!("{}\n' \"$HOME\" `pwd`", "x".repeat(3 * 1024 * 1024));
+    let system_prompt = "system instructions".to_string();
+    let expected_bytes = format!("{}\n\n{}", system_prompt, prompt).len();
+    let options = AgentOptions {
+        tool: "agent".to_string(),
+        working_directory: "/tmp".to_string(),
+        prompt: Some(prompt),
+        system_prompt: Some(system_prompt),
+        isolation: "none".to_string(),
+        ..Default::default()
+    };
+    let mut controller = agent(options).unwrap();
+
+    controller
+        .start(AgentStartOptions {
+            attached: false,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    let result = controller.stop(AgentStopOptions::default()).await.unwrap();
+
+    assert_eq!(result.exit_code, 0);
+    assert_eq!(result.plain_output.trim(), expected_bytes.to_string());
 }

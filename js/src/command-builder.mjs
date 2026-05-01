@@ -10,6 +10,7 @@ import { isToolSupported, getTool } from './tools/index.mjs';
  * @param {string} options.tool - The CLI tool to use (e.g., 'claude', 'codex', 'opencode', 'agent')
  * @param {string} options.workingDirectory - Working directory path
  * @param {string} [options.prompt] - Prompt for the agent
+ * @param {string} [options.promptFile] - File containing prompt input for stdin-based tools
  * @param {string} [options.systemPrompt] - System prompt for the agent
  * @param {string} [options.model] - Model to use (tool-specific)
  * @param {boolean} [options.json] - Enable JSON output mode
@@ -26,6 +27,7 @@ export function buildAgentCommand(options) {
     tool,
     workingDirectory,
     prompt,
+    promptFile,
     systemPrompt,
     model,
     json,
@@ -51,6 +53,7 @@ export function buildAgentCommand(options) {
       baseCommand = toolConfig.buildCommand({
         workingDirectory,
         prompt,
+        promptFile,
         systemPrompt,
         model,
         json,

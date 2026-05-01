@@ -50,6 +50,7 @@ pub fn map_model_to_id(model: &str) -> String {
 #[derive(Debug, Clone, Default)]
 pub struct ClaudeBuildOptions {
     pub prompt: Option<String>,
+    pub prompt_file: Option<String>,
     pub system_prompt: Option<String>,
     pub append_system_prompt: Option<String>,
     pub model: Option<String>,
@@ -102,9 +103,11 @@ pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
         args.push(mapped_fallback);
     }
 
-    if let Some(ref prompt) = options.prompt {
-        args.push("--prompt".to_string());
-        args.push(prompt.clone());
+    if options.prompt_file.is_none() {
+        if let Some(ref prompt) = options.prompt {
+            args.push("--prompt".to_string());
+            args.push(prompt.clone());
+        }
     }
 
     if let Some(ref system_prompt) = options.system_prompt {
@@ -189,7 +192,13 @@ fn escape_arg(arg: &str) -> String {
 pub fn build_command(options: &ClaudeBuildOptions) -> String {
     let args = build_args(options);
     let args_str: Vec<String> = args.iter().map(|a| escape_arg(a)).collect();
-    format!("claude {}", args_str.join(" ")).trim().to_string()
+    let command = format!("claude {}", args_str.join(" ")).trim().to_string();
+
+    if let Some(prompt_file) = &options.prompt_file {
+        format!("cat {} | {}", escape_arg(prompt_file), command)
+    } else {
+        command
+    }
 }
 
 /// Parse JSON messages from Claude output
