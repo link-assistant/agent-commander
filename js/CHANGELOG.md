@@ -1,5 +1,11 @@
 # agent-commander
 
+## 0.6.0
+
+### Minor Changes
+
+- f3c9ebc: Expose native execution passthrough controls for Claude, Codex, OpenCode, and @link-assistant/agent, including custom executables, raw tool environment variables, raw tool arguments, and suppressible default safety bypass flags.
+
 ## 0.5.0
 
 ### Minor Changes
