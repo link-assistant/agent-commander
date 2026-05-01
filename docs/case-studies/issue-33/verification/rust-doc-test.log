@@ -1,0 +1,39 @@
+       Fresh unicode-ident v1.0.24
+       Fresh proc-macro2 v1.0.106
+       Fresh quote v1.0.45
+       Fresh libc v0.2.186
+       Fresh syn v2.0.117
+       Fresh cfg-if v1.0.4
+       Fresh smallvec v1.15.1
+       Fresh scopeguard v1.2.0
+       Fresh lock_api v0.4.14
+       Fresh parking_lot_core v0.9.12
+       Fresh errno v0.3.14
+       Fresh signal-hook-registry v1.4.8
+       Fresh parking_lot v0.12.5
+       Fresh tokio-macros v2.7.0
+       Fresh socket2 v0.6.3
+       Fresh mio v1.2.0
+       Fresh pin-project-lite v0.2.17
+       Fresh bytes v1.11.1
+       Fresh serde_core v1.0.228
+       Fresh tokio v1.52.1
+       Fresh serde_derive v1.0.228
+       Fresh zmij v1.0.21
+       Fresh thiserror-impl v2.0.18
+       Fresh futures-core v0.3.32
+       Fresh itoa v1.0.18
+       Fresh memchr v2.8.0
+       Fresh thiserror v2.0.18
+       Fresh serde_json v1.0.149
+       Fresh tokio-stream v0.1.18
+       Fresh serde v1.0.228
+       Fresh tokio-test v0.4.5
+       Fresh agent-commander v0.1.0 (/tmp/gh-issue-solver-1777626926587/rust)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+   Doc-tests agent_commander
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustdoc --edition=2021 --crate-type lib --color auto --crate-name agent_commander --test src/lib.rs --test-run-directory /tmp/gh-issue-solver-1777626926587/rust '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::unnecessary_wraps' '--allow=clippy::uninlined_format_args' '--allow=clippy::type_complexity' '--allow=clippy::too_many_lines' '--allow=clippy::struct_excessive_bools' '--allow=clippy::redundant_closure_for_method_calls' '--allow=clippy::redundant_closure' '--allow=clippy::redundant_clone' '--allow=clippy::option_if_let_else' '--allow=clippy::nonminimal_bool' '--allow=clippy::needless_raw_string_hashes' '--allow=clippy::needless_pass_by_value' '--allow=clippy::must_use_candidate' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_fields_in_debug' '--allow=clippy::missing_errors_doc' '--allow=clippy::missing_const_for_fn' '--allow=clippy::map_unwrap_or' '--allow=clippy::manual_let_else' '--allow=clippy::inherent_to_string_shadow_display' '--allow=clippy::implicit_clone' '--allow=clippy::if_not_else' '--allow=clippy::future_not_send' '--allow=clippy::format_push_string' '--allow=clippy::doc_markdown' '--allow=clippy::default_trait_access' '--allow=clippy::bool_to_int_with_if' --extern agent_commander=/tmp/gh-issue-solver-1777626926587/rust/target/debug/deps/libagent_commander-b27ba8ff9aa57bc7.rlib --extern serde=/tmp/gh-issue-solver-1777626926587/rust/target/debug/deps/libserde-b342861e994e7fdb.rlib --extern serde_json=/tmp/gh-issue-solver-1777626926587/rust/target/debug/deps/libserde_json-03c27675fcdb3aef.rlib --extern thiserror=/tmp/gh-issue-solver-1777626926587/rust/target/debug/deps/libthiserror-87c8936c06bb101b.rlib --extern tokio=/tmp/gh-issue-solver-1777626926587/rust/target/debug/deps/libtokio-9871956da99d1524.rlib --extern tokio_test=/tmp/gh-issue-solver-1777626926587/rust/target/debug/deps/libtokio_test-69c927c79067acb2.rlib -L dependency=/tmp/gh-issue-solver-1777626926587/rust/target/debug/deps -C embed-bitcode=no --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' --error-format human`
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

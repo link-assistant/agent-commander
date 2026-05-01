@@ -239,22 +239,9 @@ jobs:
       - name: Check if version already released or no fragments
         id: check
         working-directory: rust
-        run: |
-          if [ "${{ steps.bump_type.outputs.has_fragments }}" != "true" ]; then
-            CURRENT_VERSION=$(grep -Po '(?<=^version = ")[^"]*' Cargo.toml)
-            if git rev-parse "rust_$CURRENT_VERSION" >/dev/null 2>&1; then
-              echo "No changelog fragments and rust_$CURRENT_VERSION already released"
-              echo "should_release=false" >> "$GITHUB_OUTPUT"
-            else
-              echo "No changelog fragments but rust_$CURRENT_VERSION not yet released"
-              echo "should_release=true" >> "$GITHUB_OUTPUT"
-              echo "skip_bump=true" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            echo "Found changelog fragments, proceeding with release"
-            echo "should_release=true" >> "$GITHUB_OUTPUT"
-            echo "skip_bump=false" >> "$GITHUB_OUTPUT"
-          fi
+        env:
+          HAS_FRAGMENTS: ${{ steps.bump_type.outputs.has_fragments }}
+        run: node ../scripts/rust/check-release-needed.mjs
 
       - name: Collect changelog and bump version
         id: version
@@ -285,6 +272,7 @@ jobs:
           TOKEN="${CARGO_REGISTRY_TOKEN:-$CARGO_TOKEN}"
           echo "Package: $PACKAGE_NAME@$PACKAGE_VERSION"
 
+          set -o pipefail
           set +e
           if [ -n "$TOKEN" ]; then
             cargo publish --token "$TOKEN" --allow-dirty 2>&1 | tee publish_output.txt
@@ -375,6 +363,7 @@ jobs:
           TOKEN="${CARGO_REGISTRY_TOKEN:-$CARGO_TOKEN}"
           echo "Package: $PACKAGE_NAME@$PACKAGE_VERSION"
 
+          set -o pipefail
           set +e
           if [ -n "$TOKEN" ]; then
             cargo publish --token "$TOKEN" --allow-dirty 2>&1 | tee publish_output.txt

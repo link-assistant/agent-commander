@@ -1,0 +1,4 @@
+Output: max_published_version=0.1.0
+Crate: agent-commander, Version: 0.1.0, Published on crates.io: true
+No changelog fragments and 0.1.0 is already published on crates.io
+Output: should_release=false

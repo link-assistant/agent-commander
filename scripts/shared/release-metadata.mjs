@@ -5,6 +5,7 @@ const LANGUAGE_CONFIG = {
     tagPrefix: "js_",
     releasePrefix: "[JavaScript]",
     badgeColor: "cb3837",
+    makeLatest: false,
     packageUrl: ({ packageName, version }) =>
       `https://www.npmjs.com/package/${packageName}/v/${version}`,
   },
@@ -14,6 +15,7 @@ const LANGUAGE_CONFIG = {
     tagPrefix: "rust_",
     releasePrefix: "[Rust]",
     badgeColor: "dea584",
+    makeLatest: true,
     packageUrl: ({ packageName, version, cratesIoUrl }) => {
       const baseUrl = cratesIoUrl || `https://crates.io/crates/${packageName}`;
       return `${baseUrl.replace(/\/$/, "")}/${version}`;
@@ -63,7 +65,7 @@ export function buildVersionBadgeUrl({ label, version, color }) {
  * @param {string} [options.releaseNotes]
  * @param {string} [options.packageName]
  * @param {string} [options.cratesIoUrl]
- * @returns {{tagName: string, name: string, body: string}}
+ * @returns {{tagName: string, name: string, body: string, makeLatest: boolean}}
  */
 export function buildReleaseMetadata({
   language,
@@ -96,5 +98,6 @@ export function buildReleaseMetadata({
     tagName: `${config.tagPrefix}${normalizedVersion}`,
     name: `${config.releasePrefix} v${normalizedVersion}`,
     body: `${badge}\n\nPackage: ${config.packageLabel} \`${packageName}@${normalizedVersion}\`\n\n${notes}`,
+    makeLatest: config.makeLatest,
   };
 }

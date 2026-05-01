@@ -55,6 +55,47 @@ if (!version || !repository) {
 }
 
 /**
+ * Update an existing release by tag name.
+ * @param {Object} options
+ * @param {string} options.repository
+ * @param {{tagName: string}} options.release
+ * @param {string} options.payload
+ */
+async function updateExistingRelease({ repository, release, payload }) {
+  const existingResult =
+    await $`gh api repos/${repository}/releases/tags/${release.tagName}`.run({
+      capture: true,
+    });
+
+  if (existingResult.code !== 0) {
+    throw new Error(
+      existingResult.stderr ||
+        existingResult.stdout ||
+        `failed to read existing release ${release.tagName}`,
+    );
+  }
+
+  const existingRelease = JSON.parse(existingResult.stdout);
+  const updateResult =
+    await $`gh api repos/${repository}/releases/${existingRelease.id} -X PATCH --input -`.run(
+      {
+        stdin: payload,
+        capture: true,
+      },
+    );
+
+  if (updateResult.code !== 0) {
+    throw new Error(
+      updateResult.stderr ||
+        updateResult.stdout ||
+        `failed to update existing release ${release.tagName}`,
+    );
+  }
+
+  console.log(`Updated GitHub release: ${release.tagName}`);
+}
+
+/**
  * Extract changelog content for a specific version
  * @param {string} version
  * @returns {string}
@@ -99,17 +140,31 @@ try {
     tag_name: release.tagName,
     name: release.name,
     body: release.body,
+    make_latest: release.makeLatest ? "true" : "false",
   });
 
   try {
-    await $`gh api repos/${repository}/releases -X POST --input -`.run({
-      stdin: payload,
-    });
+    const result =
+      await $`gh api repos/${repository}/releases -X POST --input -`.run({
+        stdin: payload,
+        capture: true,
+      });
+
+    if (result.code !== 0) {
+      const output = `${result.stdout || ""}${result.stderr || ""}`;
+      throw new Error(output || `gh api exited with code ${result.code}`);
+    }
+
     console.log(`Created GitHub release: ${release.tagName}`);
   } catch (error) {
+    const message = error.message || "";
     // Check if release already exists
-    if (error.message && error.message.includes("already exists")) {
-      console.log(`Release ${release.tagName} already exists, skipping`);
+    if (
+      message.includes("already exists") ||
+      message.includes("already_exists")
+    ) {
+      console.log(`Release ${release.tagName} already exists, updating`);
+      await updateExistingRelease({ repository, release, payload });
     } else {
       throw error;
     }

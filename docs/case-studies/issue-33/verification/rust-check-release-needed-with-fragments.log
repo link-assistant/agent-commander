@@ -1,0 +1,4 @@
+Output: max_published_version=0.1.0
+Found changelog fragments, proceeding with release
+Output: should_release=true
+Output: skip_bump=false

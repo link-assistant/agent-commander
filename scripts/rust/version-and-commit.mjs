@@ -21,6 +21,10 @@ import {
   unlinkSync,
 } from "fs";
 import { join } from "path";
+import {
+  fetchCratesVersions,
+  selectRustReleaseVersion,
+} from "./release-registry.mjs";
 
 // Load use-m dynamically
 const { use } = eval(
@@ -92,6 +96,22 @@ function getCurrentVersion() {
 }
 
 /**
+ * Get package name from Cargo.toml
+ * @returns {string}
+ */
+function getPackageName() {
+  const cargoToml = readFileSync("Cargo.toml", "utf-8");
+  const match = cargoToml.match(/^name\s*=\s*"([^"]+)"/m);
+
+  if (!match) {
+    console.error("Error: Could not parse package name from Cargo.toml");
+    process.exit(1);
+  }
+
+  return match[1];
+}
+
+/**
  * Calculate new version based on bump type
  * @param {{major: number, minor: number, patch: number}} current
  * @param {string} bumpType
@@ -127,17 +147,15 @@ function updateCargoToml(newVersion) {
 }
 
 /**
- * Check if a git tag exists for this version
- * @param {string} version
- * @returns {Promise<boolean>}
+ * List Rust release tags that already exist locally.
+ * @returns {Promise<string[]>}
  */
-async function checkTagExists(version) {
-  try {
-    await $`git rev-parse ${releaseTag(version)}`.run({ capture: true });
-    return true;
-  } catch {
-    return false;
-  }
+async function listRustReleaseTags() {
+  const result = await $`git tag --list "rust_*"`.run({ capture: true });
+  return result.stdout
+    .split(/\r?\n/)
+    .map((tag) => tag.trim())
+    .filter(Boolean);
 }
 
 /**
@@ -253,15 +271,29 @@ async function main() {
     await $`git config user.email "github-actions[bot]@users.noreply.github.com"`;
 
     const current = getCurrentVersion();
-    const newVersion = calculateNewVersion(current, bumpType);
+    const packageName = getPackageName();
 
-    // Check if this version was already released
+    try {
+      await $`git fetch --tags origin`;
+    } catch (error) {
+      console.warn(`Warning: Could not fetch remote tags: ${error.message}`);
+    }
+
+    const existingTags = await listRustReleaseTags();
+    const publishedVersions = await fetchCratesVersions(packageName);
+    const requestedVersion = calculateNewVersion(current, bumpType);
+    const newVersion = selectRustReleaseVersion({
+      currentVersion: current,
+      bumpType,
+      publishedVersions,
+      existingTags,
+    });
     const tag = releaseTag(newVersion);
-    if (await checkTagExists(newVersion)) {
-      console.log(`Tag ${tag} already exists`);
-      setOutput("already_released", "true");
-      setOutput("new_version", newVersion);
-      return;
+
+    if (newVersion !== requestedVersion) {
+      console.log(
+        `Requested Rust release version ${requestedVersion} is unavailable; using ${newVersion}`,
+      );
     }
 
     // Update version in Cargo.toml

@@ -18,6 +18,7 @@ test('buildReleaseMetadata - JavaScript release uses package prefix and badge', 
 
   assert.strictEqual(release.tagName, 'js_0.4.1');
   assert.strictEqual(release.name, '[JavaScript] v0.4.1');
+  assert.strictEqual(release.makeLatest, false);
   assert.match(release.body, /img\.shields\.io\/badge\/npm-v0\.4\.1-cb3837/);
   assert.match(
     release.body,
@@ -36,6 +37,7 @@ test('buildReleaseMetadata - Rust release uses package prefix and badge', () => 
 
   assert.strictEqual(release.tagName, 'rust_0.1.0');
   assert.strictEqual(release.name, '[Rust] v0.1.0');
+  assert.strictEqual(release.makeLatest, true);
   assert.match(
     release.body,
     /img\.shields\.io\/badge\/crates\.io-v0\.1\.0-dea584/
