@@ -10,10 +10,11 @@
 pub mod cli_parser;
 pub mod command_builder;
 pub mod executor;
+pub mod result_metadata;
 pub mod streaming;
 pub mod tools;
 
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::AsyncWriteExt;
@@ -32,6 +33,10 @@ pub use command_builder::{
 pub use executor::{
     execute_command, execute_detached, setup_signal_handler, start_command, ExecutionResult,
     ProcessHandle,
+};
+
+pub use result_metadata::{
+    build_normalized_result_metadata, BuildMetadataOptions, PricingInfo, ResultMetadata,
 };
 
 pub use streaming::{
@@ -96,6 +101,10 @@ pub struct AgentResult {
     pub parsed_output: Option<Vec<Value>>,
     /// Session ID for resuming
     pub session_id: Option<String>,
+    /// Aggregated stream token usage, when the tool exposes it
+    pub usage: Option<Value>,
+    /// Stable normalized metadata for caller reporting
+    pub metadata: ResultMetadata,
 }
 
 /// Agent start options
@@ -156,6 +165,47 @@ fn should_create_prompt_file(options: &AgentOptions, dry_run: bool) -> bool {
     }
 
     options.prompt.is_some() || options.system_prompt.is_some()
+}
+
+fn extract_usage_value(tool: &str, output: &str) -> Option<Value> {
+    match tool {
+        "claude" => {
+            let usage = tools::claude::extract_usage(output);
+            Some(json!({
+                "inputTokens": usage.input_tokens,
+                "outputTokens": usage.output_tokens,
+                "cacheCreationTokens": usage.cache_creation_tokens,
+                "cacheReadTokens": usage.cache_read_tokens,
+            }))
+        }
+        "codex" => {
+            let usage = tools::codex::extract_usage(output);
+            Some(json!({
+                "inputTokens": usage.input_tokens,
+                "outputTokens": usage.output_tokens,
+            }))
+        }
+        "opencode" => {
+            let usage = tools::opencode::extract_usage(output);
+            Some(json!({
+                "inputTokens": usage.input_tokens,
+                "outputTokens": usage.output_tokens,
+            }))
+        }
+        "agent" => {
+            let usage = tools::agent::extract_usage(output);
+            Some(json!({
+                "inputTokens": usage.input_tokens,
+                "outputTokens": usage.output_tokens,
+                "reasoningTokens": usage.reasoning_tokens,
+                "cacheReadTokens": usage.cache_read_tokens,
+                "cacheWriteTokens": usage.cache_write_tokens,
+                "totalCost": usage.total_cost,
+                "stepCount": usage.step_count,
+            }))
+        }
+        _ => None,
+    }
 }
 
 impl Agent {
@@ -366,7 +416,17 @@ impl Agent {
             if stop_options.dry_run {
                 println!("Dry run - command that would be executed:");
                 println!("{}", stop_command);
-                return Ok(AgentResult::default());
+                return Ok(AgentResult {
+                    metadata: build_normalized_result_metadata(BuildMetadataOptions {
+                        tool: &self.options.tool,
+                        exit_code: 0,
+                        plain_output: "",
+                        parsed_output: None,
+                        session_id: None,
+                        usage: None,
+                    }),
+                    ..Default::default()
+                });
             }
 
             let result = match execute_command(&stop_command, false, true)
@@ -381,11 +441,22 @@ impl Agent {
             };
             self.cleanup_prompt_temp_dir().await;
 
+            let metadata = build_normalized_result_metadata(BuildMetadataOptions {
+                tool: &self.options.tool,
+                exit_code: result.exit_code,
+                plain_output: &result.stdout,
+                parsed_output: None,
+                session_id: None,
+                usage: None,
+            });
+
             return Ok(AgentResult {
                 exit_code: result.exit_code,
                 plain_output: result.stdout,
                 parsed_output: None,
                 session_id: None,
+                usage: None,
+                metadata,
             });
         }
 
@@ -448,11 +519,23 @@ impl Agent {
                 }
             }
 
+            let usage = extract_usage_value(&self.options.tool, &plain_output);
+            let metadata = build_normalized_result_metadata(BuildMetadataOptions {
+                tool: &self.options.tool,
+                exit_code,
+                plain_output: &plain_output,
+                parsed_output: parsed_output.as_deref(),
+                session_id: self.session_id.clone(),
+                usage: usage.clone(),
+            });
+
             let result = AgentResult {
                 exit_code,
                 plain_output,
                 parsed_output,
                 session_id: self.session_id.clone(),
+                usage,
+                metadata,
             };
             self.cleanup_prompt_temp_dir().await;
             return Ok(result);

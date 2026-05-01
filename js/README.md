@@ -74,7 +74,10 @@ const result = await controller.stop();
 
 console.log(result.exitCode);
 console.log(result.output.plain);
+console.log(result.metadata);
 ```
+
+`result.metadata` is a normalized summary for `claude`, `codex`, `opencode`, and `agent` runs. It includes success and error classification, session ID, usage-limit reset details, result summary, cost estimates, stream token usage, optional model usage, and sub-agent call summaries.
 
 For large generated prompts, pass `promptFile` or let the controller create a temporary prompt file automatically for `claude`, `codex`, `opencode`, and `agent`:
 
