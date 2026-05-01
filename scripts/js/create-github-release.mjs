@@ -51,6 +51,47 @@ if (!version || !repository) {
   process.exit(1);
 }
 
+/**
+ * Update an existing release by tag name.
+ * @param {Object} options
+ * @param {string} options.repository
+ * @param {{tagName: string}} options.release
+ * @param {string} options.payload
+ */
+async function updateExistingRelease({ repository, release, payload }) {
+  const existingResult =
+    await $`gh api repos/${repository}/releases/tags/${release.tagName}`.run({
+      capture: true,
+    });
+
+  if (existingResult.code !== 0) {
+    throw new Error(
+      existingResult.stderr ||
+        existingResult.stdout ||
+        `failed to read existing release ${release.tagName}`,
+    );
+  }
+
+  const existingRelease = JSON.parse(existingResult.stdout);
+  const updateResult =
+    await $`gh api repos/${repository}/releases/${existingRelease.id} -X PATCH --input -`.run(
+      {
+        stdin: payload,
+        capture: true,
+      },
+    );
+
+  if (updateResult.code !== 0) {
+    throw new Error(
+      updateResult.stderr ||
+        updateResult.stdout ||
+        `failed to update existing release ${release.tagName}`,
+    );
+  }
+
+  console.log(`Updated GitHub release: ${release.tagName}`);
+}
+
 try {
   // Read CHANGELOG.md
   const changelog = readFileSync("./CHANGELOG.md", "utf8");
@@ -85,13 +126,29 @@ try {
     tag_name: release.tagName,
     name: release.name,
     body: release.body,
+    make_latest: release.makeLatest ? "true" : "false",
   });
 
-  await $`gh api repos/${repository}/releases -X POST --input -`.run({
-    stdin: payload,
-  });
+  const result =
+    await $`gh api repos/${repository}/releases -X POST --input -`.run({
+      stdin: payload,
+      capture: true,
+    });
 
-  console.log(`\u2705 Created GitHub release: ${release.tagName}`);
+  if (result.code !== 0) {
+    const output = `${result.stdout || ""}${result.stderr || ""}`;
+    if (
+      output.includes("already exists") ||
+      output.includes("already_exists")
+    ) {
+      console.log(`GitHub release ${release.tagName} already exists, updating`);
+      await updateExistingRelease({ repository, release, payload });
+    } else {
+      throw new Error(output || `gh api exited with code ${result.code}`);
+    }
+  } else {
+    console.log(`\u2705 Created GitHub release: ${release.tagName}`);
+  }
 } catch (error) {
   console.error("Error creating release:", error.message);
   process.exit(1);
