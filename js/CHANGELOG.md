@@ -1,5 +1,11 @@
 # agent-commander
 
+## 0.6.1
+
+### Patch Changes
+
+- ac30054: Add Qwen and Gemini prompt-file stdin handling plus native executable, environment, and raw argument passthrough parity.
+
 ## 0.6.0
 
 ### Minor Changes
