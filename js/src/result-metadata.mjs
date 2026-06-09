@@ -1,6 +1,10 @@
 const USAGE_LIMIT_PATTERNS = [
   /usage limit (?:reached|exceeded)/i,
-  /rate[_\s-]?limit(?:ed| reached| exceeded)?/i,
+  // Require an explicit qualifier so a bare "ratelimit" does not match. The raw
+  // stream-json output emitted by Claude contains HTTP header names such as
+  // "anthropic-ratelimit-unified-5h-reset", which previously triggered a false
+  // positive on every successful run. See issue #37.
+  /rate[_\s-]?limit(?:ed|\s+reached|\s+exceeded)/i,
   /limit reached/i,
   /billing hard limit/i,
   /please try again at/i,
@@ -72,8 +76,37 @@ function cleanResetTime(value) {
   return cleaned;
 }
 
-function detectUsageLimit(plainOutput) {
+function findFinalResultMessage(messages) {
+  for (const message of [...messages].reverse()) {
+    if (message && typeof message === 'object' && message.type === 'result') {
+      return message;
+    }
+  }
+  return null;
+}
+
+// A structured result message that reports an explicit success is authoritative.
+// The raw stream-json output contains HTTP header names (e.g.
+// "anthropic-ratelimit-unified-5h-reset") that can match usage-limit patterns
+// even on a fully successful run, so trust this signal over the text scan when
+// it is available. See issue #37.
+function hasStructuredSuccess(messages) {
+  const resultMessage = findFinalResultMessage(messages);
+  return Boolean(
+    resultMessage &&
+    resultMessage.is_error !== true &&
+    (resultMessage.subtype === 'success' ||
+      resultMessage.terminal_reason === 'completed')
+  );
+}
+
+function detectUsageLimit({ plainOutput, messages = [] }) {
   const output = plainOutput || '';
+
+  if (hasStructuredSuccess(messages)) {
+    return { reached: false, resetTime: null, timezone: null };
+  }
+
   const reached = USAGE_LIMIT_PATTERNS.some((pattern) => pattern.test(output));
   let resetTime = null;
   let timezone = null;
@@ -377,7 +410,7 @@ export function buildNormalizedResultMetadata(options) {
     toolConfig = null,
   } = options;
   const messages = normalizeMessages({ parsedOutput, plainOutput, toolConfig });
-  const usageLimit = detectUsageLimit(plainOutput);
+  const usageLimit = detectUsageLimit({ plainOutput, messages });
   const error = detectExecutionError({
     exitCode,
     plainOutput,
