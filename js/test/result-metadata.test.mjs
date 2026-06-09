@@ -81,3 +81,81 @@ test('result metadata - exposes Agent pricing and sub-agent calls', () => {
   assert.strictEqual(metadata.subAgentCalls.length, 1);
   assert.strictEqual(metadata.subAgentCalls[0].id, 'call-1');
 });
+
+test('result metadata - does not flag success as limit on ratelimit header names', () => {
+  // Regression test for issue #37: Claude's stream-json output includes HTTP
+  // response header names such as "anthropic-ratelimit-unified-5h-reset". These
+  // must not be misread as a usage-limit signal on a fully successful run.
+  const plainOutput = [
+    '{"type":"system","subtype":"init","session_id":"sess-1"}',
+    JSON.stringify({
+      type: 'assistant',
+      message: {
+        role: 'assistant',
+        usage: {
+          input_tokens: 10,
+          output_tokens: 1,
+        },
+      },
+      raw_headers: {
+        'anthropic-ratelimit-unified-5h-reset': '2026-06-09T23:00:00Z',
+        'anthropic-ratelimit-requests-remaining': '999',
+      },
+    }),
+    JSON.stringify({
+      type: 'result',
+      subtype: 'success',
+      is_error: false,
+      result: '7',
+      stop_reason: 'end_turn',
+      terminal_reason: 'completed',
+    }),
+  ].join('\n');
+
+  const metadata = buildNormalizedResultMetadata({
+    tool: 'claude',
+    exitCode: 0,
+    plainOutput,
+  });
+
+  assert.strictEqual(metadata.success, true);
+  assert.strictEqual(metadata.limitReached, false);
+  assert.strictEqual(metadata.limitResetTime, null);
+  assert.strictEqual(metadata.errorDuringExecution, false);
+  assert.strictEqual(metadata.resultSummary, '7');
+});
+
+test('result metadata - bare ratelimit substring does not match pattern', () => {
+  // Without any structured success message, the tightened pattern must still
+  // ignore a bare "ratelimit" substring (e.g. inside a header name).
+  const metadata = buildNormalizedResultMetadata({
+    tool: 'claude',
+    exitCode: 0,
+    plainOutput:
+      'logged header anthropic-ratelimit-unified-5h-reset during request',
+  });
+
+  assert.strictEqual(metadata.success, true);
+  assert.strictEqual(metadata.limitReached, false);
+});
+
+test('result metadata - still detects genuine Claude usage limit', () => {
+  // A real usage-limit run must still be classified as limit reached.
+  const plainOutput = JSON.stringify({
+    type: 'result',
+    subtype: 'error_during_execution',
+    is_error: true,
+    result:
+      'Claude AI usage limit reached. Please try again at 2026-06-10 09:00 UTC.',
+  });
+
+  const metadata = buildNormalizedResultMetadata({
+    tool: 'claude',
+    exitCode: 1,
+    plainOutput,
+  });
+
+  assert.strictEqual(metadata.limitReached, true);
+  assert.strictEqual(metadata.success, false);
+  assert.strictEqual(metadata.limitResetTime, '2026-06-10 09:00 UTC');
+});
