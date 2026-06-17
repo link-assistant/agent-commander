@@ -6,7 +6,7 @@
  * - claude: Anthropic Claude Code CLI
  * - codex: OpenAI Codex CLI
  * - opencode: OpenCode CLI
- * - agent: @link-assistant/agent (unrestricted OpenCode fork)
+ * - agent: @link-assistant/agent (OpenCode fork with native permission modes)
  * - qwen: Qwen Code CLI
  * - gemini: Gemini CLI
  */
@@ -150,6 +150,7 @@ function parseJsonMessages(options) {
  * @param {boolean} [options.json=false] - Enable JSON output mode
  * @param {string} [options.resume] - Resume a previous session (tool-specific)
  * @param {boolean} [options.readOnly=false] - Enforce native read-only/planning mode
+ * @param {boolean} [options.planOnly=false] - Enforce native planning mode (where the tool distinguishes it)
  * @param {Object} [options.toolOptions] - Additional tool-specific options
  * @returns {Object} Agent controller with start, stop, and utility methods
  */
@@ -167,6 +168,7 @@ export function agent(options) {
     json = false,
     resume,
     readOnly = false,
+    planOnly = false,
     toolOptions = {},
   } = options;
 
@@ -274,6 +276,7 @@ export function agent(options) {
         containerName,
         detached,
         readOnly,
+        planOnly,
       };
 
       // Add tool-specific options if tool is known

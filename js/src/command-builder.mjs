@@ -20,6 +20,7 @@ import { isToolSupported, getTool } from './tools/index.mjs';
  * @param {string} [options.containerName] - Container name (for docker isolation)
  * @param {boolean} [options.detached] - Run in detached mode
  * @param {boolean} [options.readOnly] - Enforce native read-only/planning mode
+ * @param {boolean} [options.planOnly] - Enforce native planning mode (where the tool distinguishes it)
  * @returns {string} The command string
  */
 export function buildAgentCommand(options) {
@@ -37,15 +38,20 @@ export function buildAgentCommand(options) {
     containerName,
     detached = false,
     readOnly = false,
+    planOnly = false,
     ...toolOptions
   } = options;
+
+  // A planning request implies a read-only restriction for tools that do not
+  // distinguish the two modes.
+  const readOnlyRequested = readOnly || planOnly;
 
   // Build base command using tool-specific builder if available
   let baseCommand;
 
   if (isToolSupported({ toolName: tool })) {
     const toolConfig = getTool({ toolName: tool });
-    if (readOnly && !toolConfig.supportsReadOnly) {
+    if (readOnlyRequested && !toolConfig.supportsReadOnly) {
       throw new Error(readOnlyUnsupportedError(tool));
     }
     if (toolConfig.buildCommand) {
@@ -58,7 +64,8 @@ export function buildAgentCommand(options) {
         model,
         json,
         resume,
-        readOnly,
+        readOnly: readOnlyRequested,
+        planOnly,
         ...toolOptions,
       });
     } else {
@@ -71,7 +78,7 @@ export function buildAgentCommand(options) {
       });
     }
   } else {
-    if (readOnly) {
+    if (readOnlyRequested) {
       throw new Error(readOnlyUnsupportedError(tool));
     }
     // Unknown tool, use generic command builder
@@ -111,7 +118,7 @@ export function buildAgentCommand(options) {
  * @returns {string} Error message
  */
 function readOnlyUnsupportedError(tool) {
-  return `Tool "${tool}" does not support enforceable read-only mode. Choose one of: claude, codex, opencode, gemini, qwen; or run without --read-only.`;
+  return `Tool "${tool}" does not support enforceable read-only mode. Choose one of: claude, codex, opencode, gemini, qwen, agent; or run without --read-only.`;
 }
 
 /**

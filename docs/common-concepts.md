@@ -13,7 +13,7 @@ Both packages support these tool names:
 | `opencode` | OpenCode CLI              | permission deny rules    |
 | `qwen`     | Qwen Code CLI             | `--approval-mode plan`   |
 | `gemini`   | Gemini CLI                | `--approval-mode plan`   |
-| `agent`    | @link-assistant/agent     | not enforceable          |
+| `agent`    | @link-assistant/agent     | `--permission-mode readonly` (`--plan-only` → `plan`) |
 
 Unsupported tools can still be executed through the generic command builder, but read-only planning mode is rejected unless the tool has an enforceable native restriction.
 
@@ -46,7 +46,7 @@ Both packages expose raw passthrough controls for the native `claude`, `codex`, 
 
 Passthrough environment variables are attached to the native tool side of prompt pipelines, so `cat prompt.txt | env KEY=value codex exec ...` applies `KEY` to `codex` without altering prompt-file reads. Raw arguments are appended after typed arguments, allowing callers to override or extend native CLI behavior such as MCP config, reasoning config, permission modes, sandbox modes, approval modes, and custom config paths.
 
-Claude and Codex builders also expose typed `permissionMode` / `permission_mode`, `sandboxMode` / `sandbox_mode`, and `approvalMode` / `approval_mode` fields for callers that build commands directly.
+Claude and Codex builders also expose typed `permissionMode` / `permission_mode`, `sandboxMode` / `sandbox_mode`, and `approvalMode` / `approval_mode` fields for callers that build commands directly. The `agent` builder exposes typed `permissionMode` / `permission_mode` (`auto` | `plan` | `readonly` | `ask`) and an OpenCode-compatible `permission` / `permission` JSON policy. `--read-only` maps to `readonly` and `--plan-only` maps to `plan` for `agent`.
 
 ## Claude Options
 

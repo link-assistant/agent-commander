@@ -42,6 +42,7 @@ async function main() {
       model: options.model,
       resume: options.resume,
       readOnly: options.readOnly,
+      planOnly: options.planOnly,
       isolation: options.isolation,
       screenName: options.screenName,
       containerName: options.containerName,

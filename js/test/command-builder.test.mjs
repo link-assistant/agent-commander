@@ -368,10 +368,35 @@ test('buildAgentCommand - read-only still works with screen isolation', () => {
   assert.ok(command.includes('plan'));
 });
 
-test('buildAgentCommand - read-only rejects unsupported agent tool', () => {
+test('buildAgentCommand - agent read-only uses readonly permission mode', () => {
+  const command = buildAgentCommand({
+    tool: 'agent',
+    workingDirectory: '/tmp/test',
+    readOnly: true,
+    isolation: 'none',
+  });
+
+  assert.ok(command.includes('--permission-mode'));
+  assert.ok(command.includes('readonly'));
+});
+
+test('buildAgentCommand - agent plan-only uses plan permission mode', () => {
+  const command = buildAgentCommand({
+    tool: 'agent',
+    workingDirectory: '/tmp/test',
+    planOnly: true,
+    isolation: 'none',
+  });
+
+  assert.ok(command.includes('--permission-mode'));
+  assert.ok(command.includes('plan'));
+  assert.ok(!command.includes('readonly'));
+});
+
+test('buildAgentCommand - read-only rejects unsupported tool', () => {
   assert.throws(() => {
     buildAgentCommand({
-      tool: 'agent',
+      tool: 'unknown-tool',
       workingDirectory: '/tmp/test',
       readOnly: true,
       isolation: 'none',
