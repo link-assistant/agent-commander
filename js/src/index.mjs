@@ -29,7 +29,7 @@ import { getTool, isToolSupported } from './tools/index.mjs';
 import { createOutputStream, createInputStream } from './streaming/index.mjs';
 import { stringifyNdjsonLine } from './streaming/ndjson.mjs';
 import { buildNormalizedResultMetadata } from './result-metadata.mjs';
-import { PermissionRelay } from './permissions/index.mjs';
+import { PermissionRelay, askUnsupportedError } from './permissions/index.mjs';
 
 const PROMPT_FILE_TOOLS = new Set([
   'claude',
@@ -295,6 +295,13 @@ export function agent(options) {
       onMessage,
       onOutput,
     } = startOptions;
+
+    // Fail clearly (before any filesystem side effects such as writing the
+    // temporary prompt file) when ask mode is requested for a tool that has no
+    // drivable per-command approval protocol — same pattern as `--read-only`.
+    if (approveEach && !(toolConfig && toolConfig.supportsAsk)) {
+      throw new Error(askUnsupportedError({ tool }));
+    }
 
     // Create output stream for JSON parsing if in JSON mode, callbacks are
     // provided, or a live permission relay is active (the relay inspects every
