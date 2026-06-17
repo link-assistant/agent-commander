@@ -27,7 +27,9 @@ import {
 } from './executor.mjs';
 import { getTool, isToolSupported } from './tools/index.mjs';
 import { createOutputStream, createInputStream } from './streaming/index.mjs';
+import { stringifyNdjsonLine } from './streaming/ndjson.mjs';
 import { buildNormalizedResultMetadata } from './result-metadata.mjs';
+import { PermissionRelay } from './permissions/index.mjs';
 
 const PROMPT_FILE_TOOLS = new Set([
   'claude',
@@ -63,6 +65,34 @@ function buildPromptFileContent(options) {
   }
 
   return systemPrompt ? `${systemPrompt}\n\n${prompt || ''}` : prompt || '';
+}
+
+/**
+ * Build the initial user-message frame written to a tool's stdin when relaying
+ * per-command approvals over a streaming input channel.
+ * @param {Object} options - Options
+ * @param {string} options.toolName - Tool name (`agent` | `claude`)
+ * @param {string} [options.prompt] - User prompt
+ * @param {string} [options.systemPrompt] - System prompt
+ * @returns {Object} A user-message frame ready to be serialized as NDJSON
+ */
+function buildInitialInputFrame(options) {
+  const { toolName, prompt, systemPrompt } = options;
+
+  if (toolName === 'claude') {
+    // Claude stream-json input expects an Anthropic-style message envelope.
+    return {
+      type: 'user',
+      message: { role: 'user', content: prompt || '' },
+    };
+  }
+
+  // Agent's stream-json input takes a plain user message string (system prompt
+  // is combined in, since agent has no separate system-prompt channel here).
+  const combinedPrompt = systemPrompt
+    ? `${systemPrompt}\n\n${prompt || ''}`
+    : prompt || '';
+  return { type: 'user', message: combinedPrompt };
 }
 
 /**
@@ -151,6 +181,10 @@ function parseJsonMessages(options) {
  * @param {string} [options.resume] - Resume a previous session (tool-specific)
  * @param {boolean} [options.readOnly=false] - Enforce native read-only/planning mode
  * @param {boolean} [options.planOnly=false] - Enforce native planning mode (where the tool distinguishes it)
+ * @param {boolean} [options.approveEach=false] - Enforce per-command approval (ask mode)
+ * @param {Function} [options.onPermissionRequest] - async (normalizedRequest) => 'once'|'always'|'reject';
+ *   when provided together with approveEach for a relay-capable tool, native permission requests are
+ *   normalized, relayed to this callback, and the decision is forwarded to the tool's stdin
  * @param {Object} [options.toolOptions] - Additional tool-specific options
  * @returns {Object} Agent controller with start, stop, and utility methods
  */
@@ -169,6 +203,8 @@ export function agent(options) {
     resume,
     readOnly = false,
     planOnly = false,
+    approveEach = false,
+    onPermissionRequest,
     toolOptions = {},
   } = options;
 
@@ -191,10 +227,20 @@ export function agent(options) {
     ? getTool({ toolName: tool })
     : null;
 
+  // Live per-command approval relay is active only when ask mode is requested,
+  // a decision callback is supplied, and the tool exposes a relayable protocol.
+  const relayActive = Boolean(
+    approveEach &&
+    typeof onPermissionRequest === 'function' &&
+    toolConfig &&
+    toolConfig.supportsAsk
+  );
+
   let processHandle = null;
   let removeSignalHandler = null;
   let command = null;
   let outputStream = null;
+  let permissionRelay = null;
   let sessionId = null;
   let promptTempDir = null;
 
@@ -250,15 +296,32 @@ export function agent(options) {
       onOutput,
     } = startOptions;
 
-    // Create output stream for JSON parsing if in JSON mode or callbacks provided
-    if (json || onMessage) {
+    // Create output stream for JSON parsing if in JSON mode, callbacks are
+    // provided, or a live permission relay is active (the relay inspects every
+    // parsed message looking for native permission requests).
+    if (json || onMessage || relayActive) {
       outputStream = createOutputStream({
-        onMessage: onMessage ? (data) => onMessage(data.message) : undefined,
+        onMessage: (data) => {
+          if (onMessage) {
+            onMessage(data.message);
+          }
+          if (permissionRelay) {
+            // Relay native permission requests to the consumer and forward the
+            // decision to the tool's stdin. Errors must not break the stream.
+            Promise.resolve(
+              permissionRelay.handleMessage({ message: data.message })
+            ).catch(() => {});
+          }
+        },
       });
     }
 
     try {
-      const preparedPromptFile = await preparePromptFile({ dryRun });
+      // In relay mode the prompt is delivered as the initial NDJSON user frame
+      // over stdin, so no temporary prompt file is created or piped.
+      const preparedPromptFile = relayActive
+        ? undefined
+        : await preparePromptFile({ dryRun });
       const promptHandledByTempFile = preparedPromptFile && !promptFile;
 
       // Build the command with tool-specific options
@@ -277,6 +340,7 @@ export function agent(options) {
         detached,
         readOnly,
         planOnly,
+        approveEach,
       };
 
       // Add tool-specific options if tool is known
@@ -285,6 +349,15 @@ export function agent(options) {
         commandOptions.json = json;
         commandOptions.resume = resume;
         Object.assign(commandOptions, toolOptions);
+      }
+
+      // When relaying per-command approvals, force a streaming JSON channel in
+      // both directions: the tool emits permission requests on stdout and reads
+      // our decisions plus the initial prompt as NDJSON frames on stdin.
+      if (relayActive) {
+        commandOptions.json = true;
+        commandOptions.jsonInput = true;
+        commandOptions.streamInput = true;
       }
 
       command = buildAgentCommand(commandOptions);
@@ -314,7 +387,7 @@ export function agent(options) {
         }
       } else {
         // For attached mode, start command without waiting
-        const commandOptions = { attached };
+        const commandOptions = { attached, pipeStdin: relayActive };
 
         // Add output handling for streaming
         if (onOutput) {
@@ -334,6 +407,27 @@ export function agent(options) {
         }
 
         processHandle = await startCommand(command, commandOptions);
+
+        // Establish the live permission relay: it writes normalized decisions
+        // (and the initial user prompt) to the child's stdin as NDJSON frames.
+        if (relayActive) {
+          permissionRelay = new PermissionRelay({
+            tool,
+            onRequest: onPermissionRequest,
+            write: (line) => processHandle.writeStdin(line),
+          });
+
+          // Kick off the turn by sending the user prompt as the first frame.
+          processHandle.writeStdin(
+            stringifyNdjsonLine({
+              value: buildInitialInputFrame({
+                toolName: tool,
+                prompt,
+                systemPrompt,
+              }),
+            })
+          );
+        }
       }
     } catch (error) {
       await cleanupPromptTempDir();
@@ -553,3 +647,15 @@ export { tools, getTool, listTools, isToolSupported } from './tools/index.mjs';
 export { JsonOutputStream, JsonInputStream } from './streaming/index.mjs';
 export { parseNdjsonLine, stringifyNdjsonLine } from './streaming/ndjson.mjs';
 export { buildNormalizedResultMetadata } from './result-metadata.mjs';
+export {
+  ASK_SUPPORTED_TOOLS,
+  ASK_DECISIONS,
+  ASK_SCOPE,
+  PERMISSION_PARITY,
+  supportsAsk,
+  askUnsupportedError,
+  normalizePermissionRequest,
+  buildPermissionResponse,
+  PermissionRelay,
+  createPermissionRelay,
+} from './permissions/index.mjs';

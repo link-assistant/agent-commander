@@ -404,6 +404,64 @@ test('buildAgentCommand - read-only rejects unsupported tool', () => {
   }, /does not support enforceable read-only mode/);
 });
 
+test('buildAgentCommand - agent approve-each uses ask permission mode and stream-json', () => {
+  const command = buildAgentCommand({
+    tool: 'agent',
+    workingDirectory: '/tmp/test',
+    prompt: 'Refactor this file',
+    approveEach: true,
+    streamInput: true,
+    isolation: 'none',
+  });
+
+  assert.ok(command.includes('--permission-mode'));
+  assert.ok(command.includes('ask'));
+  assert.ok(command.includes('--input-format'));
+  assert.ok(command.includes('stream-json'));
+  // In stream-input mode the prompt is not piped via printf.
+  assert.ok(!command.includes('printf'));
+});
+
+test('buildAgentCommand - claude approve-each keeps default permission mode', () => {
+  const command = buildAgentCommand({
+    tool: 'claude',
+    workingDirectory: '/tmp/test',
+    prompt: 'Refactor this file',
+    approveEach: true,
+    streamInput: true,
+    isolation: 'none',
+  });
+
+  assert.ok(command.includes('--permission-mode'));
+  assert.ok(command.includes('default'));
+  // Must not bypass permissions when relaying per-command approvals.
+  assert.ok(!command.includes('--dangerously-skip-permissions'));
+});
+
+test('buildAgentCommand - approve-each rejects unsupported known tool (codex)', () => {
+  assert.throws(() => {
+    buildAgentCommand({
+      tool: 'codex',
+      workingDirectory: '/tmp/test',
+      prompt: 'Hello',
+      approveEach: true,
+      isolation: 'none',
+    });
+  }, /does not support enforceable per-command approval/);
+});
+
+test('buildAgentCommand - approve-each rejects unsupported unknown tool', () => {
+  assert.throws(() => {
+    buildAgentCommand({
+      tool: 'unknown-tool',
+      workingDirectory: '/tmp/test',
+      prompt: 'Hello',
+      approveEach: true,
+      isolation: 'none',
+    });
+  }, /does not support enforceable per-command approval/);
+});
+
 test('buildScreenStopCommand', () => {
   const command = buildScreenStopCommand('my-session');
   assert.ok(command.includes('screen'));

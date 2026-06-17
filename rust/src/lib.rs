@@ -12,6 +12,7 @@
 pub mod cli_parser;
 pub mod command_builder;
 pub mod executor;
+pub mod permissions;
 pub mod result_metadata;
 pub mod streaming;
 pub mod tools;
@@ -30,6 +31,12 @@ pub use cli_parser::{
 pub use command_builder::{
     build_agent_command, build_docker_stop_command, build_piped_command, build_screen_stop_command,
     read_only_unsupported_error, supports_read_only, AgentCommandOptions,
+};
+
+pub use permissions::{
+    ask_scope, ask_unsupported_error, build_permission_response, normalize_permission_request,
+    permission_parity, supports_ask, NormalizedPermissionRequest, PermissionParityRow,
+    PermissionRelay, ASK_DECISIONS, ASK_SUPPORTED_TOOLS,
 };
 
 pub use executor::{
@@ -92,6 +99,9 @@ pub struct AgentOptions {
     pub read_only: bool,
     /// Enforce native planning mode (where the tool distinguishes it)
     pub plan_only: bool,
+    /// Approve each mutating command (ask mode), relayed over the tool's native
+    /// per-command JSON permission protocol (only `claude` and `agent`)
+    pub approve_each: bool,
     /// Override the tool executable path/name
     pub executable: Option<String>,
     /// Extra raw arguments appended after typed tool arguments
@@ -248,6 +258,9 @@ impl Agent {
         if (options.read_only || options.plan_only) && !supports_read_only(&options.tool) {
             return Err(read_only_unsupported_error(&options.tool));
         }
+        if options.approve_each && !supports_ask(&options.tool) {
+            return Err(ask_unsupported_error(&options.tool));
+        }
 
         Ok(Self {
             options,
@@ -355,6 +368,7 @@ impl Agent {
             fork_session: self.options.fork_session,
             read_only: self.options.read_only,
             plan_only: self.options.plan_only,
+            approve_each: self.options.approve_each,
             executable: self.options.executable.clone(),
             extra_args: self.options.extra_args.clone(),
             extra_env: self.options.extra_env.clone(),

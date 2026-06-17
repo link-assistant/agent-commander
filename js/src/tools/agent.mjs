@@ -72,6 +72,7 @@ export function mapModelToId(options) {
  * @param {boolean} [options.useExistingClaudeOAuth] - Use existing Claude OAuth credentials
  * @param {boolean} [options.readOnly] - Enforce hard read-only mode (`--permission-mode readonly`)
  * @param {boolean} [options.planOnly] - Enforce planning mode (`--permission-mode plan`)
+ * @param {boolean} [options.approveEach] - Approve each mutating command (`--permission-mode ask`)
  * @param {string} [options.permissionMode] - Explicit agent permission mode (auto | plan | readonly | ask)
  * @param {string} [options.permission] - OpenCode-compatible `--permission` JSON policy
  * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
@@ -84,6 +85,7 @@ export function buildArgs(options) {
     useExistingClaudeOAuth = false,
     readOnly = false,
     planOnly = false,
+    approveEach = false,
     permissionMode,
     permission,
     extraArgs = [],
@@ -93,11 +95,26 @@ export function buildArgs(options) {
 
   // Native, enforceable permission system (agent v0.24.0, PR #272).
   // --plan-only maps to `plan`, --read-only maps to the harder `readonly`,
-  // matching agent's own distinction between the two modes.
+  // --approve-each maps to `ask` (per-command approval relayed over JSON),
+  // matching agent's own distinction between the modes. An explicit
+  // permissionMode always wins.
   const resolvedPermissionMode =
-    permissionMode || (planOnly ? 'plan' : readOnly ? 'readonly' : undefined);
+    permissionMode ||
+    (approveEach
+      ? 'ask'
+      : planOnly
+        ? 'plan'
+        : readOnly
+          ? 'readonly'
+          : undefined);
   if (resolvedPermissionMode) {
     args.push('--permission-mode', resolvedPermissionMode);
+  }
+
+  // Ask mode emits requests mid-turn and blocks until answered, so it requires
+  // a streaming input mode (single-shot --prompt would deadlock).
+  if (resolvedPermissionMode === 'ask') {
+    args.push('--input-format', 'stream-json');
   }
 
   if (permission) {
@@ -135,6 +152,7 @@ export function buildArgs(options) {
  * @param {boolean} [options.useExistingClaudeOAuth] - Use existing Claude OAuth
  * @param {boolean} [options.readOnly] - Enforce hard read-only mode (`--permission-mode readonly`)
  * @param {boolean} [options.planOnly] - Enforce planning mode (`--permission-mode plan`)
+ * @param {boolean} [options.approveEach] - Approve each mutating command (`--permission-mode ask`)
  * @param {string} [options.permissionMode] - Explicit agent permission mode (auto | plan | readonly | ask)
  * @param {string} [options.permission] - OpenCode-compatible `--permission` JSON policy
  * @param {string} [options.executable='agent'] - Executable path/name
@@ -149,9 +167,22 @@ export function buildCommand(options) {
     systemPrompt,
     executable = 'agent',
     extraEnv,
+    streamInput = false,
     ...argOptions
   } = options;
   const args = buildArgs(argOptions);
+
+  const commandHead = `${buildCommandHead({
+    executable,
+    extraEnv,
+  })} ${args.map(escapeArg).join(' ')}`.trim();
+
+  // In stream-input mode the caller owns the child's stdin and writes the
+  // prompt and permission responses as NDJSON frames (per-command approval
+  // relay), so no prompt is piped here.
+  if (streamInput) {
+    return commandHead;
+  }
 
   // Agent expects prompt via stdin, combine system and user prompts
   const combinedPrompt = systemPrompt
@@ -162,10 +193,7 @@ export function buildCommand(options) {
   const inputCommand = promptFile
     ? `cat ${escapeArg(promptFile)}`
     : `printf '%s' '${combinedPrompt.replace(/'/g, "'\\''")}'`;
-  return `${inputCommand} | ${buildCommandHead({
-    executable,
-    extraEnv,
-  })} ${args.map(escapeArg).join(' ')}`.trim();
+  return `${inputCommand} | ${commandHead}`.trim();
 }
 
 /**
@@ -310,6 +338,7 @@ export const agentTool = {
   supportsSystemPrompt: false, // System prompt is combined with user prompt
   supportsResume: false, // Agent doesn't have explicit resume like Claude
   supportsReadOnly: true, // Native --permission-mode readonly/plan (agent v0.24.0, PR #272)
+  supportsAsk: true, // Native --permission-mode ask with JSON permission relay
   defaultModel: 'nemotron-3-super-free', // hive-mind issue #1563, agent PR #243
   modelMap,
   mapModelToId,

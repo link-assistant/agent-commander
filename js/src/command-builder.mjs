@@ -3,6 +3,7 @@
  */
 
 import { isToolSupported, getTool } from './tools/index.mjs';
+import { askUnsupportedError } from './permissions/index.mjs';
 
 /**
  * Build the command for executing an agent
@@ -21,6 +22,7 @@ import { isToolSupported, getTool } from './tools/index.mjs';
  * @param {boolean} [options.detached] - Run in detached mode
  * @param {boolean} [options.readOnly] - Enforce native read-only/planning mode
  * @param {boolean} [options.planOnly] - Enforce native planning mode (where the tool distinguishes it)
+ * @param {boolean} [options.approveEach] - Enforce per-command approval (ask mode)
  * @returns {string} The command string
  */
 export function buildAgentCommand(options) {
@@ -39,6 +41,7 @@ export function buildAgentCommand(options) {
     detached = false,
     readOnly = false,
     planOnly = false,
+    approveEach = false,
     ...toolOptions
   } = options;
 
@@ -54,6 +57,9 @@ export function buildAgentCommand(options) {
     if (readOnlyRequested && !toolConfig.supportsReadOnly) {
       throw new Error(readOnlyUnsupportedError(tool));
     }
+    if (approveEach && !toolConfig.supportsAsk) {
+      throw new Error(askUnsupportedError({ tool }));
+    }
     if (toolConfig.buildCommand) {
       // Use tool-specific command builder
       baseCommand = toolConfig.buildCommand({
@@ -66,6 +72,7 @@ export function buildAgentCommand(options) {
         resume,
         readOnly: readOnlyRequested,
         planOnly,
+        approveEach,
         ...toolOptions,
       });
     } else {
@@ -80,6 +87,9 @@ export function buildAgentCommand(options) {
   } else {
     if (readOnlyRequested) {
       throw new Error(readOnlyUnsupportedError(tool));
+    }
+    if (approveEach) {
+      throw new Error(askUnsupportedError({ tool }));
     }
     // Unknown tool, use generic command builder
     baseCommand = buildToolCommand({

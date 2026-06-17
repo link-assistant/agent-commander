@@ -325,6 +325,7 @@ export const qwenTool = {
   supportsIncludeDirectories: true, // Supports --include-directories
   supportsIncludePartialMessages: true, // Supports --include-partial-messages
   supportsReadOnly: true, // Supports --approval-mode plan
+  supportsAsk: false, // No relayable per-command JSON approval handshake in headless mode
   defaultModel: 'qwen3-coder-480a35',
   modelMap,
   mapModelToId,

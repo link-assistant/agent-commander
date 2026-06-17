@@ -60,6 +60,7 @@ export function mapModelToId(options) {
  * @param {string} [options.sessionId] - Use specific session ID (must be valid UUID)
  * @param {boolean} [options.forkSession] - Create new session ID when resuming
  * @param {boolean} [options.readOnly] - Use Claude plan permission mode
+ * @param {boolean} [options.approveEach] - Approve each command (`--permission-mode default`)
  * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
  * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
  * @param {string} [options.permissionMode] - Explicit Claude permission mode
@@ -81,6 +82,7 @@ export function buildArgs(options) {
     sessionId,
     forkSession = false,
     readOnly = false,
+    approveEach = false,
     extraArgs = [],
     skipDefaultSafetyFlags = false,
     permissionMode,
@@ -88,7 +90,12 @@ export function buildArgs(options) {
 
   const args = [];
 
-  if (readOnly) {
+  if (approveEach) {
+    // Per-command approval: ask before each tool use via the stream-json
+    // can_use_tool control protocol. `default` keeps Claude's own prompting
+    // active instead of bypassing it; the relay answers each request.
+    args.push('--permission-mode', 'default');
+  } else if (readOnly) {
     args.push('--permission-mode', 'plan');
   } else if (permissionMode) {
     args.push('--permission-mode', permissionMode);
@@ -179,6 +186,7 @@ export function buildArgs(options) {
  * @param {string} [options.sessionId] - Use specific session ID (must be valid UUID)
  * @param {boolean} [options.forkSession] - Create new session ID when resuming
  * @param {boolean} [options.readOnly] - Use Claude plan permission mode
+ * @param {boolean} [options.approveEach] - Approve each command (`--permission-mode default`)
  * @param {string} [options.executable='claude'] - Executable path/name
  * @param {Object|Array} [options.extraEnv] - Environment variables for the tool
  * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
@@ -192,14 +200,21 @@ export function buildCommand(options) {
     promptFile,
     executable = 'claude',
     extraEnv,
+    streamInput = false,
     ...argOptions
   } = options;
   const args = buildArgs({
     ...argOptions,
-    prompt: promptFile ? undefined : prompt,
+    // In stream-input mode the prompt is written to stdin as NDJSON frames by
+    // the per-command approval relay, so it is not passed as a --prompt arg.
+    prompt: promptFile || streamInput ? undefined : prompt,
   });
   const command =
     `${buildCommandHead({ executable, extraEnv })} ${args.map(escapeArg).join(' ')}`.trim();
+
+  if (streamInput) {
+    return command;
+  }
 
   if (promptFile) {
     return `cat ${escapeArg(promptFile)} | ${command}`;
@@ -312,6 +327,7 @@ export const claudeTool = {
   supportsVerbose: true, // Supports --verbose
   supportsReplayUserMessages: true, // Supports --replay-user-messages
   supportsReadOnly: true, // Supports --permission-mode plan
+  supportsAsk: true, // Per-command approval via stream-json can_use_tool relay
   defaultModel: 'sonnet',
   modelMap,
   mapModelToId,

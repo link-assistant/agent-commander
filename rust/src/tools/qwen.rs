@@ -341,6 +341,7 @@ pub struct QwenTool {
     pub supports_include_directories: bool,
     pub supports_include_partial_messages: bool,
     pub supports_read_only: bool,
+    pub supports_ask: bool,
     pub default_model: &'static str,
 }
 
@@ -360,6 +361,7 @@ impl Default for QwenTool {
             supports_include_directories: true, // Supports --include-directories
             supports_include_partial_messages: true, // Supports --include-partial-messages
             supports_read_only: true,  // Supports --approval-mode plan
+            supports_ask: false, // Headless mode has no relayable per-command JSON approval handshake
             default_model: "qwen3-coder-480a35",
         }
     }

@@ -65,11 +65,16 @@ pub struct ClaudeBuildOptions {
     pub session_id: Option<String>,
     pub fork_session: bool,
     pub read_only: bool,
+    /// Approve each command (`--permission-mode default` + stream-json relay)
+    pub approve_each: bool,
     pub executable: Option<String>,
     pub extra_env: Vec<(String, String)>,
     pub extra_args: Vec<String>,
     pub skip_default_safety_flags: bool,
     pub permission_mode: Option<String>,
+    /// Caller owns the child's stdin and streams the prompt + permission
+    /// responses as NDJSON frames, so no `--prompt` arg is passed.
+    pub stream_input: bool,
 }
 
 impl ClaudeBuildOptions {
@@ -89,7 +94,13 @@ impl ClaudeBuildOptions {
 pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
     let mut args = Vec::new();
 
-    if options.read_only {
+    if options.approve_each {
+        // Per-command approval: ask before each tool use via the stream-json
+        // can_use_tool control protocol. `default` keeps Claude's own prompting
+        // active instead of bypassing it; the relay answers each request.
+        args.push("--permission-mode".to_string());
+        args.push("default".to_string());
+    } else if options.read_only {
         args.push("--permission-mode".to_string());
         args.push("plan".to_string());
     } else if let Some(ref permission_mode) = options.permission_mode {
@@ -112,7 +123,9 @@ pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
         args.push(mapped_fallback);
     }
 
-    if options.prompt_file.is_none() {
+    // In stream-input mode the prompt is written to stdin as NDJSON frames by
+    // the per-command approval relay, so it is not passed as a --prompt arg.
+    if options.prompt_file.is_none() && !options.stream_input {
         if let Some(ref prompt) = options.prompt {
             args.push("--prompt".to_string());
             args.push(prompt.clone());
@@ -193,7 +206,12 @@ pub fn build_command(options: &ClaudeBuildOptions) -> String {
     .trim()
     .to_string();
 
-    if let Some(prompt_file) = &options.prompt_file {
+    // In stream-input mode the caller owns the child's stdin and writes the
+    // prompt and permission responses as NDJSON frames (per-command approval
+    // relay), so no prompt is piped here.
+    if options.stream_input {
+        command
+    } else if let Some(prompt_file) = &options.prompt_file {
         format!("cat {} | {}", escape_arg(prompt_file), command)
     } else {
         command
@@ -294,6 +312,7 @@ pub struct ClaudeTool {
     pub supports_verbose: bool,
     pub supports_replay_user_messages: bool,
     pub supports_read_only: bool,
+    pub supports_ask: bool,
     pub default_model: &'static str,
 }
 
@@ -314,6 +333,7 @@ impl Default for ClaudeTool {
             supports_verbose: true,        // Supports --verbose
             supports_replay_user_messages: true, // Supports --replay-user-messages
             supports_read_only: true,      // Supports --permission-mode plan
+            supports_ask: true, // Supports --permission-mode default with stream-json relay
             default_model: "sonnet",
         }
     }

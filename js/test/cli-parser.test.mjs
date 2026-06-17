@@ -274,6 +274,40 @@ test('parseStartAgentArgs - plan-only aliases read-only', () => {
   assert.strictEqual(result.readOnly, true);
 });
 
+test('parseStartAgentArgs - with approve-each flag', () => {
+  const args = [
+    '--tool',
+    'agent',
+    '--working-directory',
+    '/tmp/test',
+    '--approve-each',
+  ];
+  const result = parseStartAgentArgs(args);
+
+  assert.strictEqual(result.approveEach, true);
+});
+
+test('parseStartAgentArgs - permission-mode ask aliases approve-each', () => {
+  const args = [
+    '--tool',
+    'agent',
+    '--working-directory',
+    '/tmp/test',
+    '--permission-mode',
+    'ask',
+  ];
+  const result = parseStartAgentArgs(args);
+
+  assert.strictEqual(result.approveEach, true);
+});
+
+test('parseStartAgentArgs - approve-each defaults to false', () => {
+  const args = ['--tool', 'agent', '--working-directory', '/tmp/test'];
+  const result = parseStartAgentArgs(args);
+
+  assert.strictEqual(result.approveEach, false);
+});
+
 test('parseStartAgentArgs - defaults for new options', () => {
   const args = ['--tool', 'claude', '--working-directory', '/tmp/test'];
   const result = parseStartAgentArgs(args);

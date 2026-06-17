@@ -322,6 +322,38 @@ test('agentTool - buildArgs without read-only omits permission mode', () => {
   assert.ok(!args.includes('--permission-mode'));
 });
 
+test('agentTool - supportsAsk is true', () => {
+  assert.strictEqual(agentTool.supportsAsk, true);
+});
+
+test('agentTool - buildArgs approve-each uses ask mode and stream-json input', () => {
+  const args = agentTool.buildArgs({ approveEach: true });
+  const idx = args.indexOf('--permission-mode');
+  assert.ok(idx !== -1);
+  assert.strictEqual(args[idx + 1], 'ask');
+  assert.ok(args.includes('--input-format'));
+  assert.ok(args.includes('stream-json'));
+});
+
+test('claudeTool - supportsAsk is true', () => {
+  assert.strictEqual(claudeTool.supportsAsk, true);
+});
+
+test('claudeTool - buildArgs approve-each keeps default permission mode', () => {
+  const args = claudeTool.buildArgs({ approveEach: true });
+  const idx = args.indexOf('--permission-mode');
+  assert.ok(idx !== -1);
+  assert.strictEqual(args[idx + 1], 'default');
+  assert.ok(!args.includes('--dangerously-skip-permissions'));
+});
+
+test('non-relayable tools do not advertise supportsAsk', () => {
+  assert.notStrictEqual(codexTool.supportsAsk, true);
+  assert.notStrictEqual(qwenTool.supportsAsk, true);
+  assert.notStrictEqual(geminiTool.supportsAsk, true);
+  assert.notStrictEqual(opencodeTool.supportsAsk, true);
+});
+
 test('agentTool - extractUsage from step_finish events', () => {
   const output = `{"type":"step_finish","part":{"tokens":{"input":100,"output":50},"cost":0}}
 {"type":"step_finish","part":{"tokens":{"input":200,"output":75},"cost":0}}`;

@@ -29,6 +29,8 @@ pub struct AgentCommandOptions {
     pub fork_session: bool,
     pub read_only: bool,
     pub plan_only: bool,
+    /// Approve each mutating command (`--permission-mode ask` / `--approve-each`)
+    pub approve_each: bool,
     pub executable: Option<String>,
     pub extra_args: Vec<String>,
     pub extra_env: Vec<(String, String)>,
@@ -167,6 +169,15 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
         read_only_unsupported_error(&options.tool)
     );
 
+    // Per-command approval ("ask" mode) is only enforceable on tools that expose
+    // a drivable JSON permission request/response protocol (agent, claude). Fail
+    // clearly for the rest, mirroring the --read-only gate above.
+    assert!(
+        !(options.approve_each && !crate::permissions::supports_ask(&options.tool)),
+        "{}",
+        crate::permissions::ask_unsupported_error(&options.tool)
+    );
+
     // Build base command using tool-specific builder if available
     let base_command = if is_tool_supported(&options.tool) {
         match options.tool.as_str() {
@@ -186,11 +197,13 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 fork_session: options.fork_session,
                 print: false,
                 read_only: read_only_requested,
+                approve_each: options.approve_each,
                 executable: options.executable.clone(),
                 extra_env: options.extra_env.clone(),
                 extra_args: options.extra_args.clone(),
                 skip_default_safety_flags: options.skip_default_safety_flags,
                 permission_mode: None,
+                stream_input: false,
             }),
             "codex" => codex::build_command(&CodexBuildOptions {
                 prompt: options.prompt.clone(),
@@ -228,8 +241,10 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 use_existing_claude_oauth: false,
                 read_only: read_only_requested,
                 plan_only: options.plan_only,
+                approve_each: options.approve_each,
                 permission_mode: None,
                 permission: None,
+                stream_input: false,
                 executable: options.executable.clone(),
                 extra_env: options.extra_env.clone(),
                 extra_args: options.extra_args.clone(),
@@ -838,6 +853,74 @@ mod tests {
         assert!(command.contains("--permission-mode"));
         assert!(command.contains("plan"));
         assert!(!command.contains("readonly"));
+    }
+
+    #[test]
+    fn test_build_agent_command_agent_approve_each_uses_ask_mode() {
+        let options = AgentCommandOptions {
+            tool: "agent".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            prompt: Some("Do work".to_string()),
+            approve_each: true,
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("--permission-mode"));
+        assert!(command.contains("ask"));
+        // Ask mode requires streaming stdin so requests can be answered mid-turn.
+        assert!(command.contains("--input-format"));
+        assert!(command.contains("stream-json"));
+        assert!(!command.contains("readonly"));
+    }
+
+    #[test]
+    fn test_build_agent_command_claude_approve_each_uses_default_mode() {
+        let options = AgentCommandOptions {
+            tool: "claude".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            prompt: Some("Do work".to_string()),
+            approve_each: true,
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("--permission-mode"));
+        assert!(command.contains("default"));
+        // Default mode keeps Claude's own per-tool prompting active instead of
+        // bypassing it.
+        assert!(!command.contains("--dangerously-skip-permissions"));
+        assert!(!command.contains("plan"));
+    }
+
+    #[test]
+    #[should_panic(expected = "does not support enforceable per-command approval")]
+    fn test_build_agent_command_approve_each_rejects_codex() {
+        let options = AgentCommandOptions {
+            tool: "codex".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            approve_each: true,
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let _command = build_agent_command(&options);
+    }
+
+    #[test]
+    #[should_panic(expected = "does not support enforceable per-command approval")]
+    fn test_build_agent_command_approve_each_rejects_unknown_tool() {
+        let options = AgentCommandOptions {
+            tool: "unknown-tool".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            approve_each: true,
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let _command = build_agent_command(&options);
     }
 
     #[test]
