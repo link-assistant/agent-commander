@@ -51,6 +51,7 @@ Common options:
 - `--prompt-file <path>`: read prompt input from a file for stdin-based tools
 - `--model <name>`: tool-specific model alias or full model name
 - `--read-only` or `--plan-only`: enforce native planning/no-write mode when supported
+- `--approve-each` (alias `--permission-mode ask`): approve each command, relaying native permission prompts as normalized NDJSON (supported for `agent` and `claude`)
 - `--tool-executable <path>`: override the native executable for any supported tool
 - `--tool-env <KEY=VALUE>`: add an environment variable to the native tool process, repeatable
 - `--tool-arg <arg>`: append a raw native tool argument, repeatable
@@ -137,8 +138,9 @@ JavaScript and Rust expose the same core concepts:
 - Dry-run command preview
 - JSON/NDJSON output parsing for tools that support it
 - Read-only planning mode for tools with enforceable native restrictions
+- Per-command approval (ask mode) with a normalized `permission_request`/`permission_response` relay for tools with a drivable native handshake
 
-See [shared concepts](../docs/common-concepts.md) for behavior that should stay aligned across both packages.
+See [shared concepts](../docs/common-concepts.md) for behavior that should stay aligned across both packages, including the [per-command approval parity table](../docs/common-concepts.md#per-command-approval-ask-mode).
 
 ## Release Flow
 

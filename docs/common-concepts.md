@@ -17,6 +17,23 @@ Both packages support these tool names:
 
 Unsupported tools can still be executed through the generic command builder, but read-only planning mode is rejected unless the tool has an enforceable native restriction.
 
+## Per-command approval (ask mode)
+
+Both packages support a uniform `--approve-each` flag (alias: `--permission-mode ask`) that asks the consumer to approve each command the agent wants to run, mapping to the backend's native per-command approval mechanism. When the backend exposes a drivable JSON handshake, each native permission request is relayed to the consumer as a normalized `permission_request` NDJSON event (with an opaque `id`, the `tool`, the resolved `command`/`pattern`, a `title`, and a `scope`); the consumer answers with a normalized `permission_response` carrying a decision of `once`, `always`, or `reject`, which is forwarded back to the native CLI in its own wire format.
+
+`scope` documents what an `always`/allow decision attaches to — it deliberately differs per backend, so consumers should not assume a session-wide grant everywhere.
+
+| Tool       | Native mechanism                                       | Scope              | Relay | Notes                                                                                            |
+| ---------- | ------------------------------------------------------ | ------------------ | ----- | ------------------------------------------------------------------------------------------------ |
+| `agent`    | `--permission-mode ask` (+ `--input-format stream-json`) | `session`          | ✅    | Native JSON `permission_request`/`permission_response` protocol; `once` \| `always` \| `reject` map 1:1. |
+| `claude`   | `--permission-mode default` (stream-json `can_use_tool`) | `tool-input`       | ✅    | `control_request`/`control_response` handshake; no session-wide `always`, so `once` and `always` both allow this call. |
+| `codex`    | `--ask-for-approval` (coupled with `--sandbox`)        | `sandbox-coupled`  | ❌    | Approval is coupled with the sandbox policy and not exposed as a tool-agnostic JSON request/response stream. |
+| `qwen`     | `--approval-mode default`                              | `interactive-only` | ❌    | Headless mode has no relayable per-command JSON approval handshake.                              |
+| `gemini`   | `--approval-mode default`                              | `interactive-only` | ❌    | No JSON stdin channel (prompt is passed via `-p`), so approvals cannot be relayed.               |
+| `opencode` | `OPENCODE_PERMISSION` (static `{edit,bash,task}` policy) | `static-policy`    | ❌    | Only a static up-front policy is available; there is no per-command request/response relay.      |
+
+Only `agent` and `claude` can drive the handshake (`relay = ✅`). For every other tool, `--approve-each` is rejected up front with a clear error — the same pattern `--read-only` uses for tools without an enforceable native restriction.
+
 ## Isolation
 
 The shared isolation modes are:
