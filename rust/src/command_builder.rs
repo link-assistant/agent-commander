@@ -28,6 +28,7 @@ pub struct AgentCommandOptions {
     pub session_id: Option<String>,
     pub fork_session: bool,
     pub read_only: bool,
+    pub plan_only: bool,
     pub executable: Option<String>,
     pub extra_args: Vec<String>,
     pub extra_env: Vec<(String, String)>,
@@ -40,13 +41,16 @@ pub struct AgentCommandOptions {
 
 /// Check whether a tool has an enforceable native read-only/planning mode.
 pub fn supports_read_only(tool: &str) -> bool {
-    matches!(tool, "claude" | "codex" | "opencode" | "gemini" | "qwen")
+    matches!(
+        tool,
+        "claude" | "codex" | "opencode" | "gemini" | "qwen" | "agent"
+    )
 }
 
 /// Build the standard error for tools without enforceable read-only mode.
 pub fn read_only_unsupported_error(tool: &str) -> String {
     format!(
-        "Tool \"{}\" does not support enforceable read-only mode. Choose one of: claude, codex, opencode, gemini, qwen; or run without --read-only.",
+        "Tool \"{}\" does not support enforceable read-only mode. Choose one of: claude, codex, opencode, gemini, qwen, agent; or run without --read-only.",
         tool
     )
 }
@@ -153,8 +157,12 @@ fn build_docker_command(
 /// # Returns
 /// The command string
 pub fn build_agent_command(options: &AgentCommandOptions) -> String {
+    // A planning request implies a read-only restriction for tools that do not
+    // distinguish the two modes.
+    let read_only_requested = options.read_only || options.plan_only;
+
     assert!(
-        !(options.read_only && !supports_read_only(&options.tool)),
+        !(read_only_requested && !supports_read_only(&options.tool)),
         "{}",
         read_only_unsupported_error(&options.tool)
     );
@@ -177,7 +185,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 session_id: options.session_id.clone(),
                 fork_session: options.fork_session,
                 print: false,
-                read_only: options.read_only,
+                read_only: read_only_requested,
                 executable: options.executable.clone(),
                 extra_env: options.extra_env.clone(),
                 extra_args: options.extra_args.clone(),
@@ -191,7 +199,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 model: options.model.clone(),
                 json: options.json,
                 resume: options.resume.clone(),
-                read_only: options.read_only,
+                read_only: read_only_requested,
                 executable: options.executable.clone(),
                 extra_env: options.extra_env.clone(),
                 extra_args: options.extra_args.clone(),
@@ -206,7 +214,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 model: options.model.clone(),
                 json: options.json,
                 resume: options.resume.clone(),
-                read_only: options.read_only,
+                read_only: read_only_requested,
                 executable: options.executable.clone(),
                 extra_env: options.extra_env.clone(),
                 extra_args: options.extra_args.clone(),
@@ -218,6 +226,10 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 model: options.model.clone(),
                 compact_json: false,
                 use_existing_claude_oauth: false,
+                read_only: read_only_requested,
+                plan_only: options.plan_only,
+                permission_mode: None,
+                permission: None,
                 executable: options.executable.clone(),
                 extra_env: options.extra_env.clone(),
                 extra_args: options.extra_args.clone(),
@@ -229,7 +241,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                     system_prompt: options.system_prompt.clone(),
                     model: options.model.clone(),
                     json: options.json,
-                    read_only: options.read_only,
+                    read_only: read_only_requested,
                     executable: options.executable.clone(),
                     extra_env: options.extra_env.clone(),
                     extra_args: options.extra_args.clone(),
@@ -246,7 +258,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                     model: options.model.clone(),
                     json: options.json,
                     resume: options.resume.clone(),
-                    read_only: options.read_only,
+                    read_only: read_only_requested,
                     executable: options.executable.clone(),
                     extra_env: options.extra_env.clone(),
                     extra_args: options.extra_args.clone(),
@@ -795,10 +807,44 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "does not support enforceable read-only mode")]
-    fn test_build_agent_command_read_only_rejects_agent_tool() {
+    fn test_build_agent_command_agent_read_only_uses_readonly_mode() {
         let options = AgentCommandOptions {
             tool: "agent".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            prompt: Some("Inspect only".to_string()),
+            read_only: true,
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("--permission-mode"));
+        assert!(command.contains("readonly"));
+        assert!(!command.contains("plan"));
+    }
+
+    #[test]
+    fn test_build_agent_command_agent_plan_only_uses_plan_mode() {
+        let options = AgentCommandOptions {
+            tool: "agent".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            prompt: Some("Plan only".to_string()),
+            plan_only: true,
+            isolation: "none".to_string(),
+            ..Default::default()
+        };
+
+        let command = build_agent_command(&options);
+        assert!(command.contains("--permission-mode"));
+        assert!(command.contains("plan"));
+        assert!(!command.contains("readonly"));
+    }
+
+    #[test]
+    #[should_panic(expected = "does not support enforceable read-only mode")]
+    fn test_build_agent_command_read_only_rejects_unknown_tool() {
+        let options = AgentCommandOptions {
+            tool: "unknown-tool".to_string(),
             working_directory: "/tmp/test".to_string(),
             read_only: true,
             isolation: "none".to_string(),

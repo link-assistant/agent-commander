@@ -1,7 +1,10 @@
 /**
  * Agent CLI tool configuration (@link-assistant/agent)
  * Based on hive-mind's agent.lib.mjs implementation
- * Agent is a fork of OpenCode with unrestricted permissions for autonomous execution
+ * Agent is a fork of OpenCode that ships a native, enforceable permission
+ * system (agent v0.24.0, PR #272) exposed through `--permission-mode`
+ * (auto | plan | readonly | ask) and an OpenCode-compatible `--permission`
+ * JSON policy.
  */
 
 import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
@@ -67,6 +70,10 @@ export function mapModelToId(options) {
  * @param {string} [options.model] - Model to use
  * @param {boolean} [options.compactJson] - Use compact JSON output
  * @param {boolean} [options.useExistingClaudeOAuth] - Use existing Claude OAuth credentials
+ * @param {boolean} [options.readOnly] - Enforce hard read-only mode (`--permission-mode readonly`)
+ * @param {boolean} [options.planOnly] - Enforce planning mode (`--permission-mode plan`)
+ * @param {string} [options.permissionMode] - Explicit agent permission mode (auto | plan | readonly | ask)
+ * @param {string} [options.permission] - OpenCode-compatible `--permission` JSON policy
  * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
  * @returns {string[]} Array of CLI arguments
  */
@@ -75,10 +82,27 @@ export function buildArgs(options) {
     model,
     compactJson = false,
     useExistingClaudeOAuth = false,
+    readOnly = false,
+    planOnly = false,
+    permissionMode,
+    permission,
     extraArgs = [],
   } = options;
 
   const args = [];
+
+  // Native, enforceable permission system (agent v0.24.0, PR #272).
+  // --plan-only maps to `plan`, --read-only maps to the harder `readonly`,
+  // matching agent's own distinction between the two modes.
+  const resolvedPermissionMode =
+    permissionMode || (planOnly ? 'plan' : readOnly ? 'readonly' : undefined);
+  if (resolvedPermissionMode) {
+    args.push('--permission-mode', resolvedPermissionMode);
+  }
+
+  if (permission) {
+    args.push('--permission', permission);
+  }
 
   if (model) {
     const mappedModel = mapModelToId({ model });
@@ -109,6 +133,10 @@ export function buildArgs(options) {
  * @param {string} [options.model] - Model to use
  * @param {boolean} [options.compactJson] - Use compact JSON output
  * @param {boolean} [options.useExistingClaudeOAuth] - Use existing Claude OAuth
+ * @param {boolean} [options.readOnly] - Enforce hard read-only mode (`--permission-mode readonly`)
+ * @param {boolean} [options.planOnly] - Enforce planning mode (`--permission-mode plan`)
+ * @param {string} [options.permissionMode] - Explicit agent permission mode (auto | plan | readonly | ask)
+ * @param {string} [options.permission] - OpenCode-compatible `--permission` JSON policy
  * @param {string} [options.executable='agent'] - Executable path/name
  * @param {Object|Array} [options.extraEnv] - Environment variables for the tool
  * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
@@ -281,7 +309,7 @@ export const agentTool = {
   supportsJsonInput: true, // Agent supports full JSON streaming input
   supportsSystemPrompt: false, // System prompt is combined with user prompt
   supportsResume: false, // Agent doesn't have explicit resume like Claude
-  supportsReadOnly: false, // No native enforceable read-only mode
+  supportsReadOnly: true, // Native --permission-mode readonly/plan (agent v0.24.0, PR #272)
   defaultModel: 'nemotron-3-super-free', // hive-mind issue #1563, agent PR #243
   modelMap,
   mapModelToId,

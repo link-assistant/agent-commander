@@ -1,6 +1,10 @@
-//! Agent CLI tool configuration (@link-assistant/agent)
-//! Based on hive-mind's agent.lib.mjs implementation
-//! Agent is a fork of OpenCode with unrestricted permissions for autonomous execution
+//! Agent CLI tool configuration (@link-assistant/agent).
+//!
+//! Based on hive-mind's agent.lib.mjs implementation.
+//! Agent is a fork of OpenCode that ships a native, enforceable permission
+//! system (agent v0.24.0, PR #272) exposed through `--permission-mode`
+//! (auto | plan | readonly | ask) and an OpenCode-compatible `--permission`
+//! JSON policy.
 
 use crate::streaming::parse_ndjson;
 use crate::tools::shell::{build_command_head, escape_arg, escape_single_quotes};
@@ -63,6 +67,14 @@ pub struct AgentBuildOptions {
     pub model: Option<String>,
     pub compact_json: bool,
     pub use_existing_claude_oauth: bool,
+    /// Enforce hard read-only mode (`--permission-mode readonly`)
+    pub read_only: bool,
+    /// Enforce planning mode (`--permission-mode plan`)
+    pub plan_only: bool,
+    /// Explicit agent permission mode (auto | plan | readonly | ask)
+    pub permission_mode: Option<String>,
+    /// OpenCode-compatible `--permission` JSON policy
+    pub permission: Option<String>,
     pub executable: Option<String>,
     pub extra_env: Vec<(String, String)>,
     pub extra_args: Vec<String>,
@@ -77,6 +89,28 @@ pub struct AgentBuildOptions {
 /// Vector of CLI arguments
 pub fn build_args(options: &AgentBuildOptions) -> Vec<String> {
     let mut args = Vec::new();
+
+    // Native, enforceable permission system (agent v0.24.0, PR #272).
+    // --plan-only maps to `plan`, --read-only maps to the harder `readonly`,
+    // matching agent's own distinction between the two modes.
+    let resolved_permission_mode = options.permission_mode.clone().or_else(|| {
+        if options.plan_only {
+            Some("plan".to_string())
+        } else if options.read_only {
+            Some("readonly".to_string())
+        } else {
+            None
+        }
+    });
+    if let Some(mode) = resolved_permission_mode {
+        args.push("--permission-mode".to_string());
+        args.push(mode);
+    }
+
+    if let Some(ref permission) = options.permission {
+        args.push("--permission".to_string());
+        args.push(permission.clone());
+    }
 
     if let Some(ref model) = options.model {
         let mapped_model = map_model_to_id(model);
@@ -288,7 +322,7 @@ impl Default for AgentTool {
             supports_json_input: true, // Agent supports full JSON streaming input
             supports_system_prompt: false, // System prompt is combined with user prompt
             supports_resume: false,    // Agent doesn't have explicit resume like Claude
-            supports_read_only: false, // No native enforceable read-only mode
+            supports_read_only: true, // Native --permission-mode readonly/plan (agent v0.24.0, PR #272)
             default_model: "nemotron-3-super-free", // hive-mind issue #1563, agent PR #243
         }
     }

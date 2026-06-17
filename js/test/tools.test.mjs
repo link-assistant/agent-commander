@@ -284,6 +284,44 @@ test('agentTool - buildArgs with model', () => {
   assert.ok(args.includes('opencode/grok-code'));
 });
 
+test('agentTool - supportsReadOnly is true', () => {
+  assert.strictEqual(agentTool.supportsReadOnly, true);
+});
+
+test('agentTool - buildArgs read-only uses readonly permission mode', () => {
+  const args = agentTool.buildArgs({ readOnly: true });
+  const idx = args.indexOf('--permission-mode');
+  assert.ok(idx !== -1);
+  assert.strictEqual(args[idx + 1], 'readonly');
+});
+
+test('agentTool - buildArgs plan-only uses plan permission mode', () => {
+  const args = agentTool.buildArgs({ planOnly: true });
+  const idx = args.indexOf('--permission-mode');
+  assert.ok(idx !== -1);
+  assert.strictEqual(args[idx + 1], 'plan');
+});
+
+test('agentTool - buildArgs explicit permissionMode overrides read-only', () => {
+  const args = agentTool.buildArgs({ readOnly: true, permissionMode: 'ask' });
+  const idx = args.indexOf('--permission-mode');
+  assert.ok(idx !== -1);
+  assert.strictEqual(args[idx + 1], 'ask');
+});
+
+test('agentTool - buildArgs passes through permission JSON policy', () => {
+  const policy = '{"edit":"deny"}';
+  const args = agentTool.buildArgs({ permission: policy });
+  const idx = args.indexOf('--permission');
+  assert.ok(idx !== -1);
+  assert.strictEqual(args[idx + 1], policy);
+});
+
+test('agentTool - buildArgs without read-only omits permission mode', () => {
+  const args = agentTool.buildArgs({ model: 'grok' });
+  assert.ok(!args.includes('--permission-mode'));
+});
+
 test('agentTool - extractUsage from step_finish events', () => {
   const output = `{"type":"step_finish","part":{"tokens":{"input":100,"output":50},"cost":0}}
 {"type":"step_finish","part":{"tokens":{"input":200,"output":75},"cost":0}}`;

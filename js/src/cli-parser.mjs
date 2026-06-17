@@ -90,6 +90,7 @@ export function parseStartAgentArgs(args) {
     verbose: parsed.verbose || false,
     replayUserMessages: parsed['replay-user-messages'] || false,
     readOnly: parsed['read-only'] || parsed['plan-only'] || false,
+    planOnly: parsed['plan-only'] || false,
     resume: parsed.resume,
     sessionId: parsed['session-id'],
     forkSession: parsed['fork-session'] || false,
@@ -141,8 +142,8 @@ Options:
   --model <model>                  Model to use (e.g., 'sonnet', 'opus', 'haiku')
   --fallback-model <model>         Fallback model when default is overloaded
   --verbose                        Enable verbose mode
-  --read-only                      Enforce native read-only/planning mode
-  --plan-only                      Alias for --read-only
+  --read-only                      Enforce native read-only mode (agent: --permission-mode readonly)
+  --plan-only                      Enforce native planning mode (agent: --permission-mode plan)
   --resume <sessionId>             Resume a previous session by ID
   --session-id <uuid>              Use a specific session ID (must be valid UUID)
   --fork-session                   Create new session ID when resuming

@@ -5,7 +5,7 @@
 //! - claude: Anthropic Claude Code CLI
 //! - codex: OpenAI Codex CLI
 //! - opencode: OpenCode CLI
-//! - agent: @link-assistant/agent (unrestricted OpenCode fork)
+//! - agent: @link-assistant/agent (OpenCode fork with native permission modes)
 //! - qwen: Qwen Code CLI
 //! - gemini: Gemini CLI
 
@@ -90,6 +90,8 @@ pub struct AgentOptions {
     pub fork_session: bool,
     /// Enforce native read-only/planning mode
     pub read_only: bool,
+    /// Enforce native planning mode (where the tool distinguishes it)
+    pub plan_only: bool,
     /// Override the tool executable path/name
     pub executable: Option<String>,
     /// Extra raw arguments appended after typed tool arguments
@@ -243,7 +245,7 @@ impl Agent {
         if options.isolation == "docker" && options.container_name.is_none() {
             return Err("container_name is required for docker isolation".to_string());
         }
-        if options.read_only && !supports_read_only(&options.tool) {
+        if (options.read_only || options.plan_only) && !supports_read_only(&options.tool) {
             return Err(read_only_unsupported_error(&options.tool));
         }
 
@@ -352,6 +354,7 @@ impl Agent {
             session_id: self.options.session_id.clone(),
             fork_session: self.options.fork_session,
             read_only: self.options.read_only,
+            plan_only: self.options.plan_only,
             executable: self.options.executable.clone(),
             extra_args: self.options.extra_args.clone(),
             extra_env: self.options.extra_env.clone(),

@@ -88,6 +88,7 @@ pub struct StartAgentOptions {
     pub verbose: bool,
     pub replay_user_messages: bool,
     pub read_only: bool,
+    pub plan_only: bool,
     pub resume: Option<String>,
     pub session_id: Option<String>,
     pub fork_session: bool,
@@ -142,6 +143,7 @@ pub fn parse_start_agent_args(args: &[String]) -> StartAgentOptions {
         verbose: parsed.get_bool("verbose"),
         replay_user_messages: parsed.get_bool("replay-user-messages"),
         read_only: parsed.get_bool("read-only") || parsed.get_bool("plan-only"),
+        plan_only: parsed.get_bool("plan-only"),
         resume: parsed.get("resume").cloned(),
         session_id: parsed.get("session-id").cloned(),
         fork_session: parsed.get_bool("fork-session"),
@@ -194,8 +196,8 @@ Options:
   --model <model>                  Model to use (e.g., 'sonnet', 'opus', 'haiku')
   --fallback-model <model>         Fallback model when default is overloaded
   --verbose                        Enable verbose mode
-  --read-only                      Enforce native read-only/planning mode
-  --plan-only                      Alias for --read-only
+  --read-only                      Enforce native read-only mode (agent: --permission-mode readonly)
+  --plan-only                      Enforce native planning mode (agent: --permission-mode plan)
   --resume <sessionId>             Resume a previous session by ID
   --session-id <uuid>              Use a specific session ID (must be valid UUID)
   --fork-session                   Create new session ID when resuming
