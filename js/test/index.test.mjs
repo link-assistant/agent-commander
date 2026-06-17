@@ -221,3 +221,85 @@ printf '%s\\n' '{"type":"result","subtype":"success","session_id":"claude-sessio
     assert.strictEqual(result.metadata.errorDuringExecution, false);
   }
 );
+
+test(
+  'agent - approve-each relays native permission requests end-to-end',
+  { skip: process.platform === 'win32' || isDeno },
+  async (t) => {
+    // A fake `agent` binary that emits one native permission_request frame on
+    // stdout and waits for the relay to write a permission_response on its
+    // stdin, then echoes that response back so the test can verify the round
+    // trip without a real CLI.
+    const binDir = await mkdtemp(join(tmpdir(), 'agent-commander-test-bin-'));
+    const fakeAgent = join(binDir, 'agent');
+    await writeFile(
+      fakeAgent,
+      `#!/usr/bin/env bash
+printf '%s\\n' '{"type":"permission_request","permissionID":"p1","tool":"bash","title":"Run command","metadata":{"command":"rm -rf build"}}'
+while IFS= read -r line; do
+  case "$line" in
+    *permission_response*)
+      printf 'RELAYED %s\\n' "$line"
+      exit 0
+      ;;
+  esac
+done
+exit 0
+`
+    );
+    await chmod(fakeAgent, 0o755);
+
+    const previousPath = process.env.PATH || '';
+    process.env.PATH = `${binDir}:${previousPath}`;
+    t.after(async () => {
+      process.env.PATH = previousPath;
+      await rm(binDir, { recursive: true, force: true });
+    });
+
+    const seen = [];
+    const controller = agent({
+      tool: 'agent',
+      workingDirectory: '/tmp',
+      prompt: 'Refactor this file',
+      approveEach: true,
+      onPermissionRequest: (request) => {
+        seen.push(request);
+        return 'reject';
+      },
+    });
+
+    await controller.start({ attached: false });
+    const result = await controller.stop();
+
+    assert.strictEqual(result.exitCode, 0);
+
+    // The normalized request was relayed to the consumer.
+    assert.strictEqual(seen.length, 1);
+    assert.strictEqual(seen[0].type, 'permission_request');
+    assert.strictEqual(seen[0].tool, 'agent');
+    assert.strictEqual(seen[0].id, 'p1');
+    assert.strictEqual(seen[0].command, 'rm -rf build');
+    assert.strictEqual(seen[0].scope, 'session');
+
+    // The native response frame was written to the tool's stdin (the fake tool
+    // echoes it back prefixed with RELAYED).
+    assert.ok(result.output.plain.includes('RELAYED'));
+    assert.ok(result.output.plain.includes('"permissionID":"p1"'));
+    assert.ok(result.output.plain.includes('"response":"reject"'));
+  }
+);
+
+test('agent - approve-each on unsupported tool throws at start', async () => {
+  const controller = agent({
+    tool: 'codex',
+    workingDirectory: '/tmp',
+    prompt: 'Hello',
+    approveEach: true,
+    onPermissionRequest: () => 'once',
+  });
+
+  await assert.rejects(
+    () => controller.start({ attached: false }),
+    /does not support enforceable per-command approval/
+  );
+});

@@ -71,10 +71,15 @@ pub struct AgentBuildOptions {
     pub read_only: bool,
     /// Enforce planning mode (`--permission-mode plan`)
     pub plan_only: bool,
+    /// Approve each mutating command (`--permission-mode ask`)
+    pub approve_each: bool,
     /// Explicit agent permission mode (auto | plan | readonly | ask)
     pub permission_mode: Option<String>,
     /// OpenCode-compatible `--permission` JSON policy
     pub permission: Option<String>,
+    /// Caller owns the child's stdin and streams the prompt + permission
+    /// responses as NDJSON frames, so no prompt is piped in `build_command`.
+    pub stream_input: bool,
     pub executable: Option<String>,
     pub extra_env: Vec<(String, String)>,
     pub extra_args: Vec<String>,
@@ -92,9 +97,13 @@ pub fn build_args(options: &AgentBuildOptions) -> Vec<String> {
 
     // Native, enforceable permission system (agent v0.24.0, PR #272).
     // --plan-only maps to `plan`, --read-only maps to the harder `readonly`,
-    // matching agent's own distinction between the two modes.
+    // --approve-each maps to `ask` (per-command approval relayed over JSON),
+    // matching agent's own distinction between the modes. An explicit
+    // permission_mode always wins.
     let resolved_permission_mode = options.permission_mode.clone().or_else(|| {
-        if options.plan_only {
+        if options.approve_each {
+            Some("ask".to_string())
+        } else if options.plan_only {
             Some("plan".to_string())
         } else if options.read_only {
             Some("readonly".to_string())
@@ -102,9 +111,17 @@ pub fn build_args(options: &AgentBuildOptions) -> Vec<String> {
             None
         }
     });
+    let is_ask = resolved_permission_mode.as_deref() == Some("ask");
     if let Some(mode) = resolved_permission_mode {
         args.push("--permission-mode".to_string());
         args.push(mode);
+    }
+
+    // Ask mode emits requests mid-turn and blocks until answered, so it requires
+    // a streaming input mode (single-shot prompt over stdin would deadlock).
+    if is_ask {
+        args.push("--input-format".to_string());
+        args.push("stream-json".to_string());
     }
 
     if let Some(ref permission) = options.permission {
@@ -142,6 +159,21 @@ pub fn build_args(options: &AgentBuildOptions) -> Vec<String> {
 pub fn build_command(options: &AgentBuildOptions) -> String {
     let args = build_args(options);
     let args_str: Vec<String> = args.iter().map(|a| escape_arg(a)).collect();
+    let executable = options.executable.as_deref().unwrap_or("agent");
+    let command_head = format!(
+        "{} {}",
+        build_command_head(executable, &options.extra_env, &[]),
+        args_str.join(" ")
+    )
+    .trim()
+    .to_string();
+
+    // In stream-input mode the caller owns the child's stdin and writes the
+    // prompt and permission responses as NDJSON frames (per-command approval
+    // relay), so no prompt is piped here.
+    if options.stream_input {
+        return command_head;
+    }
 
     // Agent expects prompt via stdin, combine system and user prompts
     let combined_prompt = match (&options.system_prompt, &options.prompt) {
@@ -156,15 +188,9 @@ pub fn build_command(options: &AgentBuildOptions) -> String {
         || format!("printf '%s' '{}'", escape_single_quotes(&combined_prompt)),
         |prompt_file| format!("cat {}", escape_arg(prompt_file)),
     );
-    let executable = options.executable.as_deref().unwrap_or("agent");
-    format!(
-        "{} | {} {}",
-        input_command,
-        build_command_head(executable, &options.extra_env, &[]),
-        args_str.join(" ")
-    )
-    .trim()
-    .to_string()
+    format!("{} | {}", input_command, command_head)
+        .trim()
+        .to_string()
 }
 
 /// Parse JSON messages from Agent output
@@ -309,6 +335,7 @@ pub struct AgentTool {
     pub supports_system_prompt: bool,
     pub supports_resume: bool,
     pub supports_read_only: bool,
+    pub supports_ask: bool,
     pub default_model: &'static str,
 }
 
@@ -323,6 +350,7 @@ impl Default for AgentTool {
             supports_system_prompt: false, // System prompt is combined with user prompt
             supports_resume: false,    // Agent doesn't have explicit resume like Claude
             supports_read_only: true, // Native --permission-mode readonly/plan (agent v0.24.0, PR #272)
+            supports_ask: true,       // Native --permission-mode ask with JSON permission relay
             default_model: "nemotron-3-super-free", // hive-mind issue #1563, agent PR #243
         }
     }

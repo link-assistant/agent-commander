@@ -48,10 +48,13 @@ export async function executeCommand(command, options = {}) {
  * @param {string} command - Command to execute
  * @param {Object} [options] - Execution options
  * @param {boolean} [options.attached] - If true, stream output to console
+ * @param {boolean} [options.pipeStdin] - If true, open the child's stdin as a
+ *   writable pipe (used by the per-command approval relay to send the prompt
+ *   and permission responses as NDJSON frames)
  * @returns {Promise<Object>} Process handle with methods to interact with the process
  */
 export async function startCommand(command, options = {}) {
-  const { attached = true, onStdout, onStderr } = options;
+  const { attached = true, onStdout, onStderr, pipeStdin = false } = options;
   const { spawn } = await import('node:child_process');
 
   let stdout = '';
@@ -65,7 +68,7 @@ export async function startCommand(command, options = {}) {
   });
 
   const child = spawn('bash', ['-c', command], {
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: [pipeStdin ? 'pipe' : 'ignore', 'pipe', 'pipe'],
   });
 
   child.stdout.on('data', (chunk) => {
@@ -118,6 +121,26 @@ export async function startCommand(command, options = {}) {
     waitForExit: () => exitPromise,
     getOutput: () => ({ stdout, stderr, exitCode, hasExited }),
     process: child,
+    /**
+     * Write a chunk to the child's stdin (no-op if stdin is not piped/open).
+     * @param {string} data - Data to write
+     * @returns {boolean} True when the write was attempted
+     */
+    writeStdin: (data) => {
+      if (child.stdin && child.stdin.writable) {
+        child.stdin.write(data);
+        return true;
+      }
+      return false;
+    },
+    /**
+     * Close the child's stdin (signals end-of-input).
+     */
+    endStdin: () => {
+      if (child.stdin && !child.stdin.destroyed) {
+        child.stdin.end();
+      }
+    },
   };
 }
 

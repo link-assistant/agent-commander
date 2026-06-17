@@ -345,6 +345,7 @@ pub struct GeminiTool {
     pub supports_checkpointing: bool,
     pub supports_debug: bool,
     pub supports_read_only: bool,
+    pub supports_ask: bool,
     pub default_model: &'static str,
 }
 
@@ -363,6 +364,7 @@ impl Default for GeminiTool {
             supports_checkpointing: true, // Supports --checkpointing
             supports_debug: true,       // Supports -d for debug output
             supports_read_only: true,   // Supports --approval-mode plan
+            supports_ask: false, // Headless mode has no relayable per-command JSON approval handshake
             default_model: "gemini-2.5-flash",
         }
     }

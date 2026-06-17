@@ -214,6 +214,7 @@ export const opencodeTool = {
   supportsSystemPrompt: false, // System prompt is combined with user prompt
   supportsResume: true,
   supportsReadOnly: true, // Supports OPENCODE_PERMISSION
+  supportsAsk: false, // Only a static up-front policy; no per-command request/response relay
   defaultModel: 'grok-code-fast-1',
   modelMap,
   mapModelToId,

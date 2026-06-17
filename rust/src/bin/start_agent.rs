@@ -65,6 +65,7 @@ async fn main() {
         fork_session: options.fork_session,
         read_only: options.read_only,
         plan_only: options.plan_only,
+        approve_each: options.approve_each,
         executable: options.tool_executable,
         extra_args: options.tool_args,
         extra_env,

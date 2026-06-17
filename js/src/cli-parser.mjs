@@ -91,6 +91,8 @@ export function parseStartAgentArgs(args) {
     replayUserMessages: parsed['replay-user-messages'] || false,
     readOnly: parsed['read-only'] || parsed['plan-only'] || false,
     planOnly: parsed['plan-only'] || false,
+    approveEach:
+      parsed['approve-each'] || parsed['permission-mode'] === 'ask' || false,
     resume: parsed.resume,
     sessionId: parsed['session-id'],
     forkSession: parsed['fork-session'] || false,
@@ -144,6 +146,8 @@ Options:
   --verbose                        Enable verbose mode
   --read-only                      Enforce native read-only mode (agent: --permission-mode readonly)
   --plan-only                      Enforce native planning mode (agent: --permission-mode plan)
+  --approve-each                   Approve each command (ask mode); relayable for: claude, agent
+  --permission-mode ask            Alias for --approve-each
   --resume <sessionId>             Resume a previous session by ID
   --session-id <uuid>              Use a specific session ID (must be valid UUID)
   --fork-session                   Create new session ID when resuming
@@ -174,6 +178,10 @@ Examples:
   # Read-only planning mode
   start-agent --tool claude --working-directory "/tmp/dir" \\
     --prompt "Inspect this project" --read-only
+
+  # Per-command approval (ask mode)
+  start-agent --tool agent --working-directory "/tmp/dir" \\
+    --prompt "Refactor this file" --approve-each
 
   # With screen isolation (detached)
   start-agent --tool claude --working-directory "/tmp/dir" \\

@@ -1,0 +1,5 @@
+---
+'agent-commander': minor
+---
+
+Add a uniform per-command approval relay ("ask" mode). The new `--approve-each` flag (alias `--permission-mode ask`, library `approveEach`) maps to each backend's native per-command approval mechanism and relays native permission prompts to the consumer as normalized `permission_request` NDJSON events (carrying an opaque `id`, `tool`, `command`/`pattern`, `title`, and a `scope`), forwarding the consumer's normalized decision (`once` | `always` | `reject`) back to the native CLI in its own wire format. Supported (relayable) for `agent` (`--permission-mode ask` + `--input-format stream-json`, scope `session`) and `claude` (stream-json `can_use_tool`, scope `tool-input`); rejected with a clear error for `codex`, `qwen`, `gemini`, and `opencode`, which have no drivable JSON handshake. Exposes a `permissions` module (`normalizePermissionRequest`, `buildPermissionResponse`, `PermissionRelay`, `PERMISSION_PARITY`, `supportsAsk`, `ASK_DECISIONS`, `ASK_SCOPE`).

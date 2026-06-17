@@ -205,6 +205,7 @@ pub struct OpencodeTool {
     pub supports_system_prompt: bool,
     pub supports_resume: bool,
     pub supports_read_only: bool,
+    pub supports_ask: bool,
     pub default_model: &'static str,
 }
 
@@ -219,6 +220,7 @@ impl Default for OpencodeTool {
             supports_system_prompt: false, // System prompt is combined with user prompt
             supports_resume: true,
             supports_read_only: true, // Supports OPENCODE_PERMISSION
+            supports_ask: false, // OPENCODE_PERMISSION is env-based policy, not a relayable JSON approval stream
             default_model: "grok-code-fast-1",
         }
     }

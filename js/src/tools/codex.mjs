@@ -258,6 +258,7 @@ export const codexTool = {
   supportsSystemPrompt: false, // System prompt is combined with user prompt
   supportsResume: true,
   supportsReadOnly: true, // Supports --sandbox read-only
+  supportsAsk: false, // --ask-for-approval is coupled with the sandbox; not a relayable JSON handshake
   defaultModel: 'gpt-5.5', // hive-mind PR #1657
   modelMap,
   mapModelToId,

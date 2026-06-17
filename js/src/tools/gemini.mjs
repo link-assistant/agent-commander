@@ -329,6 +329,7 @@ export const geminiTool = {
   supportsCheckpointing: true, // Supports --checkpointing
   supportsDebug: true, // Supports -d for debug output
   supportsReadOnly: true, // Supports --approval-mode plan
+  supportsAsk: false, // No JSON stdin channel (prompt via -p), so approvals cannot be relayed
   defaultModel: 'gemini-2.5-flash',
   modelMap,
   mapModelToId,

@@ -89,6 +89,8 @@ pub struct StartAgentOptions {
     pub replay_user_messages: bool,
     pub read_only: bool,
     pub plan_only: bool,
+    /// Approve each command (ask mode); relayable only for: claude, agent
+    pub approve_each: bool,
     pub resume: Option<String>,
     pub session_id: Option<String>,
     pub fork_session: bool,
@@ -144,6 +146,11 @@ pub fn parse_start_agent_args(args: &[String]) -> StartAgentOptions {
         replay_user_messages: parsed.get_bool("replay-user-messages"),
         read_only: parsed.get_bool("read-only") || parsed.get_bool("plan-only"),
         plan_only: parsed.get_bool("plan-only"),
+        approve_each: parsed.get_bool("approve-each")
+            || parsed
+                .get("permission-mode")
+                .map(|m| m == "ask")
+                .unwrap_or(false),
         resume: parsed.get("resume").cloned(),
         session_id: parsed.get("session-id").cloned(),
         fork_session: parsed.get_bool("fork-session"),
@@ -198,6 +205,8 @@ Options:
   --verbose                        Enable verbose mode
   --read-only                      Enforce native read-only mode (agent: --permission-mode readonly)
   --plan-only                      Enforce native planning mode (agent: --permission-mode plan)
+  --approve-each                   Approve each command (ask mode); relayable for: claude, agent
+  --permission-mode ask            Alias for --approve-each
   --resume <sessionId>             Resume a previous session by ID
   --session-id <uuid>              Use a specific session ID (must be valid UUID)
   --fork-session                   Create new session ID when resuming
@@ -466,6 +475,50 @@ mod tests {
             vec!["--mcp-config".to_string(), "/tmp/mcp.json".to_string()]
         );
         assert!(result.skip_default_safety_flags);
+    }
+
+    #[test]
+    fn test_parse_start_agent_args_approve_each() {
+        let args: Vec<String> = vec![
+            "--tool".into(),
+            "claude".into(),
+            "--working-directory".into(),
+            "/tmp/test".into(),
+            "--approve-each".into(),
+        ];
+        let result = parse_start_agent_args(&args);
+
+        assert!(result.approve_each);
+    }
+
+    #[test]
+    fn test_parse_start_agent_args_permission_mode_ask_alias() {
+        let args: Vec<String> = vec![
+            "--tool".into(),
+            "claude".into(),
+            "--working-directory".into(),
+            "/tmp/test".into(),
+            "--permission-mode".into(),
+            "ask".into(),
+        ];
+        let result = parse_start_agent_args(&args);
+
+        assert!(result.approve_each);
+    }
+
+    #[test]
+    fn test_parse_start_agent_args_permission_mode_other_is_not_approve_each() {
+        let args: Vec<String> = vec![
+            "--tool".into(),
+            "claude".into(),
+            "--working-directory".into(),
+            "/tmp/test".into(),
+            "--permission-mode".into(),
+            "default".into(),
+        ];
+        let result = parse_start_agent_args(&args);
+
+        assert!(!result.approve_each);
     }
 
     #[test]

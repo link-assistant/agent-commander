@@ -245,6 +245,7 @@ pub struct CodexTool {
     pub supports_system_prompt: bool,
     pub supports_resume: bool,
     pub supports_read_only: bool,
+    pub supports_ask: bool,
     pub default_model: &'static str,
 }
 
@@ -259,6 +260,7 @@ impl Default for CodexTool {
             supports_system_prompt: false, // System prompt is combined with user prompt
             supports_resume: true,
             supports_read_only: true, // Supports --sandbox read-only
+            supports_ask: false, // Approval is coupled with the sandbox, not a relayable JSON stream
             default_model: "gpt-5.5", // hive-mind PR #1657
         }
     }
