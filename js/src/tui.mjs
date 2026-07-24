@@ -63,7 +63,11 @@ const opencodeArgs = (options, tool) => {
   if (options.resume) {
     args.push('--session', options.resume);
   }
-  if (!options.readOnly && !options.skipDefaultSafetyFlags) {
+  if (
+    !options.readOnly &&
+    !options.approveEach &&
+    !options.skipDefaultSafetyFlags
+  ) {
     args.push('--auto');
   }
   return args;
@@ -94,8 +98,13 @@ const geminiArgs = (options, tool) => {
   }
   if (options.readOnly) {
     args.push('--approval-mode', 'plan');
+  } else if (options.approveEach) {
+    args.push('--approval-mode', 'default');
   } else if (!options.skipDefaultSafetyFlags) {
     args.push('--yolo');
+  }
+  if (options.resume) {
+    args.push('--resume', options.resume);
   }
   return args;
 };
@@ -106,9 +115,7 @@ const qwenArgs = (options, tool) => {
     args.push('--model', mappedModel(tool, options.model));
   }
   if (options.readOnly) {
-    args.push('--approval-mode', 'plan');
-  } else if (!options.skipDefaultSafetyFlags) {
-    args.push('--yolo');
+    args.push('--read-only');
   }
   if (options.resume) {
     args.push('--resume', options.resume);

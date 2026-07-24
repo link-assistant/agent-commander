@@ -218,7 +218,7 @@ fn opencode_args(options: &AgentTuiOptions) -> Vec<String> {
     if let Some(resume) = &options.resume {
         args.extend(["--session".into(), resume.clone()]);
     }
-    if !options.read_only && !options.skip_default_safety_flags {
+    if !options.read_only && !options.approve_each && !options.skip_default_safety_flags {
         args.push("--auto".into());
     }
     args
@@ -250,8 +250,13 @@ fn gemini_args(options: &AgentTuiOptions) -> Vec<String> {
     push_model(&mut args, options);
     if options.read_only {
         args.extend(["--approval-mode".into(), "plan".into()]);
+    } else if options.approve_each {
+        args.extend(["--approval-mode".into(), "default".into()]);
     } else if !options.skip_default_safety_flags {
         args.push("--yolo".into());
+    }
+    if let Some(resume) = &options.resume {
+        args.extend(["--resume".into(), resume.clone()]);
     }
     args
 }
@@ -260,9 +265,7 @@ fn qwen_args(options: &AgentTuiOptions) -> Vec<String> {
     let mut args = Vec::new();
     push_model(&mut args, options);
     if options.read_only {
-        args.extend(["--approval-mode".into(), "plan".into()]);
-    } else if !options.skip_default_safety_flags {
-        args.push("--yolo".into());
+        args.push("--read-only".into());
     }
     if let Some(resume) = &options.resume {
         args.extend(["--resume".into(), resume.clone()]);
