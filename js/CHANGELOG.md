@@ -1,5 +1,12 @@
 # agent-commander
 
+## 0.9.0
+
+### Minor Changes
+
+- c9623a8: Add cross-client real-TUI launch, input and resize control, semantic transcript
+  normalization, and terminal artifact capture backed by command-stream.
+
 ## 0.8.0
 
 ### Minor Changes
