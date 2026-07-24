@@ -86,7 +86,13 @@ test('buildAgentTuiLaunch maps interactive safety and resume options', () => {
 
 test(
   'captureAgentTui drives and normalizes all agent clients',
-  { skip: isDeno },
+  {
+    skip: isDeno,
+    // Six native PTY launches are intentionally exercised in series. Windows
+    // startup can exceed Bun's five-second default even when every capture
+    // finishes normally.
+    timeout: 30_000,
+  },
   async (t) => {
     const artifactRoot = await mkdtemp(join(tmpdir(), 'agent-tui-'));
     t.after(() => rm(artifactRoot, { recursive: true, force: true }));

@@ -192,7 +192,9 @@ jobs:
       - name: Run tests (Deno)
         if: matrix.runtime == 'deno'
         working-directory: js
-        run: deno test --allow-read --allow-run --allow-env --allow-net test/**/*.test.mjs
+        # Release PRs intentionally verify freshly published dependencies.
+        # Deno 2.9 otherwise blocks packages younger than 24 hours.
+        run: deno test --minimum-dependency-age=0 --allow-read --allow-run --allow-env --allow-net test/**/*.test.mjs
 
   js-release:
     name: JS Release
