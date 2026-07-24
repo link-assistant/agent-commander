@@ -33,6 +33,57 @@ test('buildAgentTuiLaunch selects interactive mode for every supported tool', ()
   }
 });
 
+test('buildAgentTuiLaunch maps interactive safety and resume options', () => {
+  const launch = (tool, options = {}) =>
+    buildAgentTuiLaunch({
+      tool,
+      workingDirectory: '/workspace',
+      executable: `${tool}-test`,
+      resume: 'session-1',
+      ...options,
+    }).args;
+
+  assert.deepStrictEqual(launch('claude', { readOnly: true }), [
+    '--permission-mode',
+    'plan',
+    '--resume',
+    'session-1',
+    '--ax-screen-reader',
+  ]);
+  assert.deepStrictEqual(launch('codex', { readOnly: true }), [
+    '--sandbox',
+    'read-only',
+    '--ask-for-approval',
+    'never',
+    '--no-alt-screen',
+    'resume',
+    'session-1',
+  ]);
+  assert.deepStrictEqual(launch('opencode', { approveEach: true }), [
+    '--mini',
+    '--no-replay',
+    '--session',
+    'session-1',
+  ]);
+  assert.deepStrictEqual(launch('agent', { approveEach: true }), [
+    '--permission-mode',
+    'ask',
+    '--resume',
+    'session-1',
+  ]);
+  assert.deepStrictEqual(launch('gemini', { approveEach: true }), [
+    '--approval-mode',
+    'default',
+    '--resume',
+    'session-1',
+  ]);
+  assert.deepStrictEqual(launch('qwen', { readOnly: true }), [
+    '--read-only',
+    '--resume',
+    'session-1',
+  ]);
+});
+
 test(
   'captureAgentTui drives and normalizes all agent clients',
   { skip: isDeno },

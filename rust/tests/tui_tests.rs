@@ -37,6 +37,56 @@ fn selects_interactive_launches_for_every_supported_tool() {
 }
 
 #[test]
+fn maps_interactive_safety_and_resume_options() {
+    let launch = |tool: &str, read_only: bool, approve_each: bool| {
+        build_agent_tui_launch(&AgentTuiOptions {
+            tool: tool.into(),
+            working_directory: "/workspace".into(),
+            executable: Some(format!("{tool}-test")),
+            resume: Some("session-1".into()),
+            read_only,
+            approve_each,
+            ..AgentTuiOptions::default()
+        })
+        .expect("interactive launch")
+        .args
+    };
+
+    assert_eq!(
+        launch("claude", true, false),
+        ["--permission-mode", "plan", "--resume", "session-1", "--ax-screen-reader"]
+    );
+    assert_eq!(
+        launch("codex", true, false),
+        [
+            "--sandbox",
+            "read-only",
+            "--ask-for-approval",
+            "never",
+            "--no-alt-screen",
+            "resume",
+            "session-1",
+        ]
+    );
+    assert_eq!(
+        launch("opencode", false, true),
+        ["--mini", "--no-replay", "--session", "session-1"]
+    );
+    assert_eq!(
+        launch("agent", false, true),
+        ["--permission-mode", "ask", "--resume", "session-1"]
+    );
+    assert_eq!(
+        launch("gemini", false, true),
+        ["--approval-mode", "default", "--resume", "session-1"]
+    );
+    assert_eq!(
+        launch("qwen", true, false),
+        ["--read-only", "--resume", "session-1"]
+    );
+}
+
+#[test]
 fn drives_and_normalizes_every_agent_client() {
     let script = r#"
 printf '\033[2J\033[Hready:%s:%s\n' "$0" "$(stty size)"
