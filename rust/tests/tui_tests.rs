@@ -54,7 +54,13 @@ fn maps_interactive_safety_and_resume_options() {
 
     assert_eq!(
         launch("claude", true, false),
-        ["--permission-mode", "plan", "--resume", "session-1", "--ax-screen-reader"]
+        [
+            "--permission-mode",
+            "plan",
+            "--resume",
+            "session-1",
+            "--ax-screen-reader"
+        ]
     );
     assert_eq!(
         launch("codex", true, false),

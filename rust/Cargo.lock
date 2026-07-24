@@ -129,8 +129,9 @@ dependencies = [
 
 [[package]]
 name = "command-stream"
-version = "0.12.1"
-source = "git+https://github.com/link-foundation/command-stream.git?rev=c1b3784ff61c90f9a780fa781003b30d299a73bf#c1b3784ff61c90f9a780fa781003b30d299a73bf"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "424b44c896d6a044a7211e435951fe05eb32e34e7c9e522635102513de9f3377"
 dependencies = [
  "async-trait",
  "chrono",

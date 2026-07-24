@@ -22,7 +22,7 @@ name = "stop-agent"
 path = "src/bin/stop_agent.rs"
 
 [dependencies]
-command-stream = { git = "https://github.com/link-foundation/command-stream.git", rev = "c1b3784ff61c90f9a780fa781003b30d299a73bf" }
+command-stream = "0.13.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
