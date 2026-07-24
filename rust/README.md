@@ -144,3 +144,26 @@ cargo fmt --all -- --check
 cargo clippy --all-targets --all-features
 cargo test --all-features
 ```
+
+## Interactive Terminal Capture
+
+Use `tui::capture_agent_tui` when a test needs the client's real terminal
+interface rather than its headless JSON mode. The capture drives text, control
+keys, and resizes through a PTY, then returns an unrolled transcript, normalized
+message/tool-call events, settled frames, and asciicast-compatible replay data.
+When `artifact_directory` is set it also writes a transcript, frame data, a
+static snapshot, a cast, and an animated SVG suitable for CI artifacts.
+
+```rust,no_run
+use agent_commander::tui::{capture_agent_tui, AgentTuiOptions};
+
+let capture = capture_agent_tui(AgentTuiOptions {
+    tool: "codex".into(),
+    working_directory: std::env::current_dir()?,
+    prompt: Some("Summarize this repository".into()),
+    artifact_directory: Some("artifacts/codex".into()),
+    ..AgentTuiOptions::default()
+})?;
+println!("{}", capture.terminal.transcript);
+# Ok::<(), Box<dyn std::error::Error>>(())
+```

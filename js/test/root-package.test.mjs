@@ -22,6 +22,7 @@ test('root package manifest exposes the JavaScript package for GitHub installs',
   assert.strictEqual(rootPackage.type, jsPackage.type);
   assert.strictEqual(rootPackage.license, jsPackage.license);
   assert.deepStrictEqual(rootPackage.engines, jsPackage.engines);
+  assert.deepStrictEqual(rootPackage.dependencies, jsPackage.dependencies);
 
   assert.strictEqual(rootPackage.main, './js/src/index.mjs');
   assert.deepStrictEqual(rootPackage.exports, {

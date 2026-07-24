@@ -655,6 +655,11 @@ export { JsonOutputStream, JsonInputStream } from './streaming/index.mjs';
 export { parseNdjsonLine, stringifyNdjsonLine } from './streaming/ndjson.mjs';
 export { buildNormalizedResultMetadata } from './result-metadata.mjs';
 export {
+  buildAgentTuiLaunch,
+  captureAgentTui,
+  normalizeTuiTranscript,
+} from './tui.mjs';
+export {
   ASK_SUPPORTED_TOOLS,
   ASK_DECISIONS,
   ASK_SCOPE,

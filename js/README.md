@@ -84,6 +84,40 @@ console.log(result.metadata);
 
 `result.metadata` is a normalized summary for `claude`, `codex`, `opencode`, and `agent` runs. It includes success and error classification, session ID, usage-limit reset details, result summary, cost estimates, stream token usage, optional model usage, and sub-agent call summaries.
 
+### Real TUI capture
+
+Use `captureAgentTui()` when a test must exercise the same interactive terminal
+interface a person sees. It supports `claude`, `codex`, `opencode`, `agent`,
+`gemini`, and `qwen` without switching them to their JSON/headless modes:
+
+```javascript
+import { captureAgentTui } from 'agent-commander';
+
+const capture = await captureAgentTui({
+  tool: 'codex',
+  workingDirectory: '/tmp/project',
+  prompt: 'Inspect the failing test',
+  cols: 100,
+  rows: 30,
+  interactions: [
+    { after: 'Choose an option', key: 'DOWN' },
+    { after: 'Second option', key: 'ENTER' },
+    { after: 'Working', resize: { cols: 120, rows: 40 } },
+  ],
+  stopMarker: 'Finished',
+  artifactDirectory: 'artifacts/codex',
+});
+
+console.log(capture.transcript);
+console.log(capture.events); // normalized message and tool_call events
+```
+
+The result includes command-stream's unrolled transcript, settled frames, raw
+asciicast event stream, and normalized semantic events. The artifact directory
+contains `transcript.txt`, `frames.json`, `session.cast`, `snapshot.svg`, and
+the self-contained animated `recording.svg`. Partial artifacts are also written
+when the terminal command times out.
+
 For large generated prompts, pass `promptFile` or let the controller create a temporary prompt file automatically for `claude`, `codex`, `opencode`, `agent`, `qwen`, and `gemini`:
 
 ```javascript

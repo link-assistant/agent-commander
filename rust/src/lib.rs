@@ -16,6 +16,7 @@ pub mod permissions;
 pub mod result_metadata;
 pub mod streaming;
 pub mod tools;
+pub mod tui;
 
 use serde_json::{json, Value};
 use std::path::PathBuf;
