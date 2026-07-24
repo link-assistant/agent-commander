@@ -24,16 +24,16 @@ process.stdin.on('data', (chunk) => {
   }
 });
 
-const resizeWatcher = setInterval(() => {
+const resizeWatcher = globalThis.setInterval(() => {
   const dimensions = `${process.stdout.columns}x${process.stdout.rows}`;
   if (dimensions !== initialDimensions) {
-    clearInterval(resizeWatcher);
+    globalThis.clearInterval(resizeWatcher);
     state = [
       state,
       `assistant:${tool} completed`,
       `resized:${dimensions}`,
     ].join('\n');
     process.stdout.write(`${clear}${state}`);
-    setTimeout(() => process.exit(0), 20);
+    globalThis.setTimeout(() => process.exit(0), 20);
   }
 }, 5);
