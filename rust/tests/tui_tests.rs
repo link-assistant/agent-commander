@@ -28,7 +28,10 @@ fn selects_interactive_launches_for_every_supported_tool() {
             "/workspace"
         );
         for headless in ["exec", "run", "--json", "stream-json"] {
-            assert!(!launch.args.iter().any(|argument| argument == headless), "{tool}");
+            assert!(
+                !launch.args.iter().any(|argument| argument == headless),
+                "{tool}"
+            );
         }
     }
 }
@@ -84,7 +87,10 @@ printf '\033[2J\033[Huser:%s\ntool_call:read README.md\nassistant:%s completed\n
             ],
             "{tool}"
         );
-        assert!(capture.terminal.transcript.contains("resized:10 40"), "{tool}");
+        assert!(
+            capture.terminal.transcript.contains("resized:10 40"),
+            "{tool}"
+        );
         assert!(artifacts.path().join("recording.svg").is_file(), "{tool}");
     }
 }
@@ -92,9 +98,7 @@ printf '\033[2J\033[Huser:%s\ntool_call:read README.md\nassistant:%s completed\n
 #[test]
 fn keeps_repeated_semantic_events_in_order() {
     assert_eq!(
-        normalize_tui_transcript(
-            "user:same\nassistant:first\nuser:same\ntool_call:read README.md"
-        ),
+        normalize_tui_transcript("user:same\nassistant:first\nuser:same\ntool_call:read README.md"),
         vec![
             AgentTuiEvent::Message {
                 role: "user".into(),
