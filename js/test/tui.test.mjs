@@ -26,11 +26,20 @@ test('buildAgentTuiLaunch selects interactive mode for every supported tool', ()
 
     assert.strictEqual(launch.file, `${tool}-test`);
     assert.strictEqual(launch.cwd, '/workspace');
+    assert.strictEqual(launch.env.TERM, 'xterm-256color');
     assert.ok(!launch.args.includes('exec'), tool);
     assert.ok(!launch.args.includes('run'), tool);
     assert.ok(!launch.args.includes('--json'), tool);
     assert.ok(!launch.args.includes('stream-json'), tool);
   }
+
+  const explicitTerm = buildAgentTuiLaunch({
+    tool: 'codex',
+    workingDirectory: '/workspace',
+    executable: 'codex-test',
+    extraEnv: { TERM: 'screen-256color' },
+  });
+  assert.strictEqual(explicitTerm.env.TERM, 'screen-256color');
 });
 
 test('buildAgentTuiLaunch maps interactive safety and resume options', () => {
@@ -105,6 +114,14 @@ test(
         executable: process.execPath,
         prefixArgs: [join(directory, 'fixtures/fake-agent-tui.mjs'), tool],
         prompt: 'hello',
+        promptAfter: `ready:${tool}`,
+        startupInteractions: [
+          {
+            after: `trust:${tool}`,
+            text: 'y',
+            key: 'ENTER',
+          },
+        ],
         cols: 24,
         rows: 6,
         interactions: [
@@ -117,6 +134,11 @@ test(
       });
 
       assert.strictEqual(capture.exitCode, 0, tool);
+      assert.strictEqual(capture.interactionCount, 3, tool);
+      assert.ok(
+        capture.transcript.replace(/\s/gu, '').includes('accepted=y'),
+        tool
+      );
       assert.deepStrictEqual(
         capture.events.map(({ type }) => type),
         ['message', 'tool_call', 'message'],

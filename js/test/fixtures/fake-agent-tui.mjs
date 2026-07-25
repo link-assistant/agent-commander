@@ -1,7 +1,8 @@
 const clear = '\u001b[2J\u001b[H';
 const tool = process.argv[2];
 const initialDimensions = `${process.stdout.columns}x${process.stdout.rows}`;
-let state = `ready:${tool}:${initialDimensions}`;
+let phase = 'startup';
+let state = `trust:${tool}`;
 
 process.stdin.setRawMode?.(true);
 process.stdin.resume();
@@ -11,11 +12,16 @@ let input = '';
 process.stdin.on('data', (chunk) => {
   for (const character of chunk.toString()) {
     if (character === '\r') {
-      state = [
-        `user:${input}`,
-        'tool_call:read README.md',
-        `waiting-resize:${process.stdout.columns}x${process.stdout.rows}`,
-      ].join('\n');
+      if (phase === 'startup') {
+        phase = 'prompt';
+        state = `ready:${tool}:${initialDimensions}:accepted=${input}`;
+      } else {
+        state = [
+          `user:${input}`,
+          'tool_call:read README.md',
+          `waiting-resize:${process.stdout.columns}x${process.stdout.rows}`,
+        ].join('\n');
+      }
       process.stdout.write(`${clear}${state}`);
       input = '';
     } else {
