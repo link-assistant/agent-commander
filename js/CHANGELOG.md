@@ -1,5 +1,13 @@
 # agent-commander
 
+## 0.9.1
+
+### Patch Changes
+
+- b19e3f9: Add pre-prompt TUI interactions for first-run and workspace-trust dialogs, and
+  default interactive launches to `TERM=xterm-256color` while preserving explicit
+  caller overrides.
+
 ## 0.9.0
 
 ### Minor Changes
