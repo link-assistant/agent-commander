@@ -14,9 +14,13 @@
   "files": [
     "js/src",
     "js/bin",
+    "js/patches",
     "README.md",
     "LICENSE"
   ],
+  "scripts": {
+    "postinstall": "patch-package --patch-dir js/patches"
+  },
   "keywords": [
     "agent",
     "cli",
@@ -31,7 +35,8 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "command-stream": "^0.17.0"
+    "command-stream": "^0.17.0",
+    "patch-package": "^8.0.1"
   },
   "repository": {
     "type": "git",
