@@ -101,8 +101,8 @@ const capture = await captureAgentTui({
   startupInteractions: [
     { after: 'Do you trust the contents of this directory?', key: 'ENTER' },
   ],
-  cols: 100,
-  rows: 30,
+  // Defaults to an 80×30 terminal whose rendered content is 4:3.
+  aspectRatio: 4 / 3,
   interactions: [
     { after: 'Choose an option', key: 'DOWN' },
     { after: 'Second option', key: 'ENTER' },
@@ -110,6 +110,16 @@ const capture = await captureAgentTui({
   ],
   stopMarker: 'Finished',
   artifactDirectory: 'artifacts/codex',
+  artifactOptions: {
+    borderRadius: 0,
+    cellWidth: 9,
+    cellHeight: 18,
+    fontSize: 14,
+    padding: 12,
+    background: '#111827',
+    foreground: '#e5e7eb',
+  },
+  artifacts: ['svg', 'gif', 'cast', 'frames', 'transcript'],
 });
 
 console.log(capture.transcript);
@@ -119,8 +129,11 @@ console.log(capture.events); // normalized message and tool_call events
 The result includes command-stream's unrolled transcript, settled frames, raw
 asciicast event stream, and normalized semantic events. The artifact directory
 contains `transcript.txt`, `frames.json`, `session.cast`, `snapshot.svg`, and
-the self-contained animated `recording.svg`. Partial artifacts are also written
-when the terminal command times out.
+the self-contained animated `recording.svg`, plus `recording.gif` for consumers
+that cannot animate SVG. Use `artifacts` to select bundle formats and
+`artifactOptions` to customize renderer geometry and theme. Explicit `cols` and
+`rows` override the default geometry. Partial artifacts are also written when
+the terminal command times out.
 
 For large generated prompts, pass `promptFile` or let the controller create a temporary prompt file automatically for `claude`, `codex`, `opencode`, `agent`, `qwen`, and `gemini`:
 

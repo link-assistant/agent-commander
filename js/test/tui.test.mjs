@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -151,7 +151,98 @@ test(
         (await readFile(join(artifactDirectory, 'recording.svg'))).length > 0,
         tool
       );
+      assert.ok(
+        (await readFile(join(artifactDirectory, 'recording.gif'))).length > 0,
+        tool
+      );
+      assert.strictEqual(capture.asciicast.header.width, 24, tool);
+      assert.strictEqual(capture.asciicast.header.height, 6, tool);
     }
+  }
+);
+
+test(
+  'captureAgentTui defaults every agent to publishable 4:3 geometry',
+  { skip: isDeno, timeout: 30_000 },
+  async () => {
+    const directory = dirname(fileURLToPath(import.meta.url));
+
+    for (const tool of tools) {
+      const capture = await captureAgentTui({
+        tool,
+        workingDirectory: process.cwd(),
+        executable: process.execPath,
+        prefixArgs: [join(directory, 'fixtures/fake-agent-tui.mjs'), tool],
+        prompt: 'hello',
+        promptAfter: `ready:${tool}`,
+        startupInteractions: [
+          { after: `trust:${tool}`, text: 'y', key: 'ENTER' },
+        ],
+        interactions: [
+          {
+            after: 'waiting-resize',
+            resize: { cols: 81, rows: 31 },
+          },
+        ],
+      });
+
+      assert.strictEqual(capture.asciicast.header.width, 80, tool);
+      assert.strictEqual(capture.asciicast.header.height, 30, tool);
+    }
+  }
+);
+
+test(
+  'captureAgentTui forwards renderer options and selects artifacts',
+  { skip: isDeno },
+  async (t) => {
+    const directory = dirname(fileURLToPath(import.meta.url));
+    const artifactDirectory = await mkdtemp(
+      join(tmpdir(), 'agent-tui-options-')
+    );
+    t.after(() => rm(artifactDirectory, { recursive: true, force: true }));
+
+    await captureAgentTui({
+      tool: 'opencode',
+      workingDirectory: process.cwd(),
+      executable: process.execPath,
+      prefixArgs: [join(directory, 'fixtures/fake-agent-tui.mjs'), 'opencode'],
+      prompt: 'hello',
+      promptAfter: 'ready:opencode',
+      startupInteractions: [
+        { after: 'trust:opencode', text: 'y', key: 'ENTER' },
+      ],
+      interactions: [
+        {
+          after: 'waiting-resize',
+          resize: { cols: 81, rows: 31 },
+        },
+      ],
+      aspectRatio: 16 / 9,
+      artifactDirectory,
+      artifactOptions: {
+        borderRadius: 0,
+        cellWidth: 10,
+        cellHeight: 20,
+        fontSize: 16,
+        padding: 8,
+        background: '#010203',
+        foreground: '#fefdfc',
+      },
+      artifacts: ['svg', 'gif'],
+    });
+
+    const recording = await readFile(
+      join(artifactDirectory, 'recording.svg'),
+      'utf8'
+    );
+    assert.match(recording, /rx="0"/u);
+    assert.match(recording, /fill="#010203"/u);
+    assert.match(recording, /font-size="16"/u);
+    await access(join(artifactDirectory, 'recording.gif'));
+    await assert.rejects(access(join(artifactDirectory, 'session.cast')));
+    await assert.rejects(access(join(artifactDirectory, 'frames.json')));
+    await assert.rejects(access(join(artifactDirectory, 'transcript.txt')));
   }
 );
 
