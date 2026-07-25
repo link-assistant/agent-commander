@@ -1,5 +1,12 @@
 # agent-commander
 
+## 0.10.0
+
+### Minor Changes
+
+- d44d5e6: Expose terminal artifact rendering and format options, default agent captures
+  to publishable 4:3 geometry, and include GIF replay fallbacks.
+
 ## 0.9.1
 
 ### Patch Changes
