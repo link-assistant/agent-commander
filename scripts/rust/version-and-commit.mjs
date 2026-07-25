@@ -25,6 +25,7 @@ import {
   fetchCratesVersions,
   selectRustReleaseVersion,
 } from "./release-registry.mjs";
+import { hasStagedChanges } from "./staged-changes.mjs";
 
 // Load use-m dynamically
 const { use } = eval(
@@ -305,16 +306,13 @@ async function main() {
     // Stage Cargo.toml, collected changelog, and removed fragments
     await $`git add Cargo.toml CHANGELOG.md changelog.d`;
 
-    // Check if there are changes to commit
-    try {
-      await $`git diff --cached --quiet`.run({ capture: true });
-      // No changes to commit
+    // command-stream returns non-zero exit codes instead of throwing. Exit 1
+    // from `git diff --quiet` means that the staged release commit is needed.
+    if (!(await hasStagedChanges($))) {
       console.log("No changes to commit");
       setOutput("version_committed", "false");
       setOutput("new_version", newVersion);
       return;
-    } catch {
-      // There are changes to commit (git diff exits with 1 when there are differences)
     }
 
     // Commit changes
