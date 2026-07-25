@@ -31,7 +31,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "command-stream": "^0.15.0"
+    "command-stream": "^0.17.0"
   },
   "repository": {
     "type": "git",

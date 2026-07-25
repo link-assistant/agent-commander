@@ -1,4 +1,6 @@
 import { captureTerminal } from 'command-stream';
+import { rm } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import { getTool, isToolSupported } from './tools/index.mjs';
 import { normalizeExtraArgs, normalizeExtraEnv } from './tools/shell.mjs';
@@ -132,6 +134,41 @@ const ARG_BUILDERS = {
   qwen: qwenArgs,
 };
 
+const DEFAULT_CAPTURE_GEOMETRY = Object.fromEntries(
+  Object.keys(ARG_BUILDERS).map((tool) => [
+    tool,
+    { cols: 80, aspectRatio: 4 / 3 },
+  ])
+);
+
+const ARTIFACT_FILES = {
+  svg: ['snapshot.svg', 'recording.svg'],
+  gif: ['recording.gif'],
+  cast: ['session.cast'],
+  frames: ['frames.json'],
+  transcript: ['transcript.txt'],
+};
+
+const selectArtifacts = async (directory, requested) => {
+  if (!directory || requested === undefined) {
+    return;
+  }
+  const selected = new Set(requested);
+  const unknown = [...selected].filter((name) => !ARTIFACT_FILES[name]);
+  if (unknown.length > 0) {
+    throw new TypeError(
+      `Unknown terminal artifact type: ${unknown.join(', ')}`
+    );
+  }
+  await Promise.all(
+    Object.entries(ARTIFACT_FILES)
+      .filter(([name]) => !selected.has(name))
+      .flatMap(([, files]) =>
+        files.map((file) => rm(join(directory, file), { force: true }))
+      )
+  );
+};
+
 const launchEnvironment = ({ extraEnv, tool, readOnly }) => {
   const entries = normalizeExtraEnv(extraEnv);
   if (tool === 'opencode' && readOnly) {
@@ -235,13 +272,16 @@ export const captureAgentTui = async (options) => {
     promptKey = 'ENTER',
     startupInteractions = [],
     interactions = [],
-    cols,
+    cols = DEFAULT_CAPTURE_GEOMETRY[tool]?.cols ?? 80,
     rows,
+    aspectRatio = DEFAULT_CAPTURE_GEOMETRY[tool]?.aspectRatio ?? 4 / 3,
     settleMilliseconds,
     stopMarker,
     stopMarkerGraceMilliseconds,
     timeoutMilliseconds,
     artifactDirectory,
+    artifactOptions,
+    artifacts,
     onTrace,
   } = options;
   const launch = buildAgentTuiLaunch(options);
@@ -256,6 +296,7 @@ export const captureAgentTui = async (options) => {
     ...launch,
     cols,
     rows,
+    aspectRatio,
     settleMilliseconds,
     interactions: [
       ...startupInteractions,
@@ -266,8 +307,10 @@ export const captureAgentTui = async (options) => {
     stopMarkerGraceMilliseconds,
     timeoutMilliseconds,
     artifactDirectory,
+    artifactOptions,
     onTrace,
   });
+  await selectArtifacts(artifactDirectory, artifacts);
   return {
     ...capture,
     tool,
