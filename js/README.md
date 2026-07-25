@@ -97,6 +97,10 @@ const capture = await captureAgentTui({
   tool: 'codex',
   workingDirectory: '/tmp/project',
   prompt: 'Inspect the failing test',
+  promptAfter: 'What do you want to work on?',
+  startupInteractions: [
+    { after: 'Do you trust the contents of this directory?', key: 'ENTER' },
+  ],
   cols: 100,
   rows: 30,
   interactions: [
