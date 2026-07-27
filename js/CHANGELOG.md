@@ -1,5 +1,11 @@
 # agent-commander
 
+## 0.10.1
+
+### Patch Changes
+
+- f1238e7: Remove the obsolete development-only patch lifecycle from published packages so clean consumer installs succeed, and require the released command-stream renderer fixes.
+
 ## 0.10.0
 
 ### Minor Changes
