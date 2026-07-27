@@ -25,3 +25,14 @@ test('JavaScript package ships its own README', async () => {
   assert.match(readme, /npm install agent-commander/);
   assert.match(readme, /start-agent --tool claude/);
 });
+
+test('published package installs without development-only patch machinery', async () => {
+  const packageJson = await readJson(
+    new URL('../package.json', import.meta.url)
+  );
+
+  assert.strictEqual(packageJson.scripts?.postinstall, undefined);
+  assert.strictEqual(packageJson.dependencies?.['patch-package'], undefined);
+  assert.ok(!packageJson.files.includes('patches'));
+  assert.strictEqual(packageJson.dependencies?.['command-stream'], '^0.17.2');
+});
