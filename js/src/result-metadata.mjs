@@ -1,3 +1,4 @@
+import { completionState, outcomeMessages } from './completion.mjs';
 const USAGE_LIMIT_PATTERNS = [
   /usage limit (?:reached|exceeded)/i,
   // Require an explicit qualifier so a bare "ratelimit" does not match. The raw
@@ -76,34 +77,19 @@ function cleanResetTime(value) {
   return cleaned;
 }
 
-function findFinalResultMessage(messages) {
-  for (const message of [...messages].reverse()) {
-    if (message && typeof message === 'object' && message.type === 'result') {
-      return message;
-    }
-  }
-  return null;
-}
-
 // A structured result message that reports an explicit success is authoritative.
 // The raw stream-json output contains HTTP header names (e.g.
 // "anthropic-ratelimit-unified-5h-reset") that can match usage-limit patterns
 // even on a fully successful run, so trust this signal over the text scan when
 // it is available. See issue #37.
-function hasStructuredSuccess(messages) {
-  const resultMessage = findFinalResultMessage(messages);
-  return Boolean(
-    resultMessage &&
-    resultMessage.is_error !== true &&
-    (resultMessage.subtype === 'success' ||
-      resultMessage.terminal_reason === 'completed')
-  );
+function hasStructuredSuccess(messages, tool) {
+  return completionState(tool, messages) === 'completed';
 }
 
-function detectUsageLimit({ plainOutput, messages = [] }) {
+function detectUsageLimit({ plainOutput, messages = [], tool }) {
   const output = plainOutput || '';
 
-  if (hasStructuredSuccess(messages)) {
+  if (hasStructuredSuccess(messages, tool)) {
     return { reached: false, resetTime: null, timezone: null };
   }
 
@@ -156,6 +142,7 @@ function textFromValue(value) {
 function extractResultSummary({ messages, plainOutput }) {
   const keys = [
     'result',
+    'response',
     'summary',
     'result_summary',
     'resultSummary',
@@ -179,6 +166,7 @@ function extractResultSummary({ messages, plainOutput }) {
     }
 
     const nestedText =
+      textFromValue(message.part?.text) ||
       textFromValue(message.item?.content) ||
       textFromValue(message.item?.text) ||
       textFromValue(message.delta?.text);
@@ -219,7 +207,8 @@ function extractResultModelUsage(messages) {
       message.result_model_usage ||
       message.modelUsage ||
       message.model_usage ||
-      message.usage_by_model;
+      message.usage_by_model ||
+      message.stats?.models;
     if (direct && typeof direct === 'object') {
       return direct;
     }
@@ -262,13 +251,27 @@ function extractSubAgentCalls(messages) {
       continue;
     }
 
-    const type = message.type || message.item?.type || message.item_type;
+    for (const block of Array.isArray(message.message?.content)
+      ? message.message.content
+      : []) {
+      if (block.type === 'tool_use' && ['Task', 'Agent'].includes(block.name)) {
+        calls.push({
+          type: 'tool_use',
+          id: block.id || null,
+          name: block.name,
+          status: 'started',
+          summary: block.input?.description || null,
+        });
+      }
+    }
+
+    const type = message.item?.type || message.item_type || message.type;
     if (typeof type === 'string' && /(?:sub[_-]?agent|collab)/i.test(type)) {
       calls.push({
         type,
         id: message.id || message.call_id || message.item?.id || null,
         name: message.name || message.tool || message.item?.name || null,
-        status: message.status || message.state || null,
+        status: message.item?.status || message.status || message.state || null,
         summary: extractResultSummary({ messages: [message], plainOutput: '' }),
       });
     }
@@ -288,18 +291,23 @@ function extractErrorFromMessages(messages) {
       message.is_error === true ||
       message.error ||
       messageType === 'error' ||
-      messageType === 'step_error'
+      messageType === 'step_error' ||
+      messageType === 'turn.failed' ||
+      message.status === 'error' ||
+      message.subtype?.startsWith('error')
     ) {
       const error = message.error;
       const errorType =
-        (typeof error === 'object' && (error.type || error.code)) ||
+        (error && typeof error === 'object' && (error.type || error.code)) ||
         message.errorType ||
         message.error_type ||
         messageType ||
         'execution_error';
       const errorMessage =
         (typeof error === 'string' && error) ||
-        (typeof error === 'object' && (error.message || error.details)) ||
+        (error &&
+          typeof error === 'object' &&
+          (error.message || error.details)) ||
         textFromValue(message.message) ||
         textFromValue(message.result) ||
         'Execution failed';
@@ -313,7 +321,9 @@ function extractErrorFromMessages(messages) {
 
 function detectExecutionError({ exitCode, plainOutput, messages, toolConfig }) {
   if (toolConfig?.detectErrors) {
-    const detected = toolConfig.detectErrors({ output: plainOutput || '' });
+    const detected = toolConfig.detectErrors({
+      output: messages.map((message) => JSON.stringify(message)).join('\n'),
+    });
     if (detected?.hasError) {
       return {
         hasError: true,
@@ -357,6 +367,7 @@ function extractSessionId({ explicitSessionId, messages }) {
     const sessionId =
       message.session_id ||
       message.sessionId ||
+      message.sessionID ||
       message.thread_id ||
       message.threadId ||
       message.conversation_id ||
@@ -409,14 +420,26 @@ export function buildNormalizedResultMetadata(options) {
     usage = null,
     toolConfig = null,
   } = options;
-  const messages = normalizeMessages({ parsedOutput, plainOutput, toolConfig });
-  const usageLimit = detectUsageLimit({ plainOutput, messages });
+  const allMessages = normalizeMessages({
+    parsedOutput,
+    plainOutput,
+    toolConfig,
+  });
+  const messages = allMessages.filter((event) => !event?.parent_tool_use_id);
+  const usageLimit = detectUsageLimit({ plainOutput, messages, tool });
   const error = detectExecutionError({
     exitCode,
     plainOutput,
-    messages,
+    messages: outcomeMessages(tool, messages),
     toolConfig,
   });
+  if (!error.hasError && completionState(tool, messages) === 'incomplete') {
+    Object.assign(error, {
+      hasError: true,
+      errorType: 'incomplete_stream',
+      message: 'Process exited before the native completion event',
+    });
+  }
   const anthropicTotalCostUSD = firstNumber(messages, [
     'total_cost_usd',
     'totalCostUsd',
@@ -447,7 +470,7 @@ export function buildNormalizedResultMetadata(options) {
     resultSummary: extractResultSummary({ messages, plainOutput }),
     resultModelUsage: extractResultModelUsage(messages),
     streamTokenUsage: usage,
-    subAgentCalls: extractSubAgentCalls(messages),
+    subAgentCalls: extractSubAgentCalls(allMessages),
     errorDuringExecution: error.hasError,
     errorType: error.errorType,
     errorMessage: error.message,

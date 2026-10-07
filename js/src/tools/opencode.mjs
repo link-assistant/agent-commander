@@ -1,3 +1,5 @@
+import { nativeUsage } from './usage.mjs';
+import { syncedModels, syncedDefaults } from './model-catalog.mjs';
 /**
  * OpenCode CLI tool configuration
  * Based on hive-mind's opencode.lib.mjs implementation
@@ -17,15 +19,7 @@ const READ_ONLY_PERMISSION = '{"edit":"deny","bash":"deny","task":"deny"}';
  * Maps aliases to full model IDs
  */
 export const modelMap = {
-  gpt4: 'openai/gpt-4',
-  gpt4o: 'openai/gpt-4o',
-  claude: 'anthropic/claude-3-5-sonnet',
-  sonnet: 'anthropic/claude-3-5-sonnet',
-  opus: 'anthropic/claude-3-opus',
-  gemini: 'google/gemini-pro',
-  grok: 'opencode/grok-code',
-  'grok-code': 'opencode/grok-code',
-  'grok-code-fast-1': 'opencode/grok-code',
+  ...syncedModels.opencode,
 };
 
 /**
@@ -65,7 +59,7 @@ export function buildArgs(options) {
   }
 
   if (resume) {
-    args.push('--resume', resume);
+    args.push('--session', resume);
   }
 
   args.push(...normalizeExtraArgs(extraArgs));
@@ -164,8 +158,8 @@ export function extractSessionId(options) {
   const messages = parseOutput({ output });
 
   for (const msg of messages) {
-    if (msg.session_id) {
-      return msg.session_id;
+    if (msg.session_id || msg.sessionID) {
+      return msg.session_id || msg.sessionID;
     }
   }
 
@@ -178,28 +172,8 @@ export function extractSessionId(options) {
  * @param {string} options.output - Raw output string
  * @returns {Object} Usage statistics
  */
-export function extractUsage(options) {
-  const { output } = options;
-  const messages = parseOutput({ output });
-
-  const usage = {
-    inputTokens: 0,
-    outputTokens: 0,
-  };
-
-  for (const msg of messages) {
-    if (msg.usage) {
-      const u = msg.usage;
-      if (u.input_tokens) {
-        usage.inputTokens += u.input_tokens;
-      }
-      if (u.output_tokens) {
-        usage.outputTokens += u.output_tokens;
-      }
-    }
-  }
-
-  return usage;
+export function extractUsage({ output }) {
+  return nativeUsage('opencode', parseOutput({ output }));
 }
 
 /**
@@ -210,12 +184,12 @@ export const opencodeTool = {
   displayName: 'OpenCode CLI',
   executable: 'opencode',
   supportsJsonOutput: true,
-  supportsJsonInput: true, // OpenCode can accept JSON input via stdin
+  supportsJsonInput: false, // stdin carries plain prompt text
   supportsSystemPrompt: false, // System prompt is combined with user prompt
   supportsResume: true,
   supportsReadOnly: true, // Supports OPENCODE_PERMISSION
   supportsAsk: false, // Only a static up-front policy; no per-command request/response relay
-  defaultModel: 'grok-code-fast-1',
+  defaultModel: syncedDefaults.opencode,
   modelMap,
   mapModelToId,
   buildArgs,

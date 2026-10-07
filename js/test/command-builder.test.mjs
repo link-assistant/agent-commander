@@ -24,7 +24,7 @@ test('buildAgentCommand - basic no isolation with known tool (claude)', () => {
   assert.ok(command.includes('/tmp/test'));
   assert.ok(command.includes('claude'));
   // Claude tool builds its own args format with --prompt
-  assert.ok(command.includes('--prompt'));
+  assert.ok(command.includes('-p'));
   assert.ok(command.includes('Hello'));
 });
 
@@ -37,7 +37,7 @@ test('buildAgentCommand - with system prompt (claude)', () => {
     isolation: 'none',
   });
 
-  assert.ok(command.includes('--prompt'));
+  assert.ok(command.includes('-p'));
   assert.ok(command.includes('--system-prompt'));
   assert.ok(command.includes('You are helpful'));
 });
@@ -95,7 +95,7 @@ test('buildAgentCommand - with model (claude)', () => {
 
   assert.ok(command.includes('--model'));
   // Opus model should be mapped to full ID
-  assert.ok(command.includes('claude-opus-4-7'));
+  assert.ok(command.includes('--model opus'));
 });
 
 test('buildAgentCommand - with codex tool', () => {

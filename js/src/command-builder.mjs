@@ -3,6 +3,7 @@
  */
 
 import { isToolSupported, getTool } from './tools/index.mjs';
+import { escapeArg } from './tools/shell.mjs';
 import { askUnsupportedError } from './permissions/index.mjs';
 
 /**
@@ -101,7 +102,7 @@ export function buildAgentCommand(options) {
   }
 
   // Wrap in bash -c with working directory change
-  let fullCommand = `bash -c "cd ${escapeForBashC(workingDirectory)} && ${escapeForBashC(baseCommand)}"`;
+  let fullCommand = `bash -c "cd ${escapeForBashC(escapeArg(workingDirectory))} && ${escapeForBashC(baseCommand)}"`;
 
   // Apply isolation wrapper
   if (isolation === 'screen') {
@@ -145,11 +146,11 @@ function buildToolCommand(options) {
   let toolCommand = tool;
 
   if (prompt) {
-    toolCommand += ` --prompt "${escapeQuotes(prompt)}"`;
+    toolCommand += ` --prompt ${escapeArg(prompt)}`;
   }
 
   if (systemPrompt) {
-    toolCommand += ` --system-prompt "${escapeQuotes(systemPrompt)}"`;
+    toolCommand += ` --system-prompt ${escapeArg(systemPrompt)}`;
   }
 
   return toolCommand;

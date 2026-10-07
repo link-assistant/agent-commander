@@ -9,7 +9,7 @@ use agent_commander::tools::qwen::{
 // Model mapping tests
 #[test]
 fn test_map_model_to_id_with_alias() {
-    assert_eq!(map_model_to_id("qwen3-coder"), "qwen3-coder-480a35");
+    assert_eq!(map_model_to_id("qwen3-coder"), "qwen3-coder");
     assert_eq!(map_model_to_id("coder"), "qwen3-coder-480a35");
     assert_eq!(map_model_to_id("gpt-4o"), "gpt-4o");
 }
@@ -39,7 +39,7 @@ fn test_build_args_with_model() {
     };
     let args = build_args(&options);
     assert!(args.contains(&"--model".to_string()));
-    assert!(args.contains(&"qwen3-coder-480a35".to_string()));
+    assert!(args.contains(&"qwen3-coder".to_string()));
 }
 
 #[test]
@@ -237,7 +237,7 @@ fn test_build_command_constructs_correct_command() {
     assert!(cmd.contains("-p"));
     assert!(cmd.contains("Review code"));
     assert!(cmd.contains("--model"));
-    assert!(cmd.contains("qwen3-coder-480a35"));
+    assert!(cmd.contains("qwen3-coder"));
 }
 
 #[test]
@@ -284,6 +284,6 @@ fn test_qwen_tool_default_values() {
     assert_eq!(tool.name, "qwen");
     assert_eq!(tool.display_name, "Qwen Code CLI");
     assert_eq!(tool.executable, "qwen");
-    assert_eq!(tool.default_model, "qwen3-coder-480a35");
+    assert_eq!(tool.default_model, "qwen3-coder-plus");
     assert!(!tool.supports_system_prompt); // Combined with user prompt
 }

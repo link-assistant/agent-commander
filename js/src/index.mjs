@@ -29,6 +29,7 @@ import { getTool, isToolSupported } from './tools/index.mjs';
 import { createOutputStream, createInputStream } from './streaming/index.mjs';
 import { stringifyNdjsonLine } from './streaming/ndjson.mjs';
 import { buildNormalizedResultMetadata } from './result-metadata.mjs';
+import { requireCompletedResult } from './completion.mjs';
 import { PermissionRelay, askUnsupportedError } from './permissions/index.mjs';
 
 const PROMPT_FILE_TOOLS = new Set([
@@ -377,9 +378,12 @@ export function agent(options) {
 
       // Setup signal handler for graceful shutdown
       if (!detached && isolation === 'none') {
-        removeSignalHandler = setupSignalHandler(() => {
-          console.log('Propagating shutdown to agent...');
-          // The process will be terminated naturally by SIGINT
+        removeSignalHandler = setupSignalHandler(async () => {
+          processHandle?.terminate();
+          if (processHandle?.waitForExit) {
+            await processHandle.waitForExit();
+          }
+          await cleanupPromptTempDir();
         });
       }
 
@@ -536,20 +540,20 @@ export function agent(options) {
           parsedOutput = outputStream.getMessages();
         } else {
           parsedOutput = parseJsonMessages({
-            output: plainOutput,
+            output: stdout,
             toolName: tool,
           });
         }
 
         // Extract session ID if tool supports it
         if (toolConfig && toolConfig.extractSessionId) {
-          sessionId = toolConfig.extractSessionId({ output: plainOutput });
+          sessionId = toolConfig.extractSessionId({ output: stdout });
         }
 
         // Extract usage if tool supports it
         let usage = null;
         if (toolConfig && toolConfig.extractUsage) {
-          usage = toolConfig.extractUsage({ output: plainOutput });
+          usage = toolConfig.extractUsage({ output: stdout });
         }
 
         // Clean up signal handler
@@ -567,6 +571,9 @@ export function agent(options) {
           usage,
           toolConfig,
         });
+        if ((json || tool === 'agent') && toolConfig) {
+          requireCompletedResult(metadata, tool, parsedOutput || []);
+        }
 
         return {
           exitCode,
@@ -579,6 +586,8 @@ export function agent(options) {
           metadata,
         };
       } finally {
+        removeSignalHandler?.();
+        removeSignalHandler = null;
         await cleanupPromptTempDir();
       }
     }
@@ -609,9 +618,17 @@ export function agent(options) {
    */
   const getToolConfig = () => toolConfig;
 
+  const cancel = async () => {
+    if (isolation === 'none') {
+      processHandle?.terminate?.();
+    }
+    return stop();
+  };
+
   return {
     start,
     stop,
+    cancel,
     getSessionId,
     getMessages,
     getToolConfig,

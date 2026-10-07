@@ -1,7 +1,10 @@
+import { nativeUsage } from './usage.mjs';
 /**
  * Gemini CLI tool configuration
  * Based on Google's official gemini-cli: https://github.com/google-gemini/gemini-cli
  */
+
+import { syncedModels, syncedDefaults } from './model-catalog.mjs';
 
 import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
 
@@ -10,19 +13,7 @@ import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
  * Maps aliases to full model IDs
  */
 export const modelMap = {
-  // Gemini 2.5 models (current stable)
-  flash: 'gemini-2.5-flash',
-  '2.5-flash': 'gemini-2.5-flash',
-  pro: 'gemini-2.5-pro',
-  '2.5-pro': 'gemini-2.5-pro',
-  lite: 'gemini-2.5-flash-lite',
-  '2.5-lite': 'gemini-2.5-flash-lite',
-  // Gemini 3 models (latest generation)
-  '3-flash': 'gemini-3-flash-preview',
-  '3-pro': 'gemini-3-pro-preview',
-  // Legacy aliases
-  'gemini-flash': 'gemini-2.5-flash',
-  'gemini-pro': 'gemini-2.5-pro',
+  ...syncedModels.gemini,
 };
 
 /**
@@ -57,6 +48,7 @@ export function buildArgs(options) {
   const {
     prompt,
     model,
+    resume,
     json = false,
     yolo = true, // Enable autonomous mode by default for agent use
     readOnly = false,
@@ -80,6 +72,10 @@ export function buildArgs(options) {
   } else if (yolo && !skipDefaultSafetyFlags) {
     // Enable yolo mode for autonomous execution (auto-approve all tool calls)
     args.push('--yolo');
+  }
+
+  if (resume) {
+    args.push('--resume', resume);
   }
 
   // Sandbox mode for secure execution
@@ -228,65 +224,8 @@ export function extractSessionId(options) {
  * @param {string} options.output - Raw output string
  * @returns {Object} Usage statistics
  */
-export function extractUsage(options) {
-  const { output } = options;
-  const messages = parseOutput({ output });
-
-  const usage = {
-    inputTokens: 0,
-    outputTokens: 0,
-    totalTokens: 0,
-  };
-
-  for (const msg of messages) {
-    // Check for usage metadata in different possible formats
-    if (msg.usage) {
-      const u = msg.usage;
-      if (u.input_tokens !== undefined) {
-        usage.inputTokens += u.input_tokens;
-      }
-      if (u.output_tokens !== undefined) {
-        usage.outputTokens += u.output_tokens;
-      }
-      if (u.total_tokens !== undefined) {
-        usage.totalTokens += u.total_tokens;
-      }
-      // Also check camelCase variants
-      if (u.inputTokens !== undefined) {
-        usage.inputTokens += u.inputTokens;
-      }
-      if (u.outputTokens !== undefined) {
-        usage.outputTokens += u.outputTokens;
-      }
-      if (u.totalTokens !== undefined) {
-        usage.totalTokens += u.totalTokens;
-      }
-    }
-
-    // Also check for Gemini-specific token metrics
-    if (msg.usageMetadata) {
-      const u = msg.usageMetadata;
-      if (u.promptTokenCount !== undefined) {
-        usage.inputTokens += u.promptTokenCount;
-      }
-      if (u.candidatesTokenCount !== undefined) {
-        usage.outputTokens += u.candidatesTokenCount;
-      }
-      if (u.totalTokenCount !== undefined) {
-        usage.totalTokens += u.totalTokenCount;
-      }
-    }
-  }
-
-  // Calculate total if not provided
-  if (
-    usage.totalTokens === 0 &&
-    (usage.inputTokens > 0 || usage.outputTokens > 0)
-  ) {
-    usage.totalTokens = usage.inputTokens + usage.outputTokens;
-  }
-
-  return usage;
+export function extractUsage({ output }) {
+  return nativeUsage('gemini', parseOutput({ output }));
 }
 
 /**
@@ -323,14 +262,14 @@ export const geminiTool = {
   supportsJsonOutput: true,
   supportsJsonInput: false, // Gemini CLI uses -p flag for prompts, not stdin JSON
   supportsSystemPrompt: false, // System prompt via env var or file, combined with user prompt
-  supportsResume: true, // Via /chat resume command in interactive mode
+  supportsResume: true, // Native --resume SESSION in headless mode
   supportsYolo: true, // Supports --yolo for autonomous execution
   supportsSandbox: true, // Supports --sandbox for secure execution
   supportsCheckpointing: true, // Supports --checkpointing
   supportsDebug: true, // Supports -d for debug output
   supportsReadOnly: true, // Supports --approval-mode plan
   supportsAsk: false, // No JSON stdin channel (prompt via -p), so approvals cannot be relayed
-  defaultModel: 'gemini-2.5-flash',
+  defaultModel: syncedDefaults.gemini,
   modelMap,
   mapModelToId,
   buildArgs,

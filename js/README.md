@@ -82,7 +82,19 @@ console.log(result.output.plain);
 console.log(result.metadata);
 ```
 
-`result.metadata` is a normalized summary for `claude`, `codex`, `opencode`, and `agent` runs. It includes success and error classification, session ID, usage-limit reset details, result summary, cost estimates, stream token usage, optional model usage, and sub-agent call summaries.
+`result.metadata` is a normalized summary for all six supported tools. It includes success and error classification, session ID, usage-limit reset details, result summary, cost estimates, stream token usage, optional model usage, and sub-agent call summaries.
+
+### Completion, usage and cancellation
+
+For direct JSON runs, `metadata.success` requires a native terminal event and a successful process exit. Empty or unfinished streams report `incomplete_stream`; stderr stays in `output.plain` while parsed events, session IDs and usage come from stdout. Agent's default NDJSON mode uses the same check. Parent session metadata excludes Claude subagent-scoped results.
+
+`stop()` waits for a direct process to finish. Use `await controller.cancel()` to interrupt it and collect the final result. Unix cancellation signals the process group; Windows cancellation signals the immediate child. A native CLI that ignores SIGTERM needs a caller-managed termination policy.
+
+Usage preserves native final totals without adding repeated assistant snapshots. Codex `inputTokens` means fresh input; inclusive input is `inputTokens + cacheReadTokens`. Cache and reasoning fields are reported when supplied. Gemini and Qwen expose token usage and native model usage through the same result contract.
+
+Bundled aliases track a recorded Hive Mind catalogue; exact model IDs pass through for caller-managed live discovery. Omitting `model` leaves selection to the native CLI. Claude's `opus` execution alias stays rolling. Common `resume` works for all six tools; Agent adds `--no-fork`, and OpenCode uses `--session`.
+
+See the [parity audit](../docs/case-studies/issue-50/README.md) and [dependency example](../examples/hive-mind-dependency.mjs), which can run against a credential-free fixture for any tool.
 
 ### Real TUI capture
 

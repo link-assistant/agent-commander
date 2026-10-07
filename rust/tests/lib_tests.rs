@@ -151,9 +151,9 @@ fn test_agent_creates_with_empty_isolation() {
 #[test]
 fn test_agent_options_default() {
     let options = AgentOptions::default();
-    assert!(options.tool.is_empty());
-    assert!(options.working_directory.is_empty());
-    assert!(options.isolation.is_empty());
+    assert_eq!(options.tool, "");
+    assert_eq!(options.working_directory, "");
+    assert_eq!(options.isolation, "");
     assert!(!options.json);
     assert!(options.prompt.is_none());
     assert!(options.prompt_file.is_none());
@@ -219,7 +219,7 @@ async fn test_agent_stop_in_dry_run_mode_with_screen() {
         .unwrap();
 
     assert_eq!(result.exit_code, 0);
-    assert!(result.plain_output.is_empty());
+    assert_eq!(result.plain_output, "");
     assert!(result.parsed_output.is_none());
 }
 

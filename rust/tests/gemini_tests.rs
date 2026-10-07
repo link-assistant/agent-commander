@@ -183,7 +183,7 @@ fn test_gemini_tool_default() {
     assert!(!tool.supports_json_input);
     assert!(tool.supports_yolo);
     assert!(tool.supports_sandbox);
-    assert_eq!(tool.default_model, "gemini-2.5-flash");
+    assert_eq!(tool.default_model, "flash");
 }
 
 #[test]

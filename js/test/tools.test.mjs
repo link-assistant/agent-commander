@@ -56,11 +56,11 @@ test('getTool - throws for unknown tool', () => {
 test('claudeTool - mapModelToId with alias', () => {
   assert.strictEqual(
     claudeTool.mapModelToId({ model: 'sonnet' }),
-    'claude-sonnet-4-6'
+    'claude-sonnet-5'
   );
   assert.strictEqual(
     claudeTool.mapModelToId({ model: 'opus' }),
-    'claude-opus-4-7'
+    'claude-opus-5'
   );
   assert.strictEqual(
     claudeTool.mapModelToId({ model: 'haiku' }),
@@ -93,14 +93,14 @@ test('claudeTool - mapModelToId with full ID', () => {
 
 test('claudeTool - buildArgs with prompt', () => {
   const args = claudeTool.buildArgs({ prompt: 'Hello' });
-  assert.ok(args.includes('--prompt'));
+  assert.ok(args.includes('-p'));
   assert.ok(args.includes('Hello'));
 });
 
 test('claudeTool - buildArgs with model', () => {
   const args = claudeTool.buildArgs({ model: 'sonnet' });
   assert.ok(args.includes('--model'));
-  assert.ok(args.includes('claude-sonnet-4-6'));
+  assert.ok(args.includes('claude-sonnet-5'));
 });
 
 test('claudeTool - parseOutput with NDJSON', () => {
@@ -133,9 +133,9 @@ test('claudeTool - buildArgs uses stream-json output format', () => {
 test('claudeTool - buildArgs with fallback model', () => {
   const args = claudeTool.buildArgs({ model: 'opus', fallbackModel: 'sonnet' });
   assert.ok(args.includes('--model'));
-  assert.ok(args.includes('claude-opus-4-7'));
+  assert.ok(args.includes('opus'));
   assert.ok(args.includes('--fallback-model'));
-  assert.ok(args.includes('claude-sonnet-4-6'));
+  assert.ok(args.includes('claude-sonnet-5'));
 });
 
 test('claudeTool - buildArgs with append-system-prompt', () => {
@@ -243,8 +243,8 @@ test('codexTool - mapModelToId with gpt-5.5 family aliases', () => {
   );
 });
 
-test('codexTool - default model is gpt-5.5', () => {
-  assert.strictEqual(codexTool.defaultModel, 'gpt-5.5');
+test('codexTool - default model is gpt-6-sol', () => {
+  assert.strictEqual(codexTool.defaultModel, 'gpt-6-sol');
 });
 
 // OpenCode tool tests
@@ -398,7 +398,7 @@ test('agentTool - mapModelToId keeps deprecated qwen3.6-plus-free for backward c
 test('qwenTool - mapModelToId with alias', () => {
   assert.strictEqual(
     qwenTool.mapModelToId({ model: 'qwen3-coder' }),
-    'qwen3-coder-480a35'
+    'qwen3-coder'
   );
   assert.strictEqual(
     qwenTool.mapModelToId({ model: 'coder' }),
@@ -423,7 +423,7 @@ test('qwenTool - buildArgs with prompt', () => {
 test('qwenTool - buildArgs with model', () => {
   const args = qwenTool.buildArgs({ model: 'qwen3-coder' });
   assert.ok(args.includes('--model'));
-  assert.ok(args.includes('qwen3-coder-480a35'));
+  assert.ok(args.includes('qwen3-coder'));
 });
 
 test('qwenTool - buildArgs uses stream-json output format by default', () => {
@@ -564,7 +564,7 @@ test('qwenTool - buildCommand constructs correct command', () => {
   assert.ok(cmd.includes('-p'));
   assert.ok(cmd.includes('Review code'));
   assert.ok(cmd.includes('--model'));
-  assert.ok(cmd.includes('qwen3-coder-480a35'));
+  assert.ok(cmd.includes('qwen3-coder'));
 });
 
 test('qwenTool - buildCommand combines system and user prompt', () => {
@@ -756,8 +756,8 @@ test('geminiTool - supportsDebug is true', () => {
   assert.strictEqual(geminiTool.supportsDebug, true);
 });
 
-test('geminiTool - default model is gemini-2.5-flash', () => {
-  assert.strictEqual(geminiTool.defaultModel, 'gemini-2.5-flash');
+test('geminiTool - default model is flash', () => {
+  assert.strictEqual(geminiTool.defaultModel, 'flash');
 });
 
 test('geminiTool - buildCommand reads prompt file with passthrough options', () => {

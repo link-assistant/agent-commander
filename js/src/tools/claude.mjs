@@ -1,7 +1,10 @@
+import { nativeUsage } from './usage.mjs';
 /**
  * Claude CLI tool configuration
  * Based on hive-mind's claude.lib.mjs implementation
  */
+
+import { syncedModels, syncedDefaults } from './model-catalog.mjs';
 
 import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
 
@@ -10,26 +13,7 @@ import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
  * Maps aliases to full model IDs
  */
 export const modelMap = {
-  sonnet: 'claude-sonnet-4-6',
-  opus: 'claude-opus-4-7', // Opus 4.7 (hive-mind issue #1620, PR #1621)
-  haiku: 'claude-haiku-4-5-20251001',
-  'haiku-3-5': 'claude-3-5-haiku-20241022',
-  'haiku-3': 'claude-3-haiku-20240307',
-  opusplan: 'opusplan', // Special mode: Opus for planning, Sonnet for execution
-  // Shorter version aliases
-  'sonnet-4-6': 'claude-sonnet-4-6',
-  'opus-4-7': 'claude-opus-4-7',
-  'opus-4-6': 'claude-opus-4-6',
-  'opus-4-5': 'claude-opus-4-5-20251101',
-  'sonnet-4-5': 'claude-sonnet-4-5-20250929', // Backward compatibility
-  'haiku-4-5': 'claude-haiku-4-5-20251001',
-  // Full model ID aliases for backward compatibility
-  'claude-sonnet-4-6': 'claude-sonnet-4-6',
-  'claude-opus-4-7': 'claude-opus-4-7',
-  'claude-opus-4-6': 'claude-opus-4-6',
-  'claude-opus-4-5': 'claude-opus-4-5-20251101',
-  'claude-sonnet-4-5': 'claude-sonnet-4-5-20250929',
-  'claude-haiku-4-5': 'claude-haiku-4-5-20251001',
+  ...syncedModels.claude,
 };
 
 /**
@@ -105,7 +89,7 @@ export function buildArgs(options) {
   }
 
   if (model) {
-    const mappedModel = mapModelToId({ model });
+    const mappedModel = model === 'opus' ? model : mapModelToId({ model });
     args.push('--model', mappedModel);
   }
 
@@ -115,7 +99,7 @@ export function buildArgs(options) {
   }
 
   if (prompt) {
-    args.push('--prompt', prompt);
+    args.push('-p', prompt);
   }
 
   if (systemPrompt) {
@@ -126,11 +110,11 @@ export function buildArgs(options) {
     args.push('--append-system-prompt', appendSystemPrompt);
   }
 
-  if (verbose) {
+  if (verbose || json) {
     args.push('--verbose');
   }
 
-  if (print) {
+  if (!prompt && (print || json || jsonInput)) {
     args.push('-p'); // Print mode
   }
 
@@ -205,6 +189,7 @@ export function buildCommand(options) {
   } = options;
   const args = buildArgs({
     ...argOptions,
+    print: argOptions.print || Boolean(promptFile || prompt),
     // In stream-input mode the prompt is written to stdin as NDJSON frames by
     // the per-command approval relay, so it is not passed as a --prompt arg.
     prompt: promptFile || streamInput ? undefined : prompt,
@@ -277,36 +262,8 @@ export function extractSessionId(options) {
  * @param {string} options.output - Raw output string
  * @returns {Object} Usage statistics
  */
-export function extractUsage(options) {
-  const { output } = options;
-  const messages = parseOutput({ output });
-
-  const usage = {
-    inputTokens: 0,
-    outputTokens: 0,
-    cacheCreationTokens: 0,
-    cacheReadTokens: 0,
-  };
-
-  for (const msg of messages) {
-    if (msg.message?.usage) {
-      const u = msg.message.usage;
-      if (u.input_tokens) {
-        usage.inputTokens += u.input_tokens;
-      }
-      if (u.output_tokens) {
-        usage.outputTokens += u.output_tokens;
-      }
-      if (u.cache_creation_input_tokens) {
-        usage.cacheCreationTokens += u.cache_creation_input_tokens;
-      }
-      if (u.cache_read_input_tokens) {
-        usage.cacheReadTokens += u.cache_read_input_tokens;
-      }
-    }
-  }
-
-  return usage;
+export function extractUsage({ output }) {
+  return nativeUsage('claude', parseOutput({ output }));
 }
 
 /**
@@ -328,7 +285,7 @@ export const claudeTool = {
   supportsReplayUserMessages: true, // Supports --replay-user-messages
   supportsReadOnly: true, // Supports --permission-mode plan
   supportsAsk: true, // Per-command approval via stream-json can_use_tool relay
-  defaultModel: 'sonnet',
+  defaultModel: syncedDefaults.claude,
   modelMap,
   mapModelToId,
   buildArgs,

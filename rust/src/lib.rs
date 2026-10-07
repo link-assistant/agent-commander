@@ -11,6 +11,7 @@
 
 pub mod cli_parser;
 pub mod command_builder;
+mod completion;
 pub mod executor;
 pub mod permissions;
 pub mod result_metadata;
@@ -18,7 +19,7 @@ pub mod streaming;
 pub mod tools;
 pub mod tui;
 
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::AsyncWriteExt;
@@ -195,41 +196,12 @@ fn should_create_prompt_file(options: &AgentOptions, dry_run: bool) -> bool {
 
 fn extract_usage_value(tool: &str, output: &str) -> Option<Value> {
     match tool {
-        "claude" => {
-            let usage = tools::claude::extract_usage(output);
-            Some(json!({
-                "inputTokens": usage.input_tokens,
-                "outputTokens": usage.output_tokens,
-                "cacheCreationTokens": usage.cache_creation_tokens,
-                "cacheReadTokens": usage.cache_read_tokens,
-            }))
-        }
-        "codex" => {
-            let usage = tools::codex::extract_usage(output);
-            Some(json!({
-                "inputTokens": usage.input_tokens,
-                "outputTokens": usage.output_tokens,
-            }))
-        }
-        "opencode" => {
-            let usage = tools::opencode::extract_usage(output);
-            Some(json!({
-                "inputTokens": usage.input_tokens,
-                "outputTokens": usage.output_tokens,
-            }))
-        }
-        "agent" => {
-            let usage = tools::agent::extract_usage(output);
-            Some(json!({
-                "inputTokens": usage.input_tokens,
-                "outputTokens": usage.output_tokens,
-                "reasoningTokens": usage.reasoning_tokens,
-                "cacheReadTokens": usage.cache_read_tokens,
-                "cacheWriteTokens": usage.cache_write_tokens,
-                "totalCost": usage.total_cost,
-                "stepCount": usage.step_count,
-            }))
-        }
+        "claude" => serde_json::to_value(tools::claude::extract_usage(output)).ok(),
+        "codex" => serde_json::to_value(tools::codex::extract_usage(output)).ok(),
+        "opencode" => serde_json::to_value(tools::opencode::extract_usage(output)).ok(),
+        "agent" => serde_json::to_value(tools::agent::extract_usage(output)).ok(),
+        "qwen" => serde_json::to_value(tools::qwen::extract_usage(output)).ok(),
+        "gemini" => serde_json::to_value(tools::gemini::extract_usage(output)).ok(),
         _ => None,
     }
 }
@@ -535,27 +507,33 @@ impl Agent {
                 }
             }
 
+            if parsed_output.is_none() {
+                parsed_output = Some(streaming::parse_ndjson(stdout));
+            }
+
             // Try to extract session ID
             if is_tool_supported(&self.options.tool) {
                 match self.options.tool.as_str() {
                     "claude" => {
-                        self.session_id = tools::claude::extract_session_id(&plain_output);
+                        self.session_id = tools::claude::extract_session_id(stdout);
                     }
                     "codex" => {
-                        self.session_id = tools::codex::extract_session_id(&plain_output);
+                        self.session_id = tools::codex::extract_session_id(stdout);
                     }
                     "opencode" => {
-                        self.session_id = tools::opencode::extract_session_id(&plain_output);
+                        self.session_id = tools::opencode::extract_session_id(stdout);
                     }
                     "agent" => {
-                        self.session_id = tools::agent::extract_session_id(&plain_output);
+                        self.session_id = tools::agent::extract_session_id(stdout);
                     }
+                    "qwen" => self.session_id = tools::qwen::extract_session_id(stdout),
+                    "gemini" => self.session_id = tools::gemini::extract_session_id(stdout),
                     _ => {}
                 }
             }
 
-            let usage = extract_usage_value(&self.options.tool, &plain_output);
-            let metadata = build_normalized_result_metadata(BuildMetadataOptions {
+            let usage = extract_usage_value(&self.options.tool, stdout);
+            let mut metadata = build_normalized_result_metadata(BuildMetadataOptions {
                 tool: &self.options.tool,
                 exit_code,
                 plain_output: &plain_output,
@@ -563,6 +541,15 @@ impl Agent {
                 session_id: self.session_id.clone(),
                 usage: usage.clone(),
             });
+            if (self.options.json || self.options.tool == "agent")
+                && is_tool_supported(&self.options.tool)
+            {
+                completion::require_completed_result(
+                    &mut metadata,
+                    &self.options.tool,
+                    parsed_output.as_deref().unwrap_or_default(),
+                );
+            }
 
             let result = AgentResult {
                 exit_code,
@@ -580,6 +567,19 @@ impl Agent {
             "Unsupported isolation mode: {}",
             self.options.isolation
         ))
+    }
+
+    /// Cancel a running process and collect its final output and metadata.
+    pub async fn cancel(&mut self) -> Result<AgentResult, String> {
+        if self.options.isolation == "none" || self.options.isolation.is_empty() {
+            if let Some(handle) = self.process_handle.as_mut() {
+                handle
+                    .terminate()
+                    .await
+                    .map_err(|error| error.to_string())?;
+            }
+        }
+        self.stop(AgentStopOptions::default()).await
     }
 
     /// Get the current session ID (if available)

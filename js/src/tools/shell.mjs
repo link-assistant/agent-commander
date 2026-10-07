@@ -11,7 +11,7 @@ const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
  */
 export function escapeArg(arg) {
   const value = String(arg);
-  if (/["\s$`\\]/.test(value)) {
+  if (!/^[-a-zA-Z0-9_./:=+,@%]+$/.test(value)) {
     return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`')}"`;
   }
   return value;

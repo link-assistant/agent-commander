@@ -90,10 +90,10 @@ fn test_codex_tool_default() {
     assert_eq!(tool.name, "codex");
     assert_eq!(tool.executable, "codex");
     assert!(tool.supports_json_output);
-    assert!(tool.supports_json_input);
+    assert!(!tool.supports_json_input);
     assert!(!tool.supports_system_prompt);
     assert!(tool.supports_resume);
-    assert_eq!(tool.default_model, "gpt-5.5");
+    assert_eq!(tool.default_model, "gpt-6-sol");
 }
 
 #[test]
