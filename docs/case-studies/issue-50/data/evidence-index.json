@@ -1,0 +1,201 @@
+{
+  "collectedAt": "2026-10-07T12:38:07.100095+00:00",
+  "issue": "https://github.com/link-assistant/agent-commander/issues/50",
+  "pullRequest": "https://github.com/link-assistant/agent-commander/pull/51",
+  "agentCommanderBaseline": "c03d6f87f6bb37b1e827c6ec2b6c9cd5f6a49f49",
+  "preparedBranchBaseline": "71cef7a837f92c834883ad3f65ad48afa20fd9d6",
+  "hiveMindCommit": "56b651c9ddec153b5b6fdb052fd063cd8f2343a1",
+  "sources": [
+    {
+      "url": "https://developers.openai.com/codex/noninteractive",
+      "observation": "Codex exec/resume, JSONL turn lifecycle, cached-input usage."
+    },
+    {
+      "url": "https://code.claude.com/docs/en/headless",
+      "observation": "Claude print mode, verbose stream JSON, resume and final result fields."
+    },
+    {
+      "url": "https://geminicli.com/docs/cli/headless/",
+      "observation": "Gemini single JSON and JSONL, result statistics, errors and exit status."
+    },
+    {
+      "url": "https://qwenlm.github.io/qwen-code-docs/en/users/features/headless/",
+      "observation": "Qwen stdin, JSON outputs, resume; JSON input described as under construction."
+    },
+    {
+      "url": "https://opencode.ai/v2/docs/cli/commands/",
+      "observation": "OpenCode run JSON and continuation; --session mapping also verified in pinned Hive Mind source."
+    },
+    {
+      "url": "https://nodejs.org/api/child_process.html",
+      "observation": "Stdio close, null signal exit status, shell descendants and termination."
+    },
+    {
+      "url": "https://docs.rs/tokio/latest/tokio/process/",
+      "observation": "Asynchronous process I/O and kill_on_drop cancellation behavior."
+    }
+  ],
+  "relatedPullRequests": [1044, 553, 1991, 2291, 2302, 2527],
+  "baselineCiRuns": [
+    {
+      "id": 37616272375,
+      "createdAt": "2026-10-07T11:45:40Z",
+      "workflow": "JavaScript",
+      "conclusion": "failure"
+    },
+    {
+      "id": 37616254353,
+      "createdAt": "2026-10-07T11:45:31Z",
+      "workflow": "Rust",
+      "conclusion": "failure"
+    }
+  ],
+  "logInterpretation": "Before logs precede the corresponding fix; audit stages follow earlier fixes. Full/after logs describe the implementation workspace. Final commit CI is linked from the PR.",
+  "files": [
+    {
+      "path": "agent-commander.lib.mjs.txt",
+      "bytes": 20798,
+      "sha256": "ba7587d05ba5c7e660f809961cad2d5031dc017c82a06fd5ae8dfe3fff3ea2ea"
+    },
+    {
+      "path": "code-search.txt",
+      "bytes": 60812,
+      "sha256": "6377439ae6b02fc3073286dc887125f8f0a61973c14a44d5d2e2f30973bfcb8e"
+    },
+    {
+      "path": "formal-ai-model.lib.mjs.txt",
+      "bytes": 1188,
+      "sha256": "0f30847e02bc76375168ccfb628641fa567ba8f27e9a7f24f59996fdd52f0234"
+    },
+    {
+      "path": "hive-mind-related-prs.json",
+      "bytes": 108962,
+      "sha256": "9c0f447bf7208722317680a84c6b2bea210b51f8a4ba3bbf0d43a6bd78f08eae"
+    },
+    {
+      "path": "hive-mind-tree.json",
+      "bytes": 14266,
+      "sha256": "dcb57ad21bc1c3e0e4bb4b5644011ff4590502205ba0cb2003e90b2dca30dfab"
+    },
+    {
+      "path": "issue-50-comments.json",
+      "bytes": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "issue-50.json",
+      "bytes": 1085,
+      "sha256": "98cb42d9f0755dc017bc3f7178977821628d0471ec27467de622c6a7f296cc17"
+    },
+    {
+      "path": "model-catalog.json",
+      "bytes": 9610,
+      "sha256": "05ba6cb9359aef0813dd01c523783c9bf4fecf42ab12f75b3014da33ac9f9504"
+    },
+    {
+      "path": "models-catalog.mjs.txt",
+      "bytes": 20135,
+      "sha256": "c8a54cbee7eda7617a22a452ddb4c319c0db0904436703befa910fd5ff19242d"
+    },
+    {
+      "path": "validation/baseline-ci-errors.txt",
+      "bytes": 1298,
+      "sha256": "fab62428877b4e0ad84aa1d2cf32bccaf255a92f73ba802c69ea6f34aa5482d9"
+    },
+    {
+      "path": "validation/bun.log.gz",
+      "bytes": 4866,
+      "sha256": "762f7c5bf490bb85cb7eea005b19f5e1603c8e8e9cb31ce56fe21f2f954ebcc5"
+    },
+    {
+      "path": "validation/deno.log.gz",
+      "bytes": 5175,
+      "sha256": "76c008a9f1c4fc85b122cc2648ede1416395a57582c66dbbd6fcde1d3fe2ec22"
+    },
+    {
+      "path": "validation/javascript-37616272375.log.gz",
+      "bytes": 125123,
+      "sha256": "60b7b10fe9bec70460d0d86aece0044d43108a4cf00b48e8283727bc38e704ed"
+    },
+    {
+      "path": "validation/js-after.log.txt",
+      "bytes": 3524,
+      "sha256": "4650869709a36a840fc6d781991e1ca7a1f36c702e9e5711fdf0b8a179f2a63b"
+    },
+    {
+      "path": "validation/js-audit-before.log.txt",
+      "bytes": 7316,
+      "sha256": "6d2a9368248b8bb3d8b6d1b8d44d47cf865c72472dc0ed3f3c9547140abac65d"
+    },
+    {
+      "path": "validation/js-before.log.txt",
+      "bytes": 20649,
+      "sha256": "c060a1bc38caa936c47cdd898b7f2f3f39e3c7dd24336fc7a857c382a9ba3074"
+    },
+    {
+      "path": "validation/js-full.log.gz",
+      "bytes": 5722,
+      "sha256": "09ce282f70b0b1e961d7964ba3f59c54c56a5cac82ad86dc9e4d206ca46179a2"
+    },
+    {
+      "path": "validation/js-last-audit-before.log.txt",
+      "bytes": 4535,
+      "sha256": "68147a98be077eb97aca80c3f35eb4d5affa02fd3c0219b5fd68629505439208"
+    },
+    {
+      "path": "validation/js-quality.log.txt",
+      "bytes": 3016,
+      "sha256": "0adb245d6c75cd86019b6e0ceb6bda4f8031ffb3c9d26c5d9bc8f44669dee5e1"
+    },
+    {
+      "path": "validation/js-resume-before.log.txt",
+      "bytes": 7107,
+      "sha256": "03ea25c6f36d5990d8b8ef1b049b42cb6e08252a851007273694ab6eb18bcab5"
+    },
+    {
+      "path": "validation/rust-37616254353.log.gz",
+      "bytes": 107258,
+      "sha256": "897038a3590d10fbf44c6304841fa0a3430299ab7e8fe005ae02771c1860d29b"
+    },
+    {
+      "path": "validation/rust-after.log.txt",
+      "bytes": 905,
+      "sha256": "f86f8e779b8320bd6806b6b3a5bb873d728d4bbdf9a9634cd05ed73ea506b058"
+    },
+    {
+      "path": "validation/rust-before.log.txt",
+      "bytes": 6498,
+      "sha256": "354f9e8152a069328ea4e75c425f1c5fbc983ce6d3fba20bb9817d88609d482b"
+    },
+    {
+      "path": "validation/rust-clippy.log.gz",
+      "bytes": 150,
+      "sha256": "d665d938c639ada4d23c0d8af2556cbbd5b25c4923ad00d40efafa667b4cee12"
+    },
+    {
+      "path": "validation/rust-doc.log.gz",
+      "bytes": 1683,
+      "sha256": "8db61825e7ddbe912fd168e8b5574bf949d8b588e2df04238bdccf02bfd19446"
+    },
+    {
+      "path": "validation/rust-format.log.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+    },
+    {
+      "path": "validation/rust-full.log.gz",
+      "bytes": 6185,
+      "sha256": "e4b206ee197b5f0746eec115ced51f13a6f097cf412d099e8aeefb47d034726a"
+    },
+    {
+      "path": "validation/rust-package.log.gz",
+      "bytes": 283,
+      "sha256": "767bf558eeabc7aac00a5e9bff1d4e2aece15bc4e6051e637fe510859aa4e0c9"
+    },
+    {
+      "path": "validation/rust-size.log.gz",
+      "bytes": 95,
+      "sha256": "7568794d8496de0c46d9bb2c04608b61d8c896f5baba84ea1644159c42e0300c"
+    }
+  ]
+}

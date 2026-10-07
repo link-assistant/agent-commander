@@ -1,0 +1,8 @@
+javascript-37616272375.log:2227: JS Test (bun on macos-latest)	Run tests (Bun)	2026-10-07T11:59:31.3426670Z   ^ this test timed out after 5000ms, before its done callback was called. If a done callback was not intended, remove the last parameter from the test callback function
+javascript-37616272375.log:2303: JS Test (bun on macos-latest)	Run tests (Bun)	2026-10-07T11:59:31.5060570Z   ^ this test timed out after 5000ms, before its done callback was called. If a done callback was not intended, remove the last parameter from the test callback function
+rust-37616254353.log:856: Rust Lint	Run Clippy	2026-10-07T11:50:17.6561883Z    ^[[1m^[[94m--> ^[[0msrc/cli_parser.rs:677:9
+rust-37616254353.log:871: Rust Lint	Run Clippy	2026-10-07T11:50:17.6581080Z    ^[[1m^[[94m--> ^[[0msrc/cli_parser.rs:717:9
+rust-37616254353.log:886: Rust Lint	Run Clippy	2026-10-07T11:50:17.8796413Z    ^[[1m^[[94m--> ^[[0mtests/lib_tests.rs:154:5
+rust-37616254353.log:901: Rust Lint	Run Clippy	2026-10-07T11:50:17.8829440Z    ^[[1m^[[94m--> ^[[0mtests/lib_tests.rs:155:5
+rust-37616254353.log:914: Rust Lint	Run Clippy	2026-10-07T11:50:17.8844035Z    ^[[1m^[[94m--> ^[[0mtests/lib_tests.rs:156:5
+rust-37616254353.log:927: Rust Lint	Run Clippy	2026-10-07T11:50:17.8858475Z    ^[[1m^[[94m--> ^[[0mtests/lib_tests.rs:222:5

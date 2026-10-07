@@ -1,0 +1,509 @@
+✖ Hive Mind usage: Claude final usage supersedes repeated assistant snapshots (7.88375ms)
+✖ Hive Mind usage: Codex separates cached input from fresh input (0.541829ms)
+✖ Hive Mind usage: OpenCode native step tokens and cost (0.457041ms)
+✔ Hive Mind usage: Agent native step tokens remain compatible (0.500363ms)
+✖ Hive Mind usage: Qwen final result totals do not double count assistant usage (0.436894ms)
+✖ Hive Mind usage: Gemini native result statistics preserve model usage (0.45109ms)
+✖ Hive Mind outcome: unfinished Codex turn (1.919146ms)
+✖ Hive Mind outcome: unfinished second Codex turn (0.467571ms)
+✖ Hive Mind outcome: failed Codex turn without error payload (0.408461ms)
+✖ Hive Mind outcome: unfinished Claude session (0.554202ms)
+✖ Hive Mind outcome: unfinished Gemini session (0.544073ms)
+✖ Hive Mind outcome: completed Codex ignores quoted limit message (0.902141ms)
+✖ Hive Mind outcome: OpenCode native session and answer (0.40225ms)
+✔ Hive Mind outcome: Gemini failed result (0.341858ms)
+✖ Hive Mind outcome: nested Codex collaboration (0.538855ms)
+✔ Hive Mind outcome: null error on successful result (0.246991ms)
+✖ Hive Mind outcome: OpenCode unfinished tool call (0.32209ms)
+✖ Hive Mind bundled model aliases: claude (0.367676ms)
+✖ Hive Mind bundled model aliases: codex (0.32778ms)
+✖ Hive Mind bundled model aliases: agent (0.345524ms)
+✖ Hive Mind bundled model aliases: opencode (0.42413ms)
+✖ Hive Mind bundled model aliases: qwen (0.281314ms)
+✖ Hive Mind bundled model aliases: gemini (0.239136ms)
+✖ Claude JSON commands select noninteractive verbose output (0.509939ms)
+✖ Shell arguments survive metacharacters (54.83622ms)
+✔ Working directories with spaces are quoted (12.598415ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 4
+ℹ fail 22
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 299.248009
+
+✖ failing tests:
+
+test at js/test/hive-mind-parity.test.mjs:9:3
+✖ Hive Mind usage: Claude final usage supersedes repeated assistant snapshots (7.88375ms)
+  AssertionError [ERR_ASSERTION]: inputTokens
+  
+  20 !== 12
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:11:70)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 20,
+    expected: 12,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:9:3
+✖ Hive Mind usage: Codex separates cached input from fresh input (0.541829ms)
+  AssertionError [ERR_ASSERTION]: inputTokens
+  
+  100 !== 20
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:11:70)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 100,
+    expected: 20,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:9:3
+✖ Hive Mind usage: OpenCode native step tokens and cost (0.457041ms)
+  AssertionError [ERR_ASSERTION]: inputTokens
+  
+  0 !== 10
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:11:70)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 10,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:9:3
+✖ Hive Mind usage: Qwen final result totals do not double count assistant usage (0.436894ms)
+  AssertionError [ERR_ASSERTION]: cacheReadTokens
+  
+  undefined !== 5
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:11:70)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 5,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:9:3
+✖ Hive Mind usage: Gemini native result statistics preserve model usage (0.45109ms)
+  AssertionError [ERR_ASSERTION]: inputTokens
+  
+  0 !== 30
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:11:70)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 30,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:15:3
+✖ Hive Mind outcome: unfinished Codex turn (1.919146ms)
+  AssertionError [ERR_ASSERTION]: success
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:17:73)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:15:3
+✖ Hive Mind outcome: unfinished second Codex turn (0.467571ms)
+  AssertionError [ERR_ASSERTION]: success
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:17:73)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:15:3
+✖ Hive Mind outcome: failed Codex turn without error payload (0.408461ms)
+  AssertionError [ERR_ASSERTION]: success
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:17:73)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:15:3
+✖ Hive Mind outcome: unfinished Claude session (0.554202ms)
+  AssertionError [ERR_ASSERTION]: success
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:17:73)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:15:3
+✖ Hive Mind outcome: unfinished Gemini session (0.544073ms)
+  AssertionError [ERR_ASSERTION]: success
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:17:73)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:15:3
+✖ Hive Mind outcome: completed Codex ignores quoted limit message (0.902141ms)
+  AssertionError [ERR_ASSERTION]: success
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:17:73)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:15:3
+✖ Hive Mind outcome: OpenCode native session and answer (0.40225ms)
+  AssertionError [ERR_ASSERTION]: sessionId
+  
+  null !== 's'
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:17:73)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: 's',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:15:3
+✖ Hive Mind outcome: nested Codex collaboration (0.538855ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - 'worker1'
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:18:36)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'worker1',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:15:3
+✖ Hive Mind outcome: OpenCode unfinished tool call (0.32209ms)
+  AssertionError [ERR_ASSERTION]: success
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:17:73)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:22:3
+✖ Hive Mind bundled model aliases: claude (0.367676ms)
+  AssertionError [ERR_ASSERTION]: formalai/formal-ai
+  + actual - expected
+  
+  + 'formalai/formal-ai'
+  - 'formal-ai'
+           ^
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:24:62)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'formalai/formal-ai',
+    expected: 'formal-ai',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:22:3
+✖ Hive Mind bundled model aliases: codex (0.32778ms)
+  AssertionError [ERR_ASSERTION]: formalai/formal-ai
+  + actual - expected
+  
+  + 'formalai/formal-ai'
+  - 'formal-ai'
+           ^
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:24:62)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'formalai/formal-ai',
+    expected: 'formal-ai',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:22:3
+✖ Hive Mind bundled model aliases: agent (0.345524ms)
+  AssertionError [ERR_ASSERTION]: formal-ai
+  + actual - expected
+  
+  + 'formal-ai'
+  - 'formalai/formal-ai'
+           ^
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:24:62)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'formal-ai',
+    expected: 'formalai/formal-ai',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:22:3
+✖ Hive Mind bundled model aliases: opencode (0.42413ms)
+  AssertionError [ERR_ASSERTION]: formal-ai
+  + actual - expected
+  
+  + 'formal-ai'
+  - 'formalai/formal-ai'
+           ^
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:24:62)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'formal-ai',
+    expected: 'formalai/formal-ai',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:22:3
+✖ Hive Mind bundled model aliases: qwen (0.281314ms)
+  AssertionError [ERR_ASSERTION]: formalai/formal-ai
+  + actual - expected
+  
+  + 'formalai/formal-ai'
+  - 'formal-ai'
+           ^
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:24:62)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'formalai/formal-ai',
+    expected: 'formal-ai',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:22:3
+✖ Hive Mind bundled model aliases: gemini (0.239136ms)
+  AssertionError [ERR_ASSERTION]: formalai/formal-ai
+  + actual - expected
+  
+  + 'formalai/formal-ai'
+  - 'formal-ai'
+           ^
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:24:62)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'formalai/formal-ai',
+    expected: 'formal-ai',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:28:1
+✖ Claude JSON commands select noninteractive verbose output (0.509939ms)
+  AssertionError [ERR_ASSERTION]: -p
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:30:50)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:32:1
+✖ Shell arguments survive metacharacters (54.83622ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(result.stdout.includes(value))
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:37:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

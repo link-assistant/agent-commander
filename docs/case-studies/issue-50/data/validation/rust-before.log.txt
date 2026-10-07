@@ -1,0 +1,197 @@
+    Updating crates.io index
+ Downloading crates ...
+  Downloaded cfg_aliases v0.2.2
+  Downloaded tokio-test v0.4.5
+  Downloaded cfg_aliases v0.1.1
+  Downloaded cfg-if v1.0.4
+  Downloaded utf8parse v0.2.2
+  Downloaded async-trait v0.1.91
+  Downloaded autocfg v1.5.1
+  Downloaded futures-core v0.3.32
+  Downloaded glob v0.3.4
+  Downloaded bitflags v2.11.1
+  Downloaded arrayvec v0.7.8
+  Downloaded anyhow v1.0.104
+  Downloaded vte_generate_state_changes v0.1.2
+  Downloaded env_home v0.1.0
+  Downloaded itoa v1.0.18
+  Downloaded tokio-macros v2.7.0
+  Downloaded scopeguard v1.2.0
+  Downloaded errno v0.3.14
+  Downloaded shell-words v1.1.1
+  Downloaded thiserror v2.0.18
+  Downloaded portable-pty v0.9.0
+  Downloaded once_cell v1.21.4
+  Downloaded parking_lot_core v0.9.12
+  Downloaded downcast-rs v1.2.1
+  Downloaded filedescriptor v0.8.3
+  Downloaded thiserror-impl v2.0.18
+  Downloaded thiserror v1.0.69
+  Downloaded thiserror-impl v1.0.69
+  Downloaded which v7.0.3
+  Downloaded pin-project-lite v0.2.17
+  Downloaded lock_api v0.4.14
+  Downloaded either v1.17.0
+  Downloaded quote v1.0.45
+  Downloaded signal-hook-registry v1.4.8
+  Downloaded log v0.4.33
+  Downloaded socket2 v0.6.3
+  Downloaded filetime v0.2.29
+  Downloaded fastrand v2.5.0
+  Downloaded iana-time-zone v0.1.65
+  Downloaded tempfile v3.27.0
+  Downloaded smallvec v1.15.1
+  Downloaded vt100 v0.15.2
+  Downloaded vte v0.11.1
+  Downloaded parking_lot v0.12.5
+  Downloaded serde_derive v1.0.228
+  Downloaded num-traits v0.2.19
+  Downloaded serial2 v0.2.37
+  Downloaded zmij v1.0.21
+  Downloaded bytes v1.11.1
+  Downloaded getrandom v0.4.3
+  Downloaded serde_core v1.0.228
+  Downloaded tokio-stream v0.1.18
+  Downloaded proc-macro2 v1.0.106
+  Downloaded serde v1.0.228
+  Downloaded unicode-ident v1.0.24
+  Downloaded memchr v2.8.0
+  Downloaded mio v1.2.0
+  Downloaded serde_json v1.0.149
+  Downloaded aho-corasick v1.1.4
+  Downloaded regex v1.13.1
+  Downloaded chrono v0.4.45
+  Downloaded unicode-width v0.1.14
+  Downloaded syn v3.0.3
+  Downloaded syn v2.0.117
+  Downloaded nix v0.29.0
+  Downloaded nix v0.28.0
+  Downloaded regex-syntax v0.8.11
+  Downloaded rustix v1.1.4
+  Downloaded regex-automata v0.4.16
+  Downloaded libc v0.2.186
+  Downloaded tokio v1.52.1
+  Downloaded linux-raw-sys v0.12.1
+  Downloaded command-stream v0.13.1
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling libc v0.2.186
+   Compiling cfg-if v1.0.4
+   Compiling parking_lot_core v0.9.12
+   Compiling bitflags v2.11.1
+   Compiling smallvec v1.15.1
+   Compiling scopeguard v1.2.0
+   Compiling cfg_aliases v0.1.1
+   Compiling thiserror v1.0.69
+   Compiling lock_api v0.4.14
+   Compiling autocfg v1.5.1
+   Compiling serde_core v1.0.228
+   Compiling rustix v1.1.4
+   Compiling memchr v2.8.0
+   Compiling nix v0.28.0
+   Compiling num-traits v0.2.19
+   Compiling pin-project-lite v0.2.17
+   Compiling linux-raw-sys v0.12.1
+   Compiling anyhow v1.0.104
+   Compiling syn v2.0.117
+   Compiling bytes v1.11.1
+   Compiling zmij v1.0.21
+   Compiling cfg_aliases v0.2.2
+   Compiling nix v0.29.0
+   Compiling vte_generate_state_changes v0.1.2
+   Compiling aho-corasick v1.1.4
+   Compiling errno v0.3.14
+   Compiling parking_lot v0.12.5
+   Compiling signal-hook-registry v1.4.8
+   Compiling mio v1.2.0
+   Compiling socket2 v0.6.3
+   Compiling log v0.4.33
+   Compiling thiserror v2.0.18
+   Compiling serde v1.0.228
+   Compiling regex-syntax v0.8.11
+   Compiling itoa v1.0.18
+   Compiling utf8parse v0.2.2
+   Compiling arrayvec v0.7.8
+   Compiling serde_json v1.0.149
+   Compiling vte v0.11.1
+   Compiling serial2 v0.2.37
+   Compiling thiserror-impl v1.0.69
+   Compiling tokio-macros v2.7.0
+   Compiling thiserror-impl v2.0.18
+   Compiling serde_derive v1.0.228
+   Compiling regex-automata v0.4.16
+   Compiling tokio v1.52.1
+   Compiling filedescriptor v0.8.3
+   Compiling syn v3.0.3
+   Compiling once_cell v1.21.4
+   Compiling env_home v0.1.0
+   Compiling downcast-rs v1.2.1
+   Compiling shell-words v1.1.1
+   Compiling unicode-width v0.1.14
+   Compiling iana-time-zone v0.1.65
+   Compiling either v1.17.0
+   Compiling which v7.0.3
+   Compiling chrono v0.4.45
+   Compiling vt100 v0.15.2
+   Compiling regex v1.13.1
+   Compiling portable-pty v0.9.0
+   Compiling filetime v0.2.29
+   Compiling glob v0.3.4
+   Compiling getrandom v0.4.3
+   Compiling futures-core v0.3.32
+   Compiling fastrand v2.5.0
+   Compiling async-trait v0.1.91
+   Compiling tempfile v3.27.0
+   Compiling tokio-stream v0.1.18
+   Compiling command-stream v0.13.1
+   Compiling tokio-test v0.4.5
+   Compiling agent-commander v0.2.7 (/tmp/gh-issue-solver-1791373524821/rust)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 29.66s
+     Running tests/hive_mind_parity_tests.rs (target/debug/deps/hive_mind_parity_tests-95c688584046ce4b)
+
+running 4 tests
+test bundled_models_match_hive_mind ... FAILED
+test claude_final_usage_is_authoritative ... FAILED
+test native_metadata_matches_hive_mind_contract ... FAILED
+test drains_both_pipes_without_deadlock ... FAILED
+
+failures:
+
+---- bundled_models_match_hive_mind stdout ----
+
+thread 'bundled_models_match_hive_mind' (6780) panicked at tests/hive_mind_parity_tests.rs:25:58:
+assertion `left == right` failed: agent/formal-ai
+  left: "formal-ai"
+ right: "formalai/formal-ai"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- claude_final_usage_is_authoritative stdout ----
+
+thread 'claude_final_usage_is_authoritative' (6781) panicked at tests/hive_mind_parity_tests.rs:33:5:
+assertion `left == right` failed
+  left: Array [Number(20), Number(6), Number(0), Number(0)]
+ right: Array [Number(12), Number(6), Number(3), Number(4)]
+
+---- native_metadata_matches_hive_mind_contract stdout ----
+
+thread 'native_metadata_matches_hive_mind_contract' (6783) panicked at tests/hive_mind_parity_tests.rs:15:13:
+assertion `left == right` failed: "unfinished Codex turn": errorType
+  left: Null
+ right: String("incomplete_stream")
+
+---- drains_both_pipes_without_deadlock stdout ----
+
+thread 'drains_both_pipes_without_deadlock' (6782) panicked at tests/hive_mind_parity_tests.rs:40:147:
+stderr blocked stdout draining: Elapsed(())
+
+
+failures:
+    bundled_models_match_hive_mind
+    claude_final_usage_is_authoritative
+    drains_both_pipes_without_deadlock
+    native_metadata_matches_hive_mind_contract
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.00s
+
+error: test failed, to rerun pass `--test hive_mind_parity_tests`

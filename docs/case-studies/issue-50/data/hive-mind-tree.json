@@ -1,0 +1,380 @@
+{
+  "sha": "56b651c9ddec153b5b6fdb052fd063cd8f2343a1",
+  "paths": [
+    {
+      "path": "src/agent-commander.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "840bafd328503dbeeeeb70a266b896f65dbcce81",
+      "size": 20798,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/840bafd328503dbeeeeb70a266b896f65dbcce81"
+    },
+    {
+      "path": "src/agent-token-usage.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b597e76671064913ab7c15c0fcf9beb85903d2fa",
+      "size": 3885,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/b597e76671064913ab7c15c0fcf9beb85903d2fa"
+    },
+    {
+      "path": "src/agents-md-claude-support.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "47436dd1b306160bb5859030cc0ff09acf74bc7d",
+      "size": 6735,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/47436dd1b306160bb5859030cc0ff09acf74bc7d"
+    },
+    {
+      "path": "src/claude-quiet-config.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "67d51d991d9f625665711739b2739c8577921e8e",
+      "size": 6842,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/67d51d991d9f625665711739b2739c8577921e8e"
+    },
+    {
+      "path": "src/claude.budget-stats.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e24680ab3a5cfa3bfe4595513ca074780a571782",
+      "size": 47692,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/e24680ab3a5cfa3bfe4595513ca074780a571782"
+    },
+    {
+      "path": "src/claude.command-builder.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2e847806ca54603738e52c7775f461017e6457fa",
+      "size": 5368,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/2e847806ca54603738e52c7775f461017e6457fa"
+    },
+    {
+      "path": "src/claude.connection.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "887007d89c85932b3332550bcb2818bc9c904cfb",
+      "size": 10571,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/887007d89c85932b3332550bcb2818bc9c904cfb"
+    },
+    {
+      "path": "src/claude.cost.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bdf892de9f6b7554bc92725841f0fc212b0621ca",
+      "size": 5895,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/bdf892de9f6b7554bc92725841f0fc212b0621ca"
+    },
+    {
+      "path": "src/claude.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b49d138dc3d7cc751eae497dd2886a21a5a5144f",
+      "size": 89897,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/b49d138dc3d7cc751eae497dd2886a21a5a5144f"
+    },
+    {
+      "path": "src/claude.model-utils.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5c6802a3e4ba3d56455c922d36bddde1ec89fb77",
+      "size": 3765,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/5c6802a3e4ba3d56455c922d36bddde1ec89fb77"
+    },
+    {
+      "path": "src/claude.print-turn.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b39e2e334ab0560b6a33ffe585effe0c92084b6f",
+      "size": 6650,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/b39e2e334ab0560b6a33ffe585effe0c92084b6f"
+    },
+    {
+      "path": "src/claude.prompts.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0697e4a3e447f14d806604f88ce27e0c646f6e1a",
+      "size": 26953,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/0697e4a3e447f14d806604f88ce27e0c646f6e1a"
+    },
+    {
+      "path": "src/claude.resume-output.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "11a0de7c2574221f12e481cca7e8842529bca83f",
+      "size": 836,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/11a0de7c2574221f12e481cca7e8842529bca83f"
+    },
+    {
+      "path": "src/claude.runtime-switch.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c8a44936d3a5a06e29a6c9bc996c1f593b4d01f6",
+      "size": 6528,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/c8a44936d3a5a06e29a6c9bc996c1f593b4d01f6"
+    },
+    {
+      "path": "src/claude.session-tokens.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9e38583e1f9cb891f2a964ac645ddc53397a9133",
+      "size": 8138,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/9e38583e1f9cb891f2a964ac645ddc53397a9133"
+    },
+    {
+      "path": "src/claude.session-transcript-repair.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e6f99a7ad91908b46d8aab87c96a2ba8f88481d6",
+      "size": 8649,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/e6f99a7ad91908b46d8aab87c96a2ba8f88481d6"
+    },
+    {
+      "path": "src/claude.stderr.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "13bdef2927ab40965e99f5281649f8c267f5886d",
+      "size": 1533,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/13bdef2927ab40965e99f5281649f8c267f5886d"
+    },
+    {
+      "path": "src/claude.stream-events.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c81c2d4bfbd6f6b90f9ff7cd15abea2fb7d9ae16",
+      "size": 8346,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/c81c2d4bfbd6f6b90f9ff7cd15abea2fb7d9ae16"
+    },
+    {
+      "path": "src/claude.thinking-block-recovery.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "39e544e87948241d1f71d47bc98f6b1f3c817c8a",
+      "size": 6322,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/39e544e87948241d1f71d47bc98f6b1f3c817c8a"
+    },
+    {
+      "path": "src/claude.uncommitted-changes.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7ec25cec4f3b12d573000b39fd316043c9e149fc",
+      "size": 3740,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/7ec25cec4f3b12d573000b39fd316043c9e149fc"
+    },
+    {
+      "path": "src/codex-capability-preflight.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "de911b7bf82d7707ad7dffbe452dee38bc4d1a5f",
+      "size": 54200,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/de911b7bf82d7707ad7dffbe452dee38bc4d1a5f"
+    },
+    {
+      "path": "src/codex-health.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "09138c1ee4fb6e91503b8c02e0c8be5a3bcb6232",
+      "size": 19986,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/09138c1ee4fb6e91503b8c02e0c8be5a3bcb6232"
+    },
+    {
+      "path": "src/codex-rate-limit-windows.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "03be43e3649867b6afb9912a8b15086453e120e0",
+      "size": 1070,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/03be43e3649867b6afb9912a8b15086453e120e0"
+    },
+    {
+      "path": "src/codex-skill-catalog.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "64948a89ac4bf51450467ff0039637d2cfa30a8a",
+      "size": 8642,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/64948a89ac4bf51450467ff0039637d2cfa30a8a"
+    },
+    {
+      "path": "src/codex.diagnostics.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3de424fe6c2fd136790907b9a389ffa7d31a4b48",
+      "size": 6573,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/3de424fe6c2fd136790907b9a389ffa7d31a4b48"
+    },
+    {
+      "path": "src/codex.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41c0bbf59743fd7e1fef872fd83587b5a4db1d35",
+      "size": 74479,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/41c0bbf59743fd7e1fef872fd83587b5a4db1d35"
+    },
+    {
+      "path": "src/codex.options.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ddb3c8ee65907516cd51f491cf98cc05d5ac8c2f",
+      "size": 4507,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/ddb3c8ee65907516cd51f491cf98cc05d5ac8c2f"
+    },
+    {
+      "path": "src/codex.prompts.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f5f0d29df50cf2eb447b33dc7640310de5ee9462",
+      "size": 22543,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/f5f0d29df50cf2eb447b33dc7640310de5ee9462"
+    },
+    {
+      "path": "src/codex.reasoning.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "85b1b05bfc7104d1d0ea8814b037c0575da14373",
+      "size": 1544,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/85b1b05bfc7104d1d0ea8814b037c0575da14373"
+    },
+    {
+      "path": "src/codex.run-diagnostics.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "95fe774075e76cbf240ea5634b0dc9328654cd31",
+      "size": 7565,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/95fe774075e76cbf240ea5634b0dc9328654cd31"
+    },
+    {
+      "path": "src/codex.usage-fields.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4d09b8d485a8809a1f34ad9145ecda19673930d0",
+      "size": 3058,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/4d09b8d485a8809a1f34ad9145ecda19673930d0"
+    },
+    {
+      "path": "src/configure-claude.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6b73475e00d8b0c8eae31ccd75350fc4eff6b13f",
+      "size": 6332,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/6b73475e00d8b0c8eae31ccd75350fc4eff6b13f"
+    },
+    {
+      "path": "src/configure-claude.mjs",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "0f438062254b0fcd7031b7e9307f2db87c60fb92",
+      "size": 1460,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/0f438062254b0fcd7031b7e9307f2db87c60fb92"
+    },
+    {
+      "path": "src/gemini-family-settings.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8264fce8e4aafedc229e79d82a0623b4fcce0494",
+      "size": 6066,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/8264fce8e4aafedc229e79d82a0623b4fcce0494"
+    },
+    {
+      "path": "src/gemini.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "811a22fcb015e21205f5df7bc0a529ce0567223c",
+      "size": 36730,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/811a22fcb015e21205f5df7bc0a529ce0567223c"
+    },
+    {
+      "path": "src/gemini.prompts.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "857c6360224bc239e936527671f78cd5831f1971",
+      "size": 16387,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/857c6360224bc239e936527671f78cd5831f1971"
+    },
+    {
+      "path": "src/hive-models.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "745035c65e15dbd2974d610474cf6bb8ec8c0a34",
+      "size": 7984,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/745035c65e15dbd2974d610474cf6bb8ec8c0a34"
+    },
+    {
+      "path": "src/hive-models.mjs",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "48f41110f8a980180c41dc52e51be1fbaf28799f",
+      "size": 622,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/48f41110f8a980180c41dc52e51be1fbaf28799f"
+    },
+    {
+      "path": "src/interactive-codex-events.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6f1fc64caf6f3d323779c4390e9f1e7f619aadd7",
+      "size": 6187,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/6f1fc64caf6f3d323779c4390e9f1e7f619aadd7"
+    },
+    {
+      "path": "src/models",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1a8696c2d1d6d935e777bcd5cbf5f3f23546a55e",
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/trees/1a8696c2d1d6d935e777bcd5cbf5f3f23546a55e"
+    },
+    {
+      "path": "src/models/catalog.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ef6d30cbd2bd9c1513ebc2c54fb3f6599ac5f0f7",
+      "size": 20135,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/ef6d30cbd2bd9c1513ebc2c54fb3f6599ac5f0f7"
+    },
+    {
+      "path": "src/models/index.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1d05d6cd5a07bd4b19219dcf1997e81aa67bea3b",
+      "size": 43152,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/1d05d6cd5a07bd4b19219dcf1997e81aa67bea3b"
+    },
+    {
+      "path": "src/opencode.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "89eea69c495113af2ea6895fc5d72ca11a1676e2",
+      "size": 35680,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/89eea69c495113af2ea6895fc5d72ca11a1676e2"
+    },
+    {
+      "path": "src/opencode.prompts.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7bc87577918aea744c2c0b23ccd45616e1c3868e",
+      "size": 18715,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/7bc87577918aea744c2c0b23ccd45616e1c3868e"
+    },
+    {
+      "path": "src/qwen.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9addfaed559a25ff27067fdb8ff077b2ed58b11b",
+      "size": 39388,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/9addfaed559a25ff27067fdb8ff077b2ed58b11b"
+    },
+    {
+      "path": "src/qwen.prompts.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7fa94417b7e806dd1073dec509f4e62cccf41964",
+      "size": 17721,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/7fa94417b7e806dd1073dec509f4e62cccf41964"
+    },
+    {
+      "path": "src/telegram-models-command.lib.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e7fb204a48da041bab2f60eece1902f3d98dff1b",
+      "size": 6729,
+      "url": "https://api.github.com/repos/link-assistant/hive-mind/git/blobs/e7fb204a48da041bab2f60eece1902f3d98dff1b"
+    }
+  ]
+}

@@ -14,6 +14,8 @@ Language-specific package documentation:
 - [JavaScript package README](js/README.md)
 - [Rust crate README](rust/README.md)
 - [Shared concepts](docs/common-concepts.md)
+- [Hive Mind parity audit and evidence](docs/case-studies/issue-50/README.md)
+- [Dependency integration example](examples/hive-mind-dependency.mjs)
 
 ## Features
 
@@ -72,14 +74,14 @@ bun add agent-commander
 
 ## Supported Tools
 
-| Tool       | Description               | JSON Output      | JSON Input       | Read-only Mode                      | Model Aliases                                                |
-| ---------- | ------------------------- | ---------------- | ---------------- | ----------------------------------- | ------------------------------------------------------------ |
-| `claude`   | Anthropic Claude Code CLI | ✅ (stream-json) | ✅ (stream-json) | ✅ `--permission-mode plan`         | `sonnet`, `opus`, `haiku`                                    |
-| `codex`    | OpenAI Codex CLI          | ✅               | ❌               | ✅ `--sandbox read-only`            | `gpt-5.5` (default), `gpt-5.4`, `gpt5`, `o3`, `gpt4o`        |
-| `opencode` | OpenCode CLI              | ✅               | ❌               | ✅ `OPENCODE_PERMISSION` deny rules | `grok`, `gemini`, `sonnet`                                   |
-| `qwen`     | Qwen Code CLI             | ✅ (stream-json) | ✅ (stream-json) | ✅ `--approval-mode plan`           | `qwen3-coder`, `coder`, `gpt-4o`                             |
-| `gemini`   | Gemini CLI                | ✅ (stream-json) | ❌               | ✅ `--approval-mode plan`           | `flash`, `pro`, `lite`                                       |
-| `agent`    | @link-assistant/agent     | ✅               | ✅               | ✅ `--permission-mode readonly/plan` | `nemotron-3-super-free` (default), `grok`, `sonnet`, `haiku` |
+| Tool       | Description               | JSON Output      | JSON Input       | Read-only Mode                       | Model Aliases                                                   |
+| ---------- | ------------------------- | ---------------- | ---------------- | ------------------------------------ | --------------------------------------------------------------- |
+| `claude`   | Anthropic Claude Code CLI | ✅ (stream-json) | ✅ (stream-json) | ✅ `--permission-mode plan`          | `sonnet`, `opus`, `haiku`                                       |
+| `codex`    | OpenAI Codex CLI          | ✅               | ❌               | ✅ `--sandbox read-only`             | `gpt-6-sol` (bundled default), `gpt-5.4`, `gpt5`, `o3`, `gpt4o` |
+| `opencode` | OpenCode CLI              | ✅               | ❌               | ✅ `OPENCODE_PERMISSION` deny rules  | `grok`, `gemini`, `sonnet`                                      |
+| `qwen`     | Qwen Code CLI             | ✅ (stream-json) | ✅ (stream-json) | ✅ `--approval-mode plan`            | `qwen3-coder`, `coder`, `gpt-4o`                                |
+| `gemini`   | Gemini CLI                | ✅ (stream-json) | ❌               | ✅ `--approval-mode plan`            | `flash`, `pro`, `lite`                                          |
+| `agent`    | @link-assistant/agent     | ✅               | ✅               | ✅ `--permission-mode readonly/plan` | `nemotron-3-super-free` (default), `grok`, `sonnet`, `haiku`    |
 
 ### Claude-specific Features
 
@@ -343,7 +345,7 @@ console.log("Metadata:", result.metadata); // Normalized cross-tool summary
 
 ### Normalized Result Metadata
 
-`stop()` returns `result.metadata` for `claude`, `codex`, `opencode`, and `agent` runs. The metadata object gives callers a stable summary without tool-specific output parsing:
+`stop()` returns `result.metadata` for all six supported tools. The metadata object gives callers a stable summary without tool-specific output parsing:
 
 - `success`, `exitCode`, `errorDuringExecution`, `errorType`, and `errorMessage`
 - `sessionId`
@@ -532,11 +534,11 @@ console.log(isToolSupported({ toolName: "claude" })); // true
 
 // Get tool configuration
 const claudeTool = getTool({ toolName: "claude" });
-console.log(claudeTool.modelMap); // { sonnet: 'claude-sonnet-4-6', opus: 'claude-opus-4-7', ... }
+console.log(claudeTool.modelMap); // { sonnet: 'claude-sonnet-5', opus: 'claude-opus-5', ... }
 
 // Map model alias to full ID
 const fullId = claudeTool.mapModelToId({ model: "opus" });
-console.log(fullId); // 'claude-opus-4-7'
+console.log(fullId); // 'claude-opus-5'
 ```
 
 ## API Reference
@@ -570,7 +572,7 @@ Creates an agent controller.
   - `sandboxMode` (string, optional) - Explicit Codex sandbox mode
   - `approvalMode` (string, optional) - Explicit Codex approval mode
 
-**Returns:** Agent controller object with `start()`, `stop()`, `getSessionId()`, `getMessages()`, and `getToolConfig()` methods
+**Returns:** Agent controller object with `start()`, `stop()`, `cancel()`, `getSessionId()`, `getMessages()`, and `getToolConfig()` methods
 
 ### `controller.start(startOptions)`
 
@@ -696,7 +698,7 @@ npm test
 bun test
 
 # Deno
-deno test --allow-read --allow-run --allow-env --allow-net test/**/*.test.mjs
+deno test --allow-read --allow-write --allow-run --allow-env --allow-net test/**/*.test.mjs
 ```
 
 ### Running Examples
