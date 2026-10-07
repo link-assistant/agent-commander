@@ -174,6 +174,15 @@ export function buildCommand(options) {
  */
 export function parseOutput(options) {
   const { output } = options;
+  // --output-format json emits one object, which may span several lines.
+  try {
+    const parsed = JSON.parse(output);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return [parsed];
+    }
+  } catch {
+    // Streaming output contains multiple JSON objects instead.
+  }
   const messages = [];
   const lines = output.split('\n');
 

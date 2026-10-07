@@ -17,16 +17,30 @@ let prompt = '';
 for await (const chunk of process.stdin) {
   prompt += chunk;
 }
-console.log(
-  JSON.stringify({
-    type: 'fixture_input',
-    prompt,
-    cwd: process.cwd(),
-    args: process.argv.slice(2),
-  })
-);
-for (const event of fixture.events) {
-  console.log(JSON.stringify(event));
+if (process.argv.includes('--pretty-json')) {
+  console.log(
+    JSON.stringify(
+      {
+        session_id: 'pretty-session',
+        response: 'Done',
+        stats: fixture.events.find((event) => event.stats).stats,
+      },
+      null,
+      2
+    )
+  );
+} else {
+  console.log(
+    JSON.stringify({
+      type: 'fixture_input',
+      prompt,
+      cwd: process.cwd(),
+      args: process.argv.slice(2),
+    })
+  );
+  for (const event of fixture.events) {
+    console.log(JSON.stringify(event));
+  }
 }
 console.error(
   JSON.stringify({

@@ -98,6 +98,7 @@ The previous safe-word heuristic left shell metacharacters unquoted when no spac
 | Consumer audit                   | Five new reproductions expose scoped results, recovered errors, missing subagent records and empty success; fix both bindings                          |
 | Native resume and usage audit    | Reproduce OpenCode/Agent resume and alternate nested usage fields; implement backend-specific flags and field vocabulary                               |
 | Runtime and packaging validation | Deno's controller tests require write permission; add it to script/CI. Copy shared fixtures inside the Rust crate and assert equality to prevent drift |
+| Formatted JSON review            | Add failing formatted Gemini response/parser/controller tests in both languages; use whole-object parsing when JSONL yields no records                 |
 | Review and delivery              | Run local checks, preserve logs, review final PR diff, verify latest-main ancestry and final-head CI, update PR description and ready state            |
 
 The [validation record](validation.md) gives commands, results and evidence filenames. The mock executables use native event schemas and actual subprocess pipes through the public APIs. They require no credentials and do not run provider inference. They verify the library contract, not every current vendor model's availability or a live provider's billing implementation.

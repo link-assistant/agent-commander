@@ -18,7 +18,8 @@ logs.mkdir(parents=True, exist_ok=True)
 
 names = [
     "js-before", "rust-before", "js-audit-before", "js-resume-before",
-    "js-last-audit-before", "js-after", "rust-after", "js-quality", "js-full",
+    "js-last-audit-before", "js-pretty-before", "rust-pretty-before",
+    "js-after", "rust-after", "js-quality", "js-full",
     "bun", "deno", "rust-format", "rust-size", "rust-clippy", "rust-full",
     "rust-doc", "rust-package",
 ]

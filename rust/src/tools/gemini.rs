@@ -197,6 +197,12 @@ pub fn build_command(options: &GeminiBuildOptions) -> String {
 /// # Returns
 /// Vector of parsed JSON messages
 pub fn parse_output(output: &str) -> Vec<Value> {
+    // Native single JSON output can be formatted across multiple lines.
+    if let Ok(message) = serde_json::from_str::<Value>(output) {
+        if message.is_object() {
+            return vec![message];
+        }
+    }
     parse_ndjson(output)
 }
 

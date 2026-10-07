@@ -17,11 +17,11 @@
   2:8  warning  Function 'completionState' has a complexity of 32. Maximum allowed is 15  complexity
 
 /tmp/gh-issue-solver-1791373524821/js/src/index.mjs
-  192:8   warning  Function 'agent' has too many lines (339). Maximum allowed is 150   max-lines-per-function
+  192:8   warning  Function 'agent' has too many lines (340). Maximum allowed is 150   max-lines-per-function
   192:8   warning  Function 'agent' has a complexity of 17. Maximum allowed is 15      complexity
   291:43  warning  Async arrow function has a complexity of 28. Maximum allowed is 15  complexity
-  455:41  warning  Async arrow function has a complexity of 26. Maximum allowed is 15  complexity
-  621:27  warning  Async arrow function has no 'await' expression                      require-await
+  455:41  warning  Async arrow function has a complexity of 28. Maximum allowed is 15  complexity
+  622:27  warning  Async arrow function has no 'await' expression                      require-await
 
 /tmp/gh-issue-solver-1791373524821/js/src/permissions/normalize.mjs
   112:8  warning  Function 'normalizePermissionRequest' has a complexity of 29. Maximum allowed is 15  complexity
@@ -60,4 +60,4 @@ All matched files use Prettier code style!
 > agent-commander@0.10.1 check:duplication
 > jscpd .
 
-[3m[90mDetection time:[39m[23m: 0.259ms
+[3m[90mDetection time:[39m[23m: 0.31ms

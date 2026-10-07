@@ -1,5 +1,5 @@
 {
-  "collectedAt": "2026-10-07T12:38:07.100095+00:00",
+  "collectedAt": "2026-10-07T12:47:30.106862+00:00",
   "issue": "https://github.com/link-assistant/agent-commander/issues/50",
   "pullRequest": "https://github.com/link-assistant/agent-commander/pull/51",
   "agentCommanderBaseline": "c03d6f87f6bb37b1e827c6ec2b6c9cd5f6a49f49",
@@ -104,13 +104,13 @@
     },
     {
       "path": "validation/bun.log.gz",
-      "bytes": 4866,
-      "sha256": "762f7c5bf490bb85cb7eea005b19f5e1603c8e8e9cb31ce56fe21f2f954ebcc5"
+      "bytes": 4898,
+      "sha256": "732c52f5967882dbcef0a84384ebafd727ffd5a9d4c2b16ebce1ee80f697f4c2"
     },
     {
       "path": "validation/deno.log.gz",
-      "bytes": 5175,
-      "sha256": "76c008a9f1c4fc85b122cc2648ede1416395a57582c66dbbd6fcde1d3fe2ec22"
+      "bytes": 5210,
+      "sha256": "76be5b2907cf6904f59b5107415bc4eae9e49e847c3ef5ece1316e0dbecddacb"
     },
     {
       "path": "validation/javascript-37616272375.log.gz",
@@ -119,8 +119,8 @@
     },
     {
       "path": "validation/js-after.log.txt",
-      "bytes": 3524,
-      "sha256": "4650869709a36a840fc6d781991e1ca7a1f36c702e9e5711fdf0b8a179f2a63b"
+      "bytes": 3687,
+      "sha256": "46984dabb72970e957efc7acc633cb78fea81d416cc0f403f2a6e05bf8a1cd63"
     },
     {
       "path": "validation/js-audit-before.log.txt",
@@ -134,8 +134,8 @@
     },
     {
       "path": "validation/js-full.log.gz",
-      "bytes": 5722,
-      "sha256": "09ce282f70b0b1e961d7964ba3f59c54c56a5cac82ad86dc9e4d206ca46179a2"
+      "bytes": 5824,
+      "sha256": "cc8046681b6040f7a2b2eaec9bfa0e2c847cb1eaa7e6931806e17fab7bc22c4f"
     },
     {
       "path": "validation/js-last-audit-before.log.txt",
@@ -143,9 +143,14 @@
       "sha256": "68147a98be077eb97aca80c3f35eb4d5affa02fd3c0219b5fd68629505439208"
     },
     {
+      "path": "validation/js-pretty-before.log.txt",
+      "bytes": 5495,
+      "sha256": "8ed46359e266451dc6838efe1ba2b6450e308b0af9a78f30a018227ccfe1088b"
+    },
+    {
       "path": "validation/js-quality.log.txt",
-      "bytes": 3016,
-      "sha256": "0adb245d6c75cd86019b6e0ceb6bda4f8031ffb3c9d26c5d9bc8f44669dee5e1"
+      "bytes": 3015,
+      "sha256": "d9ed467b22c768aebcdb4ee67322c8a27d0f09c4bbdf3e0e8eb475a705c0a9cd"
     },
     {
       "path": "validation/js-resume-before.log.txt",
@@ -159,8 +164,8 @@
     },
     {
       "path": "validation/rust-after.log.txt",
-      "bytes": 905,
-      "sha256": "f86f8e779b8320bd6806b6b3a5bb873d728d4bbdf9a9634cd05ed73ea506b058"
+      "bytes": 1009,
+      "sha256": "cfe78588fbdfb5c20bd564ca87b4f9b88f517c4701efd8241ebd48a5d9b8d748"
     },
     {
       "path": "validation/rust-before.log.txt",
@@ -169,13 +174,13 @@
     },
     {
       "path": "validation/rust-clippy.log.gz",
-      "bytes": 150,
-      "sha256": "d665d938c639ada4d23c0d8af2556cbbd5b25c4923ad00d40efafa667b4cee12"
+      "bytes": 151,
+      "sha256": "973e69d7e5938bc02898c47c86bc4024fba478ca034237a7effeea9b3158fdfd"
     },
     {
       "path": "validation/rust-doc.log.gz",
-      "bytes": 1683,
-      "sha256": "8db61825e7ddbe912fd168e8b5574bf949d8b588e2df04238bdccf02bfd19446"
+      "bytes": 1685,
+      "sha256": "1696b85e5d1004001832a7b6d9c3173f13a8c2a082b87028b46385cdf17b4d81"
     },
     {
       "path": "validation/rust-format.log.gz",
@@ -184,13 +189,18 @@
     },
     {
       "path": "validation/rust-full.log.gz",
-      "bytes": 6185,
-      "sha256": "e4b206ee197b5f0746eec115ced51f13a6f097cf412d099e8aeefb47d034726a"
+      "bytes": 5971,
+      "sha256": "0a1570aff7a8c5a094b5905a8021a4ce61f270fdb1144ca39cb34b9988c0eab8"
     },
     {
       "path": "validation/rust-package.log.gz",
-      "bytes": 283,
-      "sha256": "767bf558eeabc7aac00a5e9bff1d4e2aece15bc4e6051e637fe510859aa4e0c9"
+      "bytes": 237,
+      "sha256": "e504f0983fdce8f6006fa96efea7e80225d9c50092b3a908acdcac27422a96cd"
+    },
+    {
+      "path": "validation/rust-pretty-before.log.txt",
+      "bytes": 1781,
+      "sha256": "386bd10244168436a381e127aa67fcedf4cd73d8540199599a2e9bbc56bb9220"
     },
     {
       "path": "validation/rust-size.log.gz",

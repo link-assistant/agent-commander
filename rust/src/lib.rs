@@ -508,7 +508,11 @@ impl Agent {
             }
 
             if parsed_output.is_none() {
-                parsed_output = Some(streaming::parse_ndjson(stdout));
+                parsed_output = Some(if self.options.tool == "gemini" {
+                    tools::gemini::parse_output(stdout)
+                } else {
+                    streaming::parse_ndjson(stdout)
+                });
             }
 
             // Try to extract session ID

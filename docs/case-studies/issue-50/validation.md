@@ -19,7 +19,9 @@ node --test js/test/hive-mind-parity.test.mjs
 cargo test --manifest-path rust/Cargo.toml --test hive_mind_parity_tests
 ```
 
-The fixed suites pass 48 JavaScript tests and 10 Rust tests, with multiple native cases inside each Rust test. [JavaScript after](data/validation/js-after.log.txt) and [Rust after](data/validation/rust-after.log.txt) retain the results. Cancellation children have finite 30-second lifetimes and bounded test waits; the pipe probe has finite output. No experiment deliberately exhausts host memory or stack.
+The fixed suites pass 50 JavaScript tests and 12 Rust tests, with multiple native cases inside each Rust test. [JavaScript after](data/validation/js-after.log.txt) and [Rust after](data/validation/rust-after.log.txt) retain the results. Cancellation children have finite 30-second lifetimes and bounded test waits; the pipe probe has finite output. No experiment deliberately exhausts host memory or stack.
+
+The final review added two failing reproductions per language for formatted Gemini JSON: [JavaScript before](data/validation/js-pretty-before.log.txt) and [Rust before](data/validation/rust-pretty-before.log.txt). Whole-object parsing now complements the JSONL parser, and controllers fall back to it when the stream parser has no records. Session identity, statistics and terminal completion remain based on stdout.
 
 ## Local checks
 
@@ -32,7 +34,7 @@ bun test
 deno test --no-lock --allow-read --allow-write --allow-env --allow-run test/
 ```
 
-Results: JavaScript quality checks pass with zero lint errors; Node and Bun each pass 288 tests. Deno passes 282 tests and ignores the six existing platform/runtime-specific cases. Deno write permission is required by the public-controller temporary-file tests and is included in the package script and CI. Existing complexity warnings remain nonfatal under the repository's lint configuration.
+Results: JavaScript quality checks pass with zero lint errors; Node and Bun each pass 290 tests. Deno passes 284 tests and ignores the six existing platform/runtime-specific cases. Deno write permission is required by the public-controller temporary-file tests and is included in the package script and CI. Existing complexity warnings remain nonfatal under the repository's lint configuration.
 
 Run these commands in `rust/`:
 
@@ -45,7 +47,7 @@ cargo test --doc --verbose
 cargo package --allow-dirty
 ```
 
-All checks pass. The package verifies successfully with its own fixtures included; no test includes a source file outside the published crate. Rust file sizes remain below 1,000 lines. Documentation tests currently contain zero cases. The full test output records each suite's counts.
+All checks pass; the full Rust suite passes 284 tests. The package verifies successfully with its own fixtures included; no test includes a source file outside the published crate. Rust file sizes remain below 1,000 lines. Documentation tests currently contain zero cases. The full test output records each suite's counts.
 
 The actual dependency example also passes once for each tool:
 

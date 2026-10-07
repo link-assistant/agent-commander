@@ -259,3 +259,51 @@ fn native_resume_flags_are_available_for_every_tool() {
         }
     }
 }
+
+#[test]
+fn gemini_parses_formatted_json_response() {
+    let event = serde_json::json!({"response":"Done","stats":{"models":{}}});
+    let output = serde_json::to_string_pretty(&event).unwrap();
+    assert_eq!(gemini::parse_output(&output), vec![event]);
+}
+
+#[tokio::test]
+#[cfg(unix)]
+async fn gemini_controller_collects_formatted_json() {
+    use agent_commander::{agent, AgentOptions, AgentStartOptions, AgentStopOptions};
+    use std::os::unix::fs::PermissionsExt;
+    let directory = tempfile::tempdir().unwrap();
+    let executable = directory.path().join("fixture-tool");
+    let event = serde_json::json!({"response":"Done","session_id":"pretty-session","stats":{"models":{"test-model":{"tokens":{"prompt":10,"candidates":5,"total":15}}}}});
+    let output = serde_json::to_string_pretty(&event).unwrap();
+    std::fs::write(&executable, format!("#!/bin/bash\ncat >/dev/null\nprintf '%s\\n' '{}'\nprintf '%s\\n' '{{\"type\":\"error\",\"session_id\":\"ghost\"}}' >&2\n", output.replace('\'', "'\\''"))).unwrap();
+    std::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let mut controller = agent(AgentOptions {
+        tool: "gemini".into(),
+        working_directory: directory.path().to_str().unwrap().into(),
+        prompt: Some("Inspect".into()),
+        json: true,
+        executable: Some(executable.to_str().unwrap().into()),
+        ..Default::default()
+    })
+    .unwrap();
+    controller
+        .start(AgentStartOptions {
+            attached: false,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        controller.stop(AgentStopOptions::default()),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert!(result.metadata.success);
+    assert_eq!(result.metadata.result_summary.as_deref(), Some("Done"));
+    assert_eq!(result.session_id.as_deref(), Some("pretty-session"));
+    assert_eq!(result.usage.unwrap()["inputTokens"], 10);
+    assert_eq!(result.parsed_output.unwrap(), vec![event]);
+}

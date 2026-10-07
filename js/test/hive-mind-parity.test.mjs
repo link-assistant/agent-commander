@@ -233,3 +233,40 @@ test('Agent resumes the same session without forking', () => {
   });
   assert.ok(command.includes('--resume previous-session --no-fork'));
 });
+
+test('Gemini parses a formatted JSON response and statistics', () => {
+  const config = getTool({ toolName: 'gemini' });
+  const event = fixtures.metadata.find(
+    (entry) => entry.name === 'Gemini JSON object is a complete result'
+  ).events[0];
+  const output = JSON.stringify(event, null, 2);
+  assert.deepEqual(config.parseOutput({ output }), [event]);
+});
+
+test(
+  'Gemini controller collects formatted JSON without mixing stderr',
+  { timeout: 10000, skip: process.platform === 'win32' },
+  async () => {
+    const { agent } = await import('../src/index.mjs');
+    const { fileURLToPath } = await import('node:url');
+    const controller = agent({
+      tool: 'gemini',
+      workingDirectory: '/tmp',
+      prompt: 'Inspect',
+      json: true,
+      toolOptions: {
+        executable: fileURLToPath(
+          new URL('./fixtures/fake-native-tool.mjs', import.meta.url)
+        ),
+        extraArgs: ['--fixture', 'gemini', '--pretty-json'],
+      },
+    });
+    await controller.start({ attached: false });
+    const result = await controller.stop();
+    assert.equal(result.metadata.success, true);
+    assert.equal(result.metadata.resultSummary, 'Done');
+    assert.equal(result.sessionId, 'pretty-session');
+    assert.equal(result.usage.inputTokens, 30);
+    assert.equal(result.output.parsed.length, 1);
+  }
+);
