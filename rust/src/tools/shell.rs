@@ -2,11 +2,10 @@
 
 /// Escape an argument for shell usage.
 pub fn escape_arg(arg: &str) -> String {
-    if arg.contains('"')
-        || arg.contains(char::is_whitespace)
-        || arg.contains('$')
-        || arg.contains('`')
-        || arg.contains('\\')
+    if arg.is_empty()
+        || !arg
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "-_./:=+,@%".contains(c))
     {
         let escaped = arg
             .replace('\\', "\\\\")

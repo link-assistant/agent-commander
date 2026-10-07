@@ -1,0 +1,109 @@
+✔ Hive Mind usage: Claude final usage supersedes repeated assistant snapshots (5.854367ms)
+✔ Hive Mind usage: Codex separates cached input from fresh input (1.332317ms)
+✔ Hive Mind usage: OpenCode native step tokens and cost (0.711648ms)
+✔ Hive Mind usage: Agent native step tokens remain compatible (0.645455ms)
+✔ Hive Mind usage: Qwen final result totals do not double count assistant usage (0.692902ms)
+✔ Hive Mind usage: Gemini native result statistics preserve model usage (0.792859ms)
+✔ Hive Mind usage: Claude excludes subagent final totals (0.306071ms)
+✔ Hive Mind usage: Codex nested cache and reasoning fields (0.289551ms)
+✔ Hive Mind usage: Qwen alternate field spellings (0.329385ms)
+✔ Hive Mind outcome: unfinished Codex turn (2.523731ms)
+✔ Hive Mind outcome: unfinished second Codex turn (0.366114ms)
+✔ Hive Mind outcome: failed Codex turn without error payload (0.335556ms)
+✔ Hive Mind outcome: unfinished Claude session (0.380431ms)
+✔ Hive Mind outcome: unfinished Gemini session (0.399535ms)
+✔ Hive Mind outcome: completed Codex ignores quoted limit message (0.405126ms)
+✔ Hive Mind outcome: OpenCode native session and answer (0.268331ms)
+✔ Hive Mind outcome: Gemini failed result (0.271206ms)
+✔ Hive Mind outcome: nested Codex collaboration (0.289961ms)
+✔ Hive Mind outcome: null error on successful result (0.200434ms)
+✔ Hive Mind outcome: OpenCode unfinished tool call (0.269654ms)
+✔ Hive Mind outcome: Claude subagent errors stay diagnostic (0.205513ms)
+✔ Hive Mind outcome: Codex recovers a transient error before completing (0.143196ms)
+✔ Hive Mind outcome: error after completed Codex turn is a failure (0.172722ms)
+✔ Hive Mind outcome: Claude native Agent call is recorded (0.274733ms)
+✔ Hive Mind outcome: Gemini JSON object is a complete result (0.204191ms)
+✔ Hive Mind bundled model aliases: claude (0.559825ms)
+✔ Hive Mind bundled model aliases: codex (0.296594ms)
+✔ Hive Mind bundled model aliases: agent (0.16137ms)
+✔ Hive Mind bundled model aliases: opencode (0.127528ms)
+✔ Hive Mind bundled model aliases: qwen (0.197048ms)
+✔ Hive Mind bundled model aliases: gemini (0.207107ms)
+✔ Claude JSON commands select noninteractive verbose output (2.646679ms)
+✔ Shell arguments survive metacharacters (49.508264ms)
+✔ Working directories with spaces are quoted (15.732126ms)
+✔ Signal termination is unsuccessful (13.455246ms)
+✔ Hive Mind controller receives claude stdout independently of stderr (130.3524ms)
+✔ Hive Mind controller receives codex stdout independently of stderr (98.969301ms)
+✔ Hive Mind controller receives agent stdout independently of stderr (96.595769ms)
+✔ Hive Mind controller receives opencode stdout independently of stderr (87.300318ms)
+✔ Hive Mind controller receives qwen stdout independently of stderr (93.064278ms)
+✔ Hive Mind controller receives gemini stdout independently of stderr (107.532083ms)
+✔ A consumer can cancel a running controller (17.061237ms)
+✔ Gemini resume is available through the common command builder (0.578339ms)
+✔ UTF-8 is preserved across process chunks (103.400481ms)
+✔ Empty native JSON cannot report a completed session (12.117819ms)
+✔ Published Rust fixtures match the common regression data (3.525191ms)
+✔ OpenCode uses its native session flag for resume (0.373588ms)
+✔ Agent resumes the same session without forking (0.263332ms)
+✖ Gemini parses a formatted JSON response and statistics (2.863685ms)
+✖ Gemini controller collects formatted JSON without mixing stderr (109.405079ms)
+ℹ tests 50
+ℹ suites 0
+ℹ pass 48
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1150.680772
+
+✖ failing tests:
+
+test at js/test/hive-mind-parity.test.mjs:237:1
+✖ Gemini parses a formatted JSON response and statistics (2.863685ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   {
+  -     error: null,
+  -     response: 'Done',
+  -     stats: {
+  -       models: {}
+  -     }
+  -   }
+  - ]
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:241:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ { response: 'Done', stats: [Object], error: null } ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at js/test/hive-mind-parity.test.mjs:244:1
+✖ Gemini controller collects formatted JSON without mixing stderr (109.405079ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:257:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

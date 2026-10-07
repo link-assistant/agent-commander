@@ -1,10 +1,12 @@
-//! Execute commands using tokio
+//! Execute commands while continuously draining both process pipes.
+use std::{io, process::Stdio};
+use tokio::{
+    io::{AsyncRead, AsyncReadExt, AsyncWriteExt},
+    process::{Child, Command},
+    task::JoinHandle,
+};
 
-use std::process::Stdio;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::{Child, Command};
-
-/// Command execution result
+/// Command execution result.
 #[derive(Debug, Clone, Default)]
 pub struct ExecutionResult {
     pub exit_code: i32,
@@ -13,170 +15,156 @@ pub struct ExecutionResult {
     pub command: String,
 }
 
-/// Execute a command and return the result
-///
-/// # Arguments
-/// * `command` - Command to execute
-/// * `dry_run` - If true, just return the command without executing
-/// * `attached` - If true, stream output to console
-///
-/// # Returns
-/// Execution result
+async fn drain<R: AsyncRead + Unpin>(
+    mut pipe: R,
+    attached: bool,
+    stderr: bool,
+) -> io::Result<String> {
+    let mut bytes = Vec::new();
+    let mut chunk = [0; 8192];
+    loop {
+        let count = pipe.read(&mut chunk).await?;
+        if count == 0 {
+            break;
+        }
+        bytes.extend_from_slice(&chunk[..count]);
+        if attached {
+            if stderr {
+                tokio::io::stderr().write_all(&chunk[..count]).await?;
+            } else {
+                tokio::io::stdout().write_all(&chunk[..count]).await?;
+            }
+        }
+    }
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
+}
+
+/// Execute a command, or return the command without spawning in dry-run mode.
 pub async fn execute_command(
     command: &str,
     dry_run: bool,
     attached: bool,
-) -> Result<ExecutionResult, std::io::Error> {
+) -> io::Result<ExecutionResult> {
     if dry_run {
-        println!("Dry run - command that would be executed:");
-        println!("{}", command);
+        println!("Dry run - command that would be executed:\n{}", command);
         return Ok(ExecutionResult {
-            exit_code: 0,
-            stdout: String::new(),
-            stderr: String::new(),
-            command: command.to_string(),
+            command: command.into(),
+            ..Default::default()
         });
     }
-
-    let mut child = Command::new("bash")
-        .arg("-c")
-        .arg(command)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    let mut stdout = String::new();
-    let mut stderr = String::new();
-
-    // Read stdout
-    if let Some(stdout_pipe) = child.stdout.take() {
-        let mut reader = BufReader::new(stdout_pipe).lines();
-        while let Some(line) = reader.next_line().await? {
-            stdout.push_str(&line);
-            stdout.push('\n');
-            if attached {
-                println!("{}", line);
-            }
-        }
-    }
-
-    // Read stderr
-    if let Some(stderr_pipe) = child.stderr.take() {
-        let mut reader = BufReader::new(stderr_pipe).lines();
-        while let Some(line) = reader.next_line().await? {
-            stderr.push_str(&line);
-            stderr.push('\n');
-            if attached {
-                eprintln!("{}", line);
-            }
-        }
-    }
-
-    let status = child.wait().await?;
-    let exit_code = status.code().unwrap_or(1);
-
+    let mut handle = start_command(command, attached).await?;
+    let exit_code = handle.wait_for_exit().await?;
+    let (stdout, stderr, _) = handle.get_output();
     Ok(ExecutionResult {
         exit_code,
-        stdout,
-        stderr,
-        command: command.to_string(),
+        stdout: stdout.into(),
+        stderr: stderr.into(),
+        command: command.into(),
     })
 }
 
-/// Process handle for non-blocking command execution
+/// Non-blocking process handle. Pipe readers run immediately after spawning.
 pub struct ProcessHandle {
     pub command: String,
-    child: Option<Child>,
+    child: Child,
+    readers: Option<(
+        JoinHandle<io::Result<String>>,
+        JoinHandle<io::Result<String>>,
+    )>,
     stdout: String,
     stderr: String,
     exit_code: Option<i32>,
 }
-
 impl ProcessHandle {
-    /// Create a new process handle
-    fn new(command: String, child: Child) -> Self {
-        Self {
-            command,
-            child: Some(child),
-            stdout: String::new(),
-            stderr: String::new(),
-            exit_code: None,
+    /// Wait for process completion and all output, preserving exact bytes as UTF-8.
+    pub async fn wait_for_exit(&mut self) -> io::Result<i32> {
+        if let Some(code) = self.exit_code {
+            return Ok(code);
         }
+        let status = self.child.wait().await?;
+        if let Some((stdout, stderr)) = self.readers.take() {
+            let (out, err) = tokio::join!(stdout, stderr);
+            self.stdout = out.map_err(io::Error::other)??;
+            self.stderr = err.map_err(io::Error::other)??;
+        }
+        let code = status.code().unwrap_or(1);
+        self.exit_code = Some(code);
+        Ok(code)
+    }
+    /// Terminate the running command and its Unix process group.
+    pub async fn terminate(&mut self) -> io::Result<()> {
+        if self.exit_code.is_some() || self.child.try_wait()?.is_some() {
+            return Ok(());
+        }
+        #[cfg(unix)]
+        if let Some(id) = self.child.id() {
+            // bash's kill builtin is available wherever our executor is supported.
+            let output = Command::new("bash")
+                .arg("-c")
+                .arg(format!("kill -TERM -- -{}", id))
+                .output()
+                .await?;
+            if std::env::var_os("AGENT_COMMANDER_DEBUG").is_some() {
+                eprintln!(
+                    "Cancel process group {id}: {} {}",
+                    output.status,
+                    String::from_utf8_lossy(&output.stderr)
+                );
+            }
+            if !output.status.success() && self.child.try_wait()?.is_none() {
+                return Err(io::Error::other(
+                    String::from_utf8_lossy(&output.stderr).into_owned(),
+                ));
+            }
+        }
+        #[cfg(not(unix))]
+        self.child.start_kill()?;
+        Ok(())
     }
 
-    /// Wait for the process to exit
-    pub async fn wait_for_exit(&mut self) -> Result<i32, std::io::Error> {
-        if let Some(exit_code) = self.exit_code {
-            return Ok(exit_code);
-        }
-
-        if let Some(mut child) = self.child.take() {
-            // Read remaining stdout
-            if let Some(stdout_pipe) = child.stdout.take() {
-                let mut reader = BufReader::new(stdout_pipe).lines();
-                while let Some(line) = reader.next_line().await? {
-                    self.stdout.push_str(&line);
-                    self.stdout.push('\n');
-                }
-            }
-
-            // Read remaining stderr
-            if let Some(stderr_pipe) = child.stderr.take() {
-                let mut reader = BufReader::new(stderr_pipe).lines();
-                while let Some(line) = reader.next_line().await? {
-                    self.stderr.push_str(&line);
-                    self.stderr.push('\n');
-                }
-            }
-
-            let status = child.wait().await?;
-            self.exit_code = Some(status.code().unwrap_or(1));
-        }
-
-        Ok(self.exit_code.unwrap_or(1))
-    }
-
-    /// Get collected output
+    /// Get collected output after waiting for completion.
     pub fn get_output(&self) -> (&str, &str, Option<i32>) {
         (&self.stdout, &self.stderr, self.exit_code)
     }
-
-    /// Check if process has exited
+    /// Check whether completion has been collected.
     pub fn has_exited(&self) -> bool {
         self.exit_code.is_some()
     }
 }
 
-/// Start a command execution without waiting for completion
-///
-/// # Arguments
-/// * `command` - Command to execute
-/// * `attached` - If true, stream output to console
-///
-/// # Returns
-/// Process handle
-pub async fn start_command(
-    command: &str,
-    _attached: bool,
-) -> Result<ProcessHandle, std::io::Error> {
-    let child = Command::new("bash")
+/// Start a command and drain stdout/stderr concurrently, with optional console output.
+pub async fn start_command(command: &str, attached: bool) -> io::Result<ProcessHandle> {
+    let mut command_builder = Command::new("bash");
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command_builder.as_std_mut().process_group(0);
+    }
+    let mut child = command_builder
         .arg("-c")
         .arg(command)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
+        .stdin(Stdio::null())
+        .kill_on_drop(true)
         .spawn()?;
-
-    Ok(ProcessHandle::new(command.to_string(), child))
+    let stdout = child.stdout.take().expect("piped stdout");
+    let stderr = child.stderr.take().expect("piped stderr");
+    Ok(ProcessHandle {
+        command: command.into(),
+        child,
+        readers: Some((
+            tokio::spawn(drain(stdout, attached, false)),
+            tokio::spawn(drain(stderr, attached, true)),
+        )),
+        stdout: String::new(),
+        stderr: String::new(),
+        exit_code: None,
+    })
 }
 
-/// Execute a command in the background (detached)
-///
-/// # Arguments
-/// * `command` - Command to execute
-///
-/// # Returns
-/// Process ID if available
-pub async fn execute_detached(command: &str) -> Result<Option<u32>, std::io::Error> {
+/// Start a detached command with all standard streams disconnected.
+pub async fn execute_detached(command: &str) -> io::Result<Option<u32>> {
     let child = Command::new("bash")
         .arg("-c")
         .arg(command)
@@ -184,48 +172,28 @@ pub async fn execute_detached(command: &str) -> Result<Option<u32>, std::io::Err
         .stderr(Stdio::null())
         .stdin(Stdio::null())
         .spawn()?;
-
     Ok(child.id())
 }
-
-/// Signal handler cleanup function type
+/// Signal cleanup callback.
 pub type CleanupFn = Box<dyn Fn() + Send + Sync>;
 
-/// Setup CTRL+C handler for graceful shutdown
-///
-/// # Arguments
-/// * `cleanup_fn` - Function to call on CTRL+C
-///
-/// # Returns
-/// Function to remove the handler
+/// Register a Ctrl+C cleanup callback in the current Tokio runtime.
+/// Calling the returned function unregisters it without running cleanup.
 pub fn setup_signal_handler<F>(cleanup_fn: F) -> impl Fn()
 where
     F: Fn() + Send + Sync + 'static,
 {
-    // Note: In Rust with tokio, signal handling is typically done differently
-    // This is a simplified version that uses ctrlc crate pattern
-    // For production use, consider tokio::signal
-
-    let cleanup = std::sync::Arc::new(cleanup_fn);
-    let cleanup_clone = cleanup.clone();
-
-    // Set up a simple flag for shutdown
-    let shutdown = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-    let shutdown_clone = shutdown.clone();
-
-    std::thread::spawn(move || {
-        // This is a simplified pattern - in real code use tokio::signal
-        loop {
-            if shutdown_clone.load(std::sync::atomic::Ordering::Relaxed) {
-                cleanup_clone();
-                break;
+    let task = tokio::runtime::Handle::try_current().ok().map(|runtime| {
+        runtime.spawn(async move {
+            if tokio::signal::ctrl_c().await.is_ok() {
+                cleanup_fn();
             }
-            std::thread::sleep(std::time::Duration::from_millis(100));
-        }
+        })
     });
-
     move || {
-        shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
+        if let Some(task) = &task {
+            task.abort();
+        }
     }
 }
 

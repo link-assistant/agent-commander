@@ -122,7 +122,7 @@ fn test_agent_tool_default() {
     assert!(tool.supports_json_output);
     assert!(tool.supports_json_input);
     assert!(!tool.supports_system_prompt);
-    assert!(!tool.supports_resume);
+    assert!(tool.supports_resume);
     assert_eq!(tool.default_model, "nemotron-3-super-free");
 }
 

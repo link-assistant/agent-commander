@@ -1,0 +1,81 @@
+✔ Hive Mind usage: Claude final usage supersedes repeated assistant snapshots (2.574974ms)
+✔ Hive Mind usage: Codex separates cached input from fresh input (0.561818ms)
+✔ Hive Mind usage: OpenCode native step tokens and cost (0.567519ms)
+✔ Hive Mind usage: Agent native step tokens remain compatible (0.495845ms)
+✔ Hive Mind usage: Qwen final result totals do not double count assistant usage (0.577838ms)
+✔ Hive Mind usage: Gemini native result statistics preserve model usage (0.590161ms)
+✔ Hive Mind usage: Claude excludes subagent final totals (0.290071ms)
+✔ Hive Mind usage: Codex nested cache and reasoning fields (0.424993ms)
+✔ Hive Mind usage: Qwen alternate field spellings (0.325728ms)
+✔ Hive Mind outcome: unfinished Codex turn (2.556049ms)
+✔ Hive Mind outcome: unfinished second Codex turn (0.723029ms)
+✔ Hive Mind outcome: failed Codex turn without error payload (0.290822ms)
+✔ Hive Mind outcome: unfinished Claude session (0.480096ms)
+✔ Hive Mind outcome: unfinished Gemini session (0.260665ms)
+✔ Hive Mind outcome: completed Codex ignores quoted limit message (0.456582ms)
+✔ Hive Mind outcome: OpenCode native session and answer (0.440653ms)
+✔ Hive Mind outcome: Gemini failed result (0.320688ms)
+✔ Hive Mind outcome: nested Codex collaboration (0.547731ms)
+✔ Hive Mind outcome: null error on successful result (0.254396ms)
+✔ Hive Mind outcome: OpenCode unfinished tool call (0.288468ms)
+✔ Hive Mind outcome: Claude subagent errors stay diagnostic (0.187671ms)
+✔ Hive Mind outcome: Codex recovers a transient error before completing (0.177871ms)
+✔ Hive Mind outcome: error after completed Codex turn is a failure (0.148918ms)
+✔ Hive Mind outcome: Claude native Agent call is recorded (0.196296ms)
+✖ Hive Mind outcome: Gemini JSON object is a complete result (2.05287ms)
+✔ Hive Mind bundled model aliases: claude (0.596583ms)
+✔ Hive Mind bundled model aliases: codex (0.331829ms)
+✔ Hive Mind bundled model aliases: agent (0.233145ms)
+✔ Hive Mind bundled model aliases: opencode (0.199283ms)
+✔ Hive Mind bundled model aliases: qwen (0.17687ms)
+✔ Hive Mind bundled model aliases: gemini (0.20404ms)
+✔ Claude JSON commands select noninteractive verbose output (0.583729ms)
+✔ Shell arguments survive metacharacters (53.571261ms)
+✔ Working directories with spaces are quoted (14.450461ms)
+✔ Signal termination is unsuccessful (11.515425ms)
+✔ Hive Mind controller receives claude stdout independently of stderr (106.993843ms)
+✔ Hive Mind controller receives codex stdout independently of stderr (106.292635ms)
+✔ Hive Mind controller receives agent stdout independently of stderr (105.533658ms)
+✔ Hive Mind controller receives opencode stdout independently of stderr (102.826929ms)
+✔ Hive Mind controller receives qwen stdout independently of stderr (89.594961ms)
+✔ Hive Mind controller receives gemini stdout independently of stderr (101.03728ms)
+✔ A consumer can cancel a running controller (34.766716ms)
+✔ Gemini resume is available through the common command builder (1.387328ms)
+✔ UTF-8 is preserved across process chunks (120.924525ms)
+✔ Empty native JSON cannot report a completed session (18.645088ms)
+✔ Published Rust fixtures match the common regression data (4.682666ms)
+✔ OpenCode uses its native session flag for resume (0.546299ms)
+✔ Agent resumes the same session without forking (0.251158ms)
+ℹ tests 48
+ℹ suites 0
+ℹ pass 47
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1072.885284
+
+✖ failing tests:
+
+test at js/test/hive-mind-parity.test.mjs:34:3
+✖ Hive Mind outcome: Gemini JSON object is a complete result (2.05287ms)
+  AssertionError [ERR_ASSERTION]: resultSummary
+  + actual - expected
+  
+  + '{"response":"Done","stats":{"models":{}},"error":null}'
+  - 'Done'
+  
+      at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1791373524821/js/test/hive-mind-parity.test.mjs:42:14)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: '{"response":"Done","stats":{"models":{}},"error":null}',
+    expected: 'Done',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

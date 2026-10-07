@@ -1,8 +1,11 @@
+import { nativeUsage } from './usage.mjs';
 /**
  * Qwen Code CLI tool configuration
  * Based on https://github.com/QwenLM/qwen-code
  * Qwen Code is an open-source AI agent optimized for Qwen3-Coder models
  */
+
+import { syncedModels, syncedDefaults } from './model-catalog.mjs';
 
 import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
 
@@ -11,7 +14,6 @@ import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
  * Maps aliases to full model IDs
  */
 export const modelMap = {
-  'qwen3-coder': 'qwen3-coder-480a35',
   'qwen3-coder-480a35': 'qwen3-coder-480a35',
   'qwen3-coder-30ba3': 'qwen3-coder-30ba3',
   coder: 'qwen3-coder-480a35',
@@ -19,6 +21,7 @@ export const modelMap = {
   'gpt-4': 'gpt-4',
   sonnet: 'claude-sonnet-4',
   opus: 'claude-opus-4',
+  ...syncedModels.qwen,
 };
 
 /**
@@ -234,55 +237,8 @@ export function extractSessionId(options) {
  * @param {string} options.output - Raw output string
  * @returns {Object} Usage statistics
  */
-export function extractUsage(options) {
-  const { output } = options;
-  const messages = parseOutput({ output });
-
-  const usage = {
-    inputTokens: 0,
-    outputTokens: 0,
-    totalTokens: 0,
-  };
-
-  for (const msg of messages) {
-    // Check for usage in message
-    if (msg.usage) {
-      const u = msg.usage;
-      if (u.input_tokens) {
-        usage.inputTokens += u.input_tokens;
-      }
-      if (u.output_tokens) {
-        usage.outputTokens += u.output_tokens;
-      }
-      if (u.total_tokens) {
-        usage.totalTokens += u.total_tokens;
-      }
-    }
-
-    // Check for usage in result message
-    if (msg.result?.usage) {
-      const u = msg.result.usage;
-      if (u.input_tokens) {
-        usage.inputTokens += u.input_tokens;
-      }
-      if (u.output_tokens) {
-        usage.outputTokens += u.output_tokens;
-      }
-      if (u.total_tokens) {
-        usage.totalTokens += u.total_tokens;
-      }
-    }
-  }
-
-  // Calculate total if not provided
-  if (
-    usage.totalTokens === 0 &&
-    (usage.inputTokens > 0 || usage.outputTokens > 0)
-  ) {
-    usage.totalTokens = usage.inputTokens + usage.outputTokens;
-  }
-
-  return usage;
+export function extractUsage({ output }) {
+  return nativeUsage('qwen', parseOutput({ output }));
 }
 
 /**
@@ -326,7 +282,7 @@ export const qwenTool = {
   supportsIncludePartialMessages: true, // Supports --include-partial-messages
   supportsReadOnly: true, // Supports --approval-mode plan
   supportsAsk: false, // No relayable per-command JSON approval handshake in headless mode
-  defaultModel: 'qwen3-coder-480a35',
+  defaultModel: syncedDefaults.qwen,
   modelMap,
   mapModelToId,
   buildArgs,

@@ -674,7 +674,7 @@ mod tests {
         let result = validate_start_agent_options(&options);
 
         assert!(result.valid);
-        assert!(result.errors.is_empty());
+        assert_eq!(result.errors, Vec::<String>::new());
     }
 
     #[test]
@@ -714,7 +714,7 @@ mod tests {
         let result = validate_stop_agent_options(&options);
 
         assert!(result.valid);
-        assert!(result.errors.is_empty());
+        assert_eq!(result.errors, Vec::<String>::new());
     }
 
     #[test]

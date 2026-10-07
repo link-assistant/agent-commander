@@ -1,0 +1,63 @@
+
+> agent-commander@0.10.1 check
+> npm run lint && npm run format:check && npm run check:duplication
+
+
+> agent-commander@0.10.1 lint
+> eslint .
+
+
+/tmp/gh-issue-solver-1791373524821/js/bin/start-agent.mjs
+  61:20  warning  '_raw' is assigned a value but never used  no-unused-vars
+
+/tmp/gh-issue-solver-1791373524821/js/src/command-builder.mjs
+  29:8  warning  Function 'buildAgentCommand' has a complexity of 17. Maximum allowed is 15  complexity
+
+/tmp/gh-issue-solver-1791373524821/js/src/completion.mjs
+  2:8  warning  Function 'completionState' has a complexity of 32. Maximum allowed is 15  complexity
+
+/tmp/gh-issue-solver-1791373524821/js/src/index.mjs
+  192:8   warning  Function 'agent' has too many lines (339). Maximum allowed is 150   max-lines-per-function
+  192:8   warning  Function 'agent' has a complexity of 17. Maximum allowed is 15      complexity
+  291:43  warning  Async arrow function has a complexity of 28. Maximum allowed is 15  complexity
+  455:41  warning  Async arrow function has a complexity of 26. Maximum allowed is 15  complexity
+  621:27  warning  Async arrow function has no 'await' expression                      require-await
+
+/tmp/gh-issue-solver-1791373524821/js/src/permissions/normalize.mjs
+  112:8  warning  Function 'normalizePermissionRequest' has a complexity of 29. Maximum allowed is 15  complexity
+
+/tmp/gh-issue-solver-1791373524821/js/src/result-metadata.mjs
+   89:1  warning  Function 'detectUsageLimit' has a complexity of 17. Maximum allowed is 15          complexity
+  142:1  warning  Function 'extractResultSummary' has a complexity of 16. Maximum allowed is 15      complexity
+  199:1  warning  Function 'extractResultModelUsage' has a complexity of 28. Maximum allowed is 15   complexity
+  236:1  warning  Function 'extractSubAgentCalls' has a complexity of 34. Maximum allowed is 15      complexity
+  283:1  warning  Function 'extractErrorFromMessages' has a complexity of 30. Maximum allowed is 15  complexity
+
+/tmp/gh-issue-solver-1791373524821/js/src/tools/agent.mjs
+  49:8  warning  Function 'buildArgs' has a complexity of 18. Maximum allowed is 15  complexity
+
+/tmp/gh-issue-solver-1791373524821/js/src/tools/claude.mjs
+  53:8  warning  Function 'buildArgs' has a complexity of 33. Maximum allowed is 15  complexity
+
+/tmp/gh-issue-solver-1791373524821/js/src/tools/gemini.mjs
+  47:8  warning  Function 'buildArgs' has a complexity of 21. Maximum allowed is 15  complexity
+
+/tmp/gh-issue-solver-1791373524821/js/src/tools/qwen.mjs
+  57:8  warning  Function 'buildArgs' has a complexity of 25. Maximum allowed is 15  complexity
+
+/tmp/gh-issue-solver-1791373524821/js/src/tools/usage.mjs
+  146:8  warning  Function 'nativeUsage' has a complexity of 21. Maximum allowed is 15  complexity
+
+✖ 19 problems (0 errors, 19 warnings)
+
+
+> agent-commander@0.10.1 format:check
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+
+> agent-commander@0.10.1 check:duplication
+> jscpd .
+
+[3m[90mDetection time:[39m[23m: 0.545ms

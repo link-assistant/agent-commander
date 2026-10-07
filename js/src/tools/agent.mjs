@@ -7,6 +7,8 @@
  * JSON policy.
  */
 
+import { syncedModels, syncedDefaults } from './model-catalog.mjs';
+
 import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
 
 /**
@@ -14,41 +16,7 @@ import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
  * Maps aliases to full model IDs (uses OpenCode's provider/model format)
  */
 export const modelMap = {
-  // OpenCode Zen free models (current)
-  grok: 'opencode/grok-code',
-  'grok-code': 'opencode/grok-code',
-  'grok-code-fast-1': 'opencode/grok-code',
-  'big-pickle': 'opencode/big-pickle',
-  'gpt-5-nano': 'opencode/gpt-5-nano',
-  'minimax-m2.5-free': 'opencode/minimax-m2.5-free',
-  // Default: NVIDIA hybrid Mamba-Transformer (hive-mind issue #1563, agent PR #243)
-  'nemotron-3-super-free': 'opencode/nemotron-3-super-free',
-  // Kilo Gateway free models
-  'glm-5-free': 'kilo/glm-5-free',
-  'glm-4.5-air-free': 'kilo/glm-4.5-air-free',
-  'deepseek-r1-free': 'kilo/deepseek-r1-free',
-  'giga-potato-free': 'kilo/giga-potato-free',
-  'trinity-large-preview': 'kilo/trinity-large-preview',
-  // Full names with kilo/ prefix
-  'kilo/glm-5-free': 'kilo/glm-5-free',
-  'kilo/glm-4.5-air-free': 'kilo/glm-4.5-air-free',
-  'kilo/minimax-m2.5-free': 'kilo/minimax-m2.5-free',
-  'kilo/deepseek-r1-free': 'kilo/deepseek-r1-free',
-  'kilo/giga-potato-free': 'kilo/giga-potato-free',
-  'kilo/trinity-large-preview': 'kilo/trinity-large-preview',
-  // Deprecated free models (kept for backward compatibility)
-  'qwen3.6-plus-free': 'opencode/qwen3.6-plus-free', // Deprecated: free promotion ended April 2026
-  'kimi-k2.5-free': 'opencode/kimi-k2.5-free',
-  'glm-4.7-free': 'opencode/glm-4.7-free',
-  'minimax-m2.1-free': 'opencode/minimax-m2.1-free',
-  'kilo/glm-4.7-free': 'kilo/glm-4.7-free',
-  'kilo/kimi-k2.5-free': 'kilo/kimi-k2.5-free',
-  'kilo/minimax-m2.1-free': 'kilo/minimax-m2.1-free',
-  // Premium models
-  sonnet: 'anthropic/claude-3-5-sonnet',
-  haiku: 'anthropic/claude-3-5-haiku',
-  opus: 'anthropic/claude-3-opus',
-  'gemini-3-pro': 'google/gemini-3-pro',
+  ...syncedModels.agent,
 };
 
 /**
@@ -81,6 +49,7 @@ export function mapModelToId(options) {
 export function buildArgs(options) {
   const {
     model,
+    resume,
     compactJson = false,
     useExistingClaudeOAuth = false,
     readOnly = false,
@@ -92,6 +61,9 @@ export function buildArgs(options) {
   } = options;
 
   const args = [];
+  if (resume) {
+    args.push('--resume', resume, '--no-fork');
+  }
 
   // Native, enforceable permission system (agent v0.24.0, PR #272).
   // --plan-only maps to `plan`, --read-only maps to the harder `readonly`,
@@ -236,8 +208,8 @@ export function extractSessionId(options) {
   const messages = parseOutput({ output });
 
   for (const msg of messages) {
-    if (msg.session_id) {
-      return msg.session_id;
+    if (msg.session_id || msg.sessionID) {
+      return msg.session_id || msg.sessionID;
     }
   }
 
@@ -336,10 +308,10 @@ export const agentTool = {
   supportsJsonOutput: true,
   supportsJsonInput: true, // Agent supports full JSON streaming input
   supportsSystemPrompt: false, // System prompt is combined with user prompt
-  supportsResume: false, // Agent doesn't have explicit resume like Claude
+  supportsResume: true, // --resume SESSION --no-fork preserves the session
   supportsReadOnly: true, // Native --permission-mode readonly/plan (agent v0.24.0, PR #272)
   supportsAsk: true, // Native --permission-mode ask with JSON permission relay
-  defaultModel: 'nemotron-3-super-free', // hive-mind issue #1563, agent PR #243
+  defaultModel: syncedDefaults.agent,
   modelMap,
   mapModelToId,
   buildArgs,

@@ -1,5 +1,6 @@
 //! Normalized result metadata for tool-specific agent output.
 
+use crate::completion::{completion_state, outcome_messages};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
@@ -239,6 +240,7 @@ fn tail_chars(value: &str, max_chars: usize) -> String {
 fn extract_result_summary(messages: &[Value], plain_output: &str) -> Option<String> {
     let keys = [
         "result",
+        "response",
         "summary",
         "result_summary",
         "resultSummary",
@@ -260,7 +262,8 @@ fn extract_result_summary(messages: &[Value], plain_output: &str) -> Option<Stri
             }
         }
 
-        let nested_text = text_from_value(message.pointer("/item/content"))
+        let nested_text = text_from_value(message.pointer("/part/text"))
+            .or_else(|| text_from_value(message.pointer("/item/content")))
             .or_else(|| text_from_value(message.pointer("/item/text")))
             .or_else(|| text_from_value(message.pointer("/delta/text")));
         if nested_text.is_some() {
@@ -305,6 +308,13 @@ fn extract_result_model_usage(messages: &[Value]) -> Option<Value> {
         }
     }
 
+    if let Some(models) = messages
+        .iter()
+        .rev()
+        .find_map(|m| m.pointer("/stats/models"))
+    {
+        return Some(models.clone());
+    }
     let mut usage_by_model = Map::new();
     for message in messages {
         let model = message
@@ -349,9 +359,28 @@ fn extract_sub_agent_calls(messages: &[Value]) -> Option<Vec<Value>> {
             }
         }
 
+        if let Some(blocks) = message
+            .pointer("/message/content")
+            .and_then(Value::as_array)
+        {
+            for block in blocks {
+                if block["type"] == "tool_use"
+                    && matches!(block["name"].as_str(), Some("Task" | "Agent"))
+                {
+                    calls.push(json!({
+                        "type": "tool_use",
+                        "id": block["id"],
+                        "name": block["name"],
+                        "status": "started",
+                        "summary": block.pointer("/input/description"),
+                    }));
+                }
+            }
+        }
+
         let message_type = message
-            .get("type")
-            .or_else(|| message.pointer("/item/type"))
+            .pointer("/item/type")
+            .or_else(|| message.get("type"))
             .or_else(|| message.get("item_type"))
             .and_then(Value::as_str);
         if let Some(message_type) = message_type {
@@ -376,7 +405,8 @@ fn extract_sub_agent_calls(messages: &[Value]) -> Option<Vec<Value>> {
                         .cloned()
                         .unwrap_or(Value::Null),
                     "status": message
-                        .get("status")
+                        .pointer("/item/status")
+                        .or_else(|| message.get("status"))
                         .or_else(|| message.get("state"))
                         .cloned()
                         .unwrap_or(Value::Null),
@@ -401,8 +431,14 @@ fn extract_error_from_messages(messages: &[Value]) -> ExecutionError {
             .or_else(|| message.pointer("/item/type"))
             .and_then(Value::as_str);
         let is_error = message.get("is_error").and_then(Value::as_bool) == Some(true)
-            || message.get("error").is_some()
-            || matches!(message_type, Some("error" | "step_error"));
+            || message
+                .get("error")
+                .is_some_and(|e| !e.is_null() && e != &Value::Bool(false))
+            || matches!(message_type, Some("error" | "step_error" | "turn.failed"))
+            || message["status"] == "error"
+            || message["subtype"]
+                .as_str()
+                .is_some_and(|s| s.starts_with("error"));
 
         if !is_error {
             continue;
@@ -447,7 +483,13 @@ fn detect_execution_error(
     messages: &[Value],
 ) -> ExecutionError {
     if tool == "agent" {
-        let detected = crate::tools::agent::detect_errors(plain_output);
+        let detected = crate::tools::agent::detect_errors(
+            &messages
+                .iter()
+                .map(Value::to_string)
+                .collect::<Vec<_>>()
+                .join("\n"),
+        );
         if detected.has_error {
             return ExecutionError {
                 has_error: true,
@@ -494,6 +536,7 @@ fn extract_session_id(explicit_session_id: Option<String>, messages: &[Value]) -
         for key in [
             "session_id",
             "sessionId",
+            "sessionID",
             "thread_id",
             "threadId",
             "conversation_id",
@@ -520,17 +563,34 @@ fn public_pricing_estimate(tool: &str, usage: Option<&Value>) -> Option<f64> {
 
 /// Build stable, caller-facing metadata from tool-specific agent output.
 pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> ResultMetadata {
-    let messages = options.parsed_output.map_or_else(
+    let all_messages = options.parsed_output.map_or_else(
         || parse_json_messages(options.plain_output),
         <[Value]>::to_vec,
     );
-    let usage_limit = detect_usage_limit(options.plain_output);
-    let execution_error = detect_execution_error(
+    let messages: Vec<_> = all_messages
+        .iter()
+        .filter(|event| event["parent_tool_use_id"].is_null())
+        .cloned()
+        .collect();
+    let completion = completion_state(options.tool, &messages);
+    let usage_limit = if completion == Some("completed") {
+        UsageLimit::default()
+    } else {
+        detect_usage_limit(options.plain_output)
+    };
+    let mut execution_error = detect_execution_error(
         options.tool,
         options.exit_code,
         options.plain_output,
-        &messages,
+        outcome_messages(options.tool, &messages),
     );
+    if !execution_error.has_error && completion == Some("incomplete") {
+        execution_error = ExecutionError {
+            has_error: true,
+            error_type: Some("incomplete_stream".into()),
+            message: Some("Process exited before the native completion event".into()),
+        };
+    }
     let session_id = extract_session_id(options.session_id, &messages);
     let public_pricing_estimate = public_pricing_estimate(options.tool, options.usage.as_ref());
     let pricing_info = public_pricing_estimate.map(|total_cost_usd| PricingInfo {
@@ -555,7 +615,7 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
         result_summary: extract_result_summary(&messages, options.plain_output),
         result_model_usage: extract_result_model_usage(&messages),
         stream_token_usage: options.usage,
-        sub_agent_calls: extract_sub_agent_calls(&messages),
+        sub_agent_calls: extract_sub_agent_calls(&all_messages),
         error_during_execution: execution_error.has_error,
         error_type: execution_error.error_type,
         error_message: execution_error.message,

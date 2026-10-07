@@ -1,7 +1,10 @@
+import { nativeUsage } from './usage.mjs';
 /**
  * Codex CLI tool configuration
  * Based on hive-mind's codex.lib.mjs implementation
  */
+
+import { syncedModels, syncedDefaults } from './model-catalog.mjs';
 
 import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
 
@@ -10,34 +13,12 @@ import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
  * Maps aliases to full model IDs
  */
 export const modelMap = {
-  gpt5: 'gpt-5',
-  'gpt-5': 'gpt-5',
   'gpt5-codex': 'gpt-5-codex',
-  // GPT-5.5 family (hive-mind PR #1657, default)
-  'gpt-5.5': 'gpt-5.5',
-  'gpt-5.5-mini': 'gpt-5.5-mini',
-  'gpt-5.5-nano': 'gpt-5.5-nano',
-  // GPT-5.4 family
-  'gpt-5.4': 'gpt-5.4',
-  'gpt-5.4-mini': 'gpt-5.4-mini',
-  'gpt-5.4-nano': 'gpt-5.4-nano',
-  // GPT-5.3 family (codex variants)
-  'gpt-5.3-codex': 'gpt-5.3-codex',
-  'gpt-5.3-codex-spark': 'gpt-5.3-codex-spark',
-  // GPT-5.2 family
-  'gpt-5.2': 'gpt-5.2',
-  'gpt-5.2-codex': 'gpt-5.2-codex',
-  // GPT-5.1 family
-  'gpt-5.1-codex-max': 'gpt-5.1-codex-max',
   o3: 'o3',
-  'o3-mini': 'o3-mini',
-  gpt4: 'gpt-4',
-  'gpt-4': 'gpt-4',
-  gpt4o: 'gpt-4o',
-  'gpt-4o': 'gpt-4o',
   claude: 'claude-3-5-sonnet',
   sonnet: 'claude-3-5-sonnet',
   opus: 'claude-3-opus',
+  ...syncedModels.codex,
 };
 
 /**
@@ -222,28 +203,8 @@ export function extractSessionId(options) {
  * @param {string} options.output - Raw output string
  * @returns {Object} Usage statistics
  */
-export function extractUsage(options) {
-  const { output } = options;
-  const messages = parseOutput({ output });
-
-  const usage = {
-    inputTokens: 0,
-    outputTokens: 0,
-  };
-
-  for (const msg of messages) {
-    if (msg.usage) {
-      const u = msg.usage;
-      if (u.input_tokens) {
-        usage.inputTokens += u.input_tokens;
-      }
-      if (u.output_tokens) {
-        usage.outputTokens += u.output_tokens;
-      }
-    }
-  }
-
-  return usage;
+export function extractUsage({ output }) {
+  return nativeUsage('codex', parseOutput({ output }));
 }
 
 /**
@@ -254,12 +215,12 @@ export const codexTool = {
   displayName: 'Codex CLI',
   executable: 'codex',
   supportsJsonOutput: true,
-  supportsJsonInput: true, // Codex can accept JSON input via stdin
+  supportsJsonInput: false, // stdin carries plain prompt text
   supportsSystemPrompt: false, // System prompt is combined with user prompt
   supportsResume: true,
   supportsReadOnly: true, // Supports --sandbox read-only
   supportsAsk: false, // --ask-for-approval is coupled with the sandbox; not a relayable JSON handshake
-  defaultModel: 'gpt-5.5', // hive-mind PR #1657
+  defaultModel: syncedDefaults.codex,
   modelMap,
   mapModelToId,
   buildArgs,

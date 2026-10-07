@@ -68,8 +68,12 @@ export async function startCommand(command, options = {}) {
   });
 
   const child = spawn('bash', ['-c', command], {
+    detached: process.platform !== 'win32',
     stdio: [pipeStdin ? 'pipe' : 'ignore', 'pipe', 'pipe'],
   });
+
+  child.stdout.setEncoding('utf8');
+  child.stderr.setEncoding('utf8');
 
   child.stdout.on('data', (chunk) => {
     const data = chunk.toString();
@@ -107,7 +111,7 @@ export async function startCommand(command, options = {}) {
 
   child.on('close', (code) => {
     if (!hasExited) {
-      exitCode = code ?? 0;
+      exitCode = code ?? 1;
       hasExited = true;
       resolveExit(exitCode);
     }
@@ -121,6 +125,22 @@ export async function startCommand(command, options = {}) {
     waitForExit: () => exitPromise,
     getOutput: () => ({ stdout, stderr, exitCode, hasExited }),
     process: child,
+    terminate: (signal = 'SIGTERM') => {
+      if (hasExited || child.exitCode !== null || child.signalCode !== null) {
+        return;
+      }
+      try {
+        if (process.platform !== 'win32') {
+          process.kill(-child.pid, signal);
+        } else {
+          child.kill(signal);
+        }
+      } catch (error) {
+        if (error.code !== 'ESRCH') {
+          throw error;
+        }
+      }
+    },
     /**
      * Write a chunk to the child's stdin (no-op if stdin is not piped/open).
      * @param {string} data - Data to write
@@ -159,9 +179,11 @@ export async function executeDetached(command) {
         stdio: 'ignore',
       });
 
-      child.unref();
-
-      resolve({ pid: child.pid });
+      child.once('error', reject);
+      child.once('spawn', () => {
+        child.unref();
+        resolve({ pid: child.pid });
+      });
     } catch (error) {
       reject(error);
     }

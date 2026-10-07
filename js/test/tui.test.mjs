@@ -194,7 +194,9 @@ test(
 
 test(
   'captureAgentTui forwards renderer options and selects artifacts',
-  { skip: isDeno },
+  // Like the other capture tests, this launches a PTY and renders a GIF.
+  // Keep the runner budget consistent with those native integration tests.
+  { skip: isDeno, timeout: 30_000 },
   async (t) => {
     const directory = dirname(fileURLToPath(import.meta.url));
     const artifactDirectory = await mkdtemp(

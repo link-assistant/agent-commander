@@ -6,8 +6,8 @@ use agent_commander::tools::claude::{
 
 #[test]
 fn test_map_model_to_id_with_alias() {
-    assert_eq!(map_model_to_id("sonnet"), "claude-sonnet-4-6");
-    assert_eq!(map_model_to_id("opus"), "claude-opus-4-7");
+    assert_eq!(map_model_to_id("sonnet"), "claude-sonnet-5");
+    assert_eq!(map_model_to_id("opus"), "claude-opus-5");
     assert_eq!(map_model_to_id("haiku"), "claude-haiku-4-5-20251001");
 }
 
@@ -34,7 +34,7 @@ fn test_build_args_with_prompt() {
         ..Default::default()
     };
     let args = build_args(&options);
-    assert!(args.contains(&"--prompt".to_string()));
+    assert!(args.contains(&"-p".to_string()));
     assert!(args.contains(&"Hello".to_string()));
 }
 
@@ -46,7 +46,7 @@ fn test_build_args_with_model() {
     };
     let args = build_args(&options);
     assert!(args.contains(&"--model".to_string()));
-    assert!(args.contains(&"claude-sonnet-4-6".to_string()));
+    assert!(args.contains(&"claude-sonnet-5".to_string()));
 }
 
 #[test]
@@ -98,9 +98,9 @@ fn test_build_args_with_fallback_model() {
     };
     let args = build_args(&options);
     assert!(args.contains(&"--model".to_string()));
-    assert!(args.contains(&"claude-opus-4-7".to_string()));
+    assert!(args.contains(&"opus".to_string()));
     assert!(args.contains(&"--fallback-model".to_string()));
-    assert!(args.contains(&"claude-sonnet-4-6".to_string()));
+    assert!(args.contains(&"claude-sonnet-5".to_string()));
 }
 
 #[test]
@@ -221,5 +221,5 @@ fn test_claude_tool_default() {
     assert!(tool.supports_json_input);
     assert!(tool.supports_system_prompt);
     assert!(tool.supports_resume);
-    assert_eq!(tool.default_model, "sonnet");
+    assert_eq!(tool.default_model, "opus");
 }

@@ -113,8 +113,8 @@ fn test_tool_display_names() {
 #[test]
 fn test_tool_default_models() {
     let claude = get_tool("claude").unwrap();
-    assert_eq!(claude.default_model(), "sonnet");
+    assert_eq!(claude.default_model(), "opus");
 
     let gemini = get_tool("gemini").unwrap();
-    assert_eq!(gemini.default_model(), "gemini-2.5-flash");
+    assert_eq!(gemini.default_model(), "flash");
 }

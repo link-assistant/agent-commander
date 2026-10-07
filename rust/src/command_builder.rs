@@ -1,5 +1,6 @@
 //! Build command strings for different agent tools
 
+use crate::tools::shell::escape_arg;
 use crate::tools::{
     agent::{self, AgentBuildOptions},
     claude::{self, ClaudeBuildOptions},
@@ -233,6 +234,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 extra_args: options.extra_args.clone(),
             }),
             "agent" => agent::build_command(&AgentBuildOptions {
+                resume: options.resume.clone(),
                 prompt: options.prompt.clone(),
                 prompt_file: options.prompt_file.clone(),
                 system_prompt: options.system_prompt.clone(),
@@ -251,6 +253,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
             }),
             "gemini" => {
                 let options = GeminiBuildOptions {
+                    resume: options.resume.clone(),
                     prompt: options.prompt.clone(),
                     prompt_file: options.prompt_file.clone(),
                     system_prompt: options.system_prompt.clone(),
@@ -300,7 +303,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
     // Wrap in bash -c with working directory change
     let mut full_command = format!(
         "bash -c \"cd {} && {}\"",
-        escape_for_bash_c(&options.working_directory),
+        escape_for_bash_c(&escape_arg(&options.working_directory)),
         escape_for_bash_c(&base_command)
     );
 
@@ -384,7 +387,7 @@ mod tests {
         assert!(command.contains("cd"));
         assert!(command.contains("/tmp/test"));
         assert!(command.contains("claude"));
-        assert!(command.contains("--prompt"));
+        assert!(command.contains("-p"));
         assert!(command.contains("Hello"));
     }
 
@@ -400,7 +403,7 @@ mod tests {
         };
 
         let command = build_agent_command(&options);
-        assert!(command.contains("--prompt"));
+        assert!(command.contains("-p"));
         assert!(command.contains("--system-prompt"));
         assert!(command.contains("You are helpful"));
     }
@@ -418,9 +421,9 @@ mod tests {
 
         let command = build_agent_command(&options);
         assert!(command.contains("--model"));
-        assert!(command.contains("claude-opus-4-7"));
+        assert!(command.contains("--model opus"));
         assert!(command.contains("--fallback-model"));
-        assert!(command.contains("claude-sonnet-4-6"));
+        assert!(command.contains("claude-sonnet-5"));
     }
 
     #[test]
@@ -629,7 +632,7 @@ mod tests {
 
         let command = build_agent_command(&options);
         assert!(command.contains("--model"));
-        assert!(command.contains("claude-opus-4-7"));
+        assert!(command.contains("--model opus"));
     }
 
     #[test]

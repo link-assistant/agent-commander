@@ -84,7 +84,7 @@ async fn main() -> Result<(), String> {
 }
 ```
 
-`result.metadata` is a normalized summary for `claude`, `codex`, `opencode`, and `agent` runs. It includes success and error classification, session ID, usage-limit reset details, result summary, cost estimates, stream token usage, optional model usage, and sub-agent call summaries. `result.usage` exposes the aggregated stream token usage as JSON for parity with the JavaScript package.
+`result.metadata` is a normalized summary for all six supported tools. It includes success and error classification, session ID, usage-limit reset details, result summary, cost estimates, stream token usage, optional model usage, and sub-agent call summaries. `result.usage` exposes the aggregated stream token usage as JSON for parity with the JavaScript package.
 
 For large generated prompts, set `prompt_file` or let the controller create a temporary prompt file automatically for `claude`, `codex`, `opencode`, `agent`, `qwen`, and `gemini`.
 
@@ -107,6 +107,18 @@ let mut controller = agent(AgentOptions {
     ..Default::default()
 })?;
 ```
+
+## Completion, usage and cancellation
+
+For direct JSON runs, `metadata.success` requires native completion and a successful process exit. Empty or unfinished streams return `incomplete_stream`; Agent's default NDJSON mode uses the same check. Protocol parsing and usage use stdout, while `plain_output` retains stderr diagnostics. Parent session metadata excludes Claude subagent-scoped results.
+
+`stop()` waits for a direct process to finish. `controller.cancel().await?` interrupts it and collects the final result. Unix cancellation signals the process group; Windows cancellation signals the immediate child. A native CLI that ignores SIGTERM needs a caller-managed termination policy. Process pipes drain concurrently from start, including when attached output is disabled. Set `AGENT_COMMANDER_DEBUG=1` for cancellation diagnostics.
+
+Usage preserves native final totals without adding repeated assistant snapshots. Codex `input_tokens` now counts fresh input; add `cache_read_tokens` to recover inclusive input. Serializable usage structs expose cache and reasoning fields, and Qwen/Gemini results now include `usage` too.
+
+Bundled aliases track a recorded Hive Mind catalogue; exact model IDs pass through for caller-managed live discovery. Omitting `model` leaves selection to the native CLI. Claude's `opus` execution alias stays rolling. Common `resume` works for all six tools; Agent adds `--no-fork`, and OpenCode uses `--session`.
+
+See the [parity audit](../docs/case-studies/issue-50/README.md) for the feature matrix and regression evidence.
 
 ## Shared Behavior
 

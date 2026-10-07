@@ -52,7 +52,7 @@ fn test_build_args_with_resume() {
         ..Default::default()
     };
     let args = build_args(&options);
-    assert!(args.contains(&"--resume".to_string()));
+    assert!(args.contains(&"--session".to_string()));
     assert!(args.contains(&"sess-123".to_string()));
 }
 
@@ -77,7 +77,7 @@ fn test_opencode_tool_default() {
     assert_eq!(tool.name, "opencode");
     assert_eq!(tool.executable, "opencode");
     assert!(tool.supports_json_output);
-    assert!(tool.supports_json_input);
+    assert!(!tool.supports_json_input);
     assert!(!tool.supports_system_prompt);
     assert!(tool.supports_resume);
     assert_eq!(tool.default_model, "grok-code-fast-1");
