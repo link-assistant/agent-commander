@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- changelog-insert-here -->
+## [0.3.0] - 2026-10-07
+
+### Added
+
+- Controller cancellation and native session resume for Gemini and Agent.
+- Native cache and reasoning usage fields and usage results for Qwen and Gemini.
+
+### Changed
+
+- Synchronize bundled model aliases and defaults with Hive Mind; preserve Claude's rolling Opus alias when executing.
+- Report Codex input tokens excluding cached reads, exposed separately in `cacheReadTokens`.
+
+### Fixed
+
+- Drain stdout and stderr concurrently from process start, preserving output and streaming attached runs.
+- Parse session, usage, and protocol errors from stdout independently of stderr diagnostics.
+- Honor native final usage totals and incomplete or failed turn events; isolate parent metadata from subagent results.
+- Use OpenCode's native `--session` resume flag and Agent's `--no-fork` mode.
+- Quote shell arguments and working directories, use Claude's native print mode, and stop invoking cleanup when unregistering a signal handler.
+
 
 ## [0.2.7] - 2026-07-24
 
