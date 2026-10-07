@@ -1,5 +1,5 @@
 {
-  "collectedAt": "2026-10-07T12:47:30.106862+00:00",
+  "collectedAt": "2026-10-07T12:58:42.836718+00:00",
   "issue": "https://github.com/link-assistant/agent-commander/issues/50",
   "pullRequest": "https://github.com/link-assistant/agent-commander/pull/51",
   "agentCommanderBaseline": "c03d6f87f6bb37b1e827c6ec2b6c9cd5f6a49f49",
@@ -48,6 +48,17 @@
       "createdAt": "2026-10-07T11:45:31Z",
       "workflow": "Rust",
       "conclusion": "failure"
+    }
+  ],
+  "implementationCiFailures": [
+    {
+      "id": 37623571577,
+      "createdAt": "2026-10-07T12:47:34Z",
+      "workflow": "Rust",
+      "headSha": "e0254f89be2b2471f1d1eb5a8378ab0c5ab412d1",
+      "job": "Rust Lint",
+      "jobId": 112802032785,
+      "jobConclusion": "failure"
     }
   ],
   "logInterpretation": "Before logs precede the corresponding fix; audit stages follow earlier fixes. Full/after logs describe the implementation workspace. Final commit CI is linked from the PR.",
@@ -113,6 +124,11 @@
       "sha256": "76be5b2907cf6904f59b5107415bc4eae9e49e847c3ef5ece1316e0dbecddacb"
     },
     {
+      "path": "validation/implementation-ci-errors.txt",
+      "bytes": 806,
+      "sha256": "c6e1e0706811c81dbb7690edd57624e49da10141ead75c54a415bba64faf2386"
+    },
+    {
       "path": "validation/javascript-37616272375.log.gz",
       "bytes": 125123,
       "sha256": "60b7b10fe9bec70460d0d86aece0044d43108a4cf00b48e8283727bc38e704ed"
@@ -149,8 +165,8 @@
     },
     {
       "path": "validation/js-quality.log.txt",
-      "bytes": 3015,
-      "sha256": "d9ed467b22c768aebcdb4ee67322c8a27d0f09c4bbdf3e0e8eb475a705c0a9cd"
+      "bytes": 3016,
+      "sha256": "03647d472153078edfa67b8210bb231dc2be6b2db248658759c5ddb5494b1819"
     },
     {
       "path": "validation/js-resume-before.log.txt",
@@ -173,14 +189,19 @@
       "sha256": "354f9e8152a069328ea4e75c425f1c5fbc983ce6d3fba20bb9817d88609d482b"
     },
     {
+      "path": "validation/rust-ci-before.log.txt",
+      "bytes": 4082,
+      "sha256": "80ada5de4a3bcd10c2d5babd1979a2c46d05a3ee9be308b594897c06b4e98038"
+    },
+    {
       "path": "validation/rust-clippy.log.gz",
-      "bytes": 151,
-      "sha256": "973e69d7e5938bc02898c47c86bc4024fba478ca034237a7effeea9b3158fdfd"
+      "bytes": 150,
+      "sha256": "65d6bddf8d5d73ed63d899300fac69fa00b626f1aa2047afc67c2f1f16110c09"
     },
     {
       "path": "validation/rust-doc.log.gz",
-      "bytes": 1685,
-      "sha256": "1696b85e5d1004001832a7b6d9c3173f13a8c2a082b87028b46385cdf17b4d81"
+      "bytes": 1689,
+      "sha256": "77a9e1d5b2eccc41192e482d810f24c9ecc68b81c11a7fd6d91117fbf274d35a"
     },
     {
       "path": "validation/rust-format.log.gz",
@@ -189,13 +210,18 @@
     },
     {
       "path": "validation/rust-full.log.gz",
-      "bytes": 5971,
-      "sha256": "0a1570aff7a8c5a094b5905a8021a4ce61f270fdb1144ca39cb34b9988c0eab8"
+      "bytes": 14922,
+      "sha256": "3ba7220a068879510ad8a547ac4c63022ce5f5dcdb187351e9f8d24c86dc1e7f"
+    },
+    {
+      "path": "validation/rust-lint-37623571577.log.gz",
+      "bytes": 9913,
+      "sha256": "7cabc094813c539c2587b5702439285c0f8883348e4450bc7c22238f8994d196"
     },
     {
       "path": "validation/rust-package.log.gz",
-      "bytes": 237,
-      "sha256": "e504f0983fdce8f6006fa96efea7e80225d9c50092b3a908acdcac27422a96cd"
+      "bytes": 283,
+      "sha256": "c24573f23a18c84010392545f45b5e6e0c10e193d6bbb08d6dc261923e6ffc18"
     },
     {
       "path": "validation/rust-pretty-before.log.txt",

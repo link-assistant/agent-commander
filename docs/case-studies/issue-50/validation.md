@@ -49,6 +49,8 @@ cargo package --allow-dirty
 
 All checks pass; the full Rust suite passes 284 tests. The package verifies successfully with its own fixtures included; no test includes a source file outside the published crate. Rust file sizes remain below 1,000 lines. Documentation tests currently contain zero cases. The full test output records each suite's counts.
 
+Rust checks were repeated using `cargo +1.99.0` to match CI's stable toolchain, including Clippy with warnings denied, the full suite and package verification.
+
 The actual dependency example also passes once for each tool:
 
 ```sh
@@ -70,6 +72,8 @@ The prepared branch had two failed runs on `71cef7a837f92c834883ad3f65ad48afa20f
 - [Rust run 37616254353](https://github.com/link-assistant/agent-commander/actions/runs/37616254353), created 2026-10-07 11:45:31 UTC: Clippy's new `assert_is_empty` lint was promoted to an error by `-Dwarnings` (lines 856–942). Six preexisting assertions in `src/cli_parser.rs` and `tests/lib_tests.rs` now compare against empty values, providing useful failure output without suppressing lint.
 
 Both raw logs are preserved as gzip files in [data/validation](data/validation/), with an uncompressed [error index](data/validation/baseline-ci-errors.txt). All local check logs are also preserved there; decompress with `gzip -dc FILE.log.gz`. File hashes and source URLs are recorded in [the evidence index](data/evidence-index.json).
+
+The implementation's [Rust run 37623571577](https://github.com/link-assistant/agent-commander/actions/runs/37623571577), created 2026-10-07 12:47:34 UTC on `e0254f8`, exposed three more preexisting `assert_is_empty` errors in `tests/permissions_tests.rs:231–233`. The completed lint job's [raw log](data/validation/rust-lint-37623571577.log.gz) records them at lines 488–530; its [error index](data/validation/implementation-ci-errors.txt) preserves the locations. Running Clippy locally with Rust 1.99 reproduced all three failures before changing the assertions ([reproduction log](data/validation/rust-ci-before.log.txt)). The assertions now use `assert_ne!` against the empty string, retaining the nonempty checks and showing actual values on failure. The earlier local Rust 1.98.1 did not enforce this new lint. macOS and Windows tests on the implementation commit had passed before this lint correction.
 
 Delivery checks use `gh run list --repo link-assistant/agent-commander --branch issue-50-da2c3230ff68 --limit 5 --json databaseId,conclusion,createdAt,headSha`, compare each run's SHA with the pushed commit, and inspect any failing run's fresh logs. The current implementation checks and final commit status are linked in [PR #51](https://github.com/link-assistant/agent-commander/pull/51/checks). A passing older placeholder run is not evidence for the new implementation.
 

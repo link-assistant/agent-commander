@@ -1,0 +1,7 @@
+rust-lint-37623571577.log:488: 2026-10-07T12:54:14.6916837Z error: used `assert!` to check that a value is not empty
+rust-lint-37623571577.log:489: 2026-10-07T12:54:14.6938817Z    --> tests/permissions_tests.rs:231:9
+rust-lint-37623571577.log:503: 2026-10-07T12:54:14.6980410Z error: used `assert!` to check that a value is not empty
+rust-lint-37623571577.log:504: 2026-10-07T12:54:14.6981412Z    --> tests/permissions_tests.rs:232:9
+rust-lint-37623571577.log:516: 2026-10-07T12:54:14.6992371Z error: used `assert!` to check that a value is not empty
+rust-lint-37623571577.log:517: 2026-10-07T12:54:14.6993242Z    --> tests/permissions_tests.rs:233:9
+rust-lint-37623571577.log:529: 2026-10-07T12:54:14.8760433Z error: could not compile `agent-commander` (test "permissions_tests") due to 3 previous errors

@@ -228,9 +228,9 @@ fn permission_parity_covers_all_six_tools_with_scope_and_relay() {
         vec!["agent", "claude", "codex", "gemini", "opencode", "qwen"]
     );
     for row in &parity {
-        assert!(!row.native_mechanism.is_empty());
-        assert!(!row.scope.is_empty());
-        assert!(!row.notes.is_empty());
+        assert_ne!(row.native_mechanism, "");
+        assert_ne!(row.scope, "");
+        assert_ne!(row.notes, "");
     }
     let mut relayable: Vec<&str> = parity
         .iter()

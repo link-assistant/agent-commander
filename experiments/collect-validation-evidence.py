@@ -18,7 +18,7 @@ logs.mkdir(parents=True, exist_ok=True)
 
 names = [
     "js-before", "rust-before", "js-audit-before", "js-resume-before",
-    "js-last-audit-before", "js-pretty-before", "rust-pretty-before",
+    "js-last-audit-before", "js-pretty-before", "rust-pretty-before", "rust-ci-before",
     "js-after", "rust-after", "js-quality", "js-full",
     "bun", "deno", "rust-format", "rust-size", "rust-clippy", "rust-full",
     "rust-doc", "rust-package",
@@ -41,6 +41,16 @@ for name in ["javascript-37616272375", "rust-37616254353"]:
         if "error:" in plain or "timed out" in plain or "-->" in plain:
             failures.append(f"{source.name}:{line_number}: {plain}")
 (logs / "baseline-ci-errors.txt").write_text("\n".join(failures) + "\n")
+
+source = root / "ci-logs/rust-lint-37623571577.log"
+raw = source.read_bytes()
+(logs / f"{source.name}.gz").write_bytes(gzip.compress(raw, mtime=0))
+failures = []
+for line_number, line in enumerate(raw.decode().splitlines(), 1):
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", line)
+    if "error:" in plain or "-->" in plain:
+        failures.append(f"{source.name}:{line_number}: {plain}")
+(logs / "implementation-ci-errors.txt").write_text("\n".join(failures) + "\n")
 
 sources = [
     ("https://developers.openai.com/codex/noninteractive",
@@ -76,6 +86,11 @@ index = {
     "baselineCiRuns": [
         {"id": 37616272375, "createdAt": "2026-10-07T11:45:40Z", "workflow": "JavaScript", "conclusion": "failure"},
         {"id": 37616254353, "createdAt": "2026-10-07T11:45:31Z", "workflow": "Rust", "conclusion": "failure"},
+    ],
+    "implementationCiFailures": [
+        {"id": 37623571577, "createdAt": "2026-10-07T12:47:34Z", "workflow": "Rust",
+         "headSha": "e0254f89be2b2471f1d1eb5a8378ab0c5ab412d1",
+         "job": "Rust Lint", "jobId": 112802032785, "jobConclusion": "failure"},
     ],
     "logInterpretation": "Before logs precede the corresponding fix; audit stages follow earlier fixes. Full/after logs describe the implementation workspace. Final commit CI is linked from the PR.",
     "files": files,
