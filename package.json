@@ -1,6 +1,6 @@
 {
   "name": "agent-commander",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "description": "A JavaScript library to control agents enclosed in CLI commands like Anthropic Claude Code CLI",
   "type": "module",
   "main": "./js/src/index.mjs",
@@ -28,10 +28,10 @@
   "author": "",
   "license": "Unlicense",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "dependencies": {
-    "command-stream": "^0.17.2"
+    "command-stream": "^2.4.0"
   },
   "repository": {
     "type": "git",

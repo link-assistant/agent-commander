@@ -32,7 +32,7 @@ This is a multi-language project with both JavaScript/TypeScript and Rust implem
 
 ### JavaScript/TypeScript
 
-1. **Install Node.js** (20.x or later recommended)
+1. **Install Node.js** (22.x or later required)
 
 2. **Install dependencies**
 
@@ -181,7 +181,7 @@ This project uses:
 cd js
 npm test              # Run all tests
 bun test              # Run with Bun
-deno test --allow-read --allow-run --allow-env --allow-net test/**/*.test.mjs  # Run with Deno
+deno test --allow-read --allow-run --allow-env --allow-net --allow-sys=osRelease test/**/*.test.mjs  # Run with Deno
 ```
 
 ### Rust

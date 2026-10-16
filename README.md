@@ -19,7 +19,7 @@ Language-specific package documentation:
 
 ## Features
 
-- **Universal Runtime Support**: Works with Node.js, Bun, and Deno
+- **Universal Runtime Support**: Works with Node.js 22 or later, Bun, and Deno
 - **Multiple CLI Agents**:
   - `claude` - Anthropic Claude Code CLI
   - `codex` - OpenAI Codex CLI
@@ -698,7 +698,7 @@ npm test
 bun test
 
 # Deno
-deno test --allow-read --allow-write --allow-run --allow-env --allow-net test/**/*.test.mjs
+deno test --allow-read --allow-write --allow-run --allow-env --allow-net --allow-sys=osRelease test/**/*.test.mjs
 ```
 
 ### Running Examples
