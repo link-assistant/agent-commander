@@ -181,7 +181,7 @@ This project uses:
 cd js
 npm test              # Run all tests
 bun test              # Run with Bun
-deno test --allow-read --allow-run --allow-env --allow-net test/**/*.test.mjs  # Run with Deno
+deno test --allow-read --allow-run --allow-env --allow-net --allow-sys=osRelease test/**/*.test.mjs  # Run with Deno
 ```
 
 ### Rust

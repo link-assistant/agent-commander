@@ -7,6 +7,8 @@ JavaScript bindings and CLI tools for controlling AI coding agents through their
 
 This package supports Node.js 22 or later, Bun, and Deno. It provides `start-agent` and `stop-agent` binaries plus a library API for process management, isolation, JSON streaming, model aliasing, and read-only planning mode.
 
+On Windows, Deno also needs `--allow-sys=osRelease` for terminal color detection in command-stream's dependencies.
+
 ## Install
 
 ```bash

@@ -698,7 +698,7 @@ npm test
 bun test
 
 # Deno
-deno test --allow-read --allow-write --allow-run --allow-env --allow-net test/**/*.test.mjs
+deno test --allow-read --allow-write --allow-run --allow-env --allow-net --allow-sys=osRelease test/**/*.test.mjs
 ```
 
 ### Running Examples

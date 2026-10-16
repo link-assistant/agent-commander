@@ -194,7 +194,8 @@ jobs:
         working-directory: js
         # Release PRs intentionally verify freshly published dependencies.
         # Deno 2.9 otherwise blocks packages younger than 24 hours.
-        run: deno test --minimum-dependency-age=0 --allow-read --allow-write --allow-run --allow-env --allow-net test/**/*.test.mjs
+        # Execa's terminal color detection reads the OS release on Windows.
+        run: deno test --minimum-dependency-age=0 --allow-read --allow-write --allow-run --allow-env --allow-net --allow-sys=osRelease test/**/*.test.mjs
 
   js-release:
     name: JS Release
