@@ -5,7 +5,7 @@
 
 JavaScript bindings and CLI tools for controlling AI coding agents through their native command-line interfaces.
 
-This package supports Node.js, Bun, and Deno. It provides `start-agent` and `stop-agent` binaries plus a library API for process management, isolation, JSON streaming, model aliasing, and read-only planning mode.
+This package supports Node.js 22 or later, Bun, and Deno. It provides `start-agent` and `stop-agent` binaries plus a library API for process management, isolation, JSON streaming, model aliasing, and read-only planning mode.
 
 ## Install
 

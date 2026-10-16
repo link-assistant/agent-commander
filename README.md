@@ -19,7 +19,7 @@ Language-specific package documentation:
 
 ## Features
 
-- **Universal Runtime Support**: Works with Node.js, Bun, and Deno
+- **Universal Runtime Support**: Works with Node.js 22 or later, Bun, and Deno
 - **Multiple CLI Agents**:
   - `claude` - Anthropic Claude Code CLI
   - `codex` - OpenAI Codex CLI

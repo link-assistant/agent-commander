@@ -34,5 +34,5 @@ test('published package installs without development-only patch machinery', asyn
   assert.strictEqual(packageJson.scripts?.postinstall, undefined);
   assert.strictEqual(packageJson.dependencies?.['patch-package'], undefined);
   assert.ok(!packageJson.files.includes('patches'));
-  assert.strictEqual(packageJson.dependencies?.['command-stream'], '^0.17.2');
+  assert.strictEqual(packageJson.dependencies?.['command-stream'], '^2.4.0');
 });

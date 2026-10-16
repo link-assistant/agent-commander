@@ -32,7 +32,7 @@ This is a multi-language project with both JavaScript/TypeScript and Rust implem
 
 ### JavaScript/TypeScript
 
-1. **Install Node.js** (20.x or later recommended)
+1. **Install Node.js** (22.x or later required)
 
 2. **Install dependencies**
 
