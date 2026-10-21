@@ -369,7 +369,7 @@ pub fn capture_agent_tui(options: AgentTuiOptions) -> Result<AgentTuiCapture, Ag
             after: options.prompt_after.clone(),
             text: Some(prompt),
             key: Some(options.prompt_key.clone()),
-            resize: None,
+            ..TerminalInteraction::default()
         });
     }
     interactions.extend(options.interactions.clone());
@@ -384,8 +384,9 @@ pub fn capture_agent_tui(options: AgentTuiOptions) -> Result<AgentTuiCapture, Ag
         interactions,
         stop_marker: options.stop_marker,
         stop_marker_grace: options.stop_marker_grace,
-        timeout: options.timeout,
+        timeout: Some(options.timeout),
         artifact_directory: options.artifact_directory,
+        ..TerminalCaptureOptions::default()
     })?;
     Ok(AgentTuiCapture {
         tool: options.tool,
