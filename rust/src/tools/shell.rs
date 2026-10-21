@@ -18,9 +18,10 @@ pub fn escape_arg(arg: &str) -> String {
     }
 }
 
-/// Escape single quotes for printf.
+/// Escape single quotes for printf (command-stream's
+/// [`escape_for_single_quotes`](command_stream::quote::escape_for_single_quotes)).
 pub fn escape_single_quotes(s: &str) -> String {
-    s.replace('\'', "'\\''")
+    command_stream::quote::escape_for_single_quotes(s)
 }
 
 /// Look a model alias up, exactly first and then case-insensitively

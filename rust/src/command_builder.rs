@@ -1,6 +1,7 @@
 //! Build command strings for different agent tools
 
 use crate::tools::shell::escape_arg;
+// The same quoting rules command-stream audits for `bash -c` strings.
 use crate::tools::{
     agent::{self, AgentBuildOptions},
     claude::{self, ClaudeBuildOptions},
@@ -10,6 +11,7 @@ use crate::tools::{
     opencode::{self, OpencodeBuildOptions},
     qwen::{self, QwenBuildOptions},
 };
+use command_stream::quote::{escape_for_double_quotes, escape_for_single_quotes};
 
 /// Agent command build options
 #[derive(Debug, Clone, Default)]
@@ -60,19 +62,6 @@ pub fn read_only_unsupported_error(tool: &str) -> String {
     )
 }
 
-/// Escape quotes in strings for shell commands (single quotes)
-fn escape_quotes(s: &str) -> String {
-    s.replace('\'', "'\\''")
-}
-
-/// Escape strings for use inside bash -c "..."
-fn escape_for_bash_c(s: &str) -> String {
-    s.replace('\\', "\\\\")
-        .replace('"', "\\\"")
-        .replace('$', "\\$")
-        .replace('`', "\\`")
-}
-
 /// Build the base tool command (generic)
 fn build_tool_command(tool: &str, prompt: Option<&str>, system_prompt: Option<&str>) -> String {
     let mut command = tool.to_string();
@@ -105,14 +94,14 @@ fn build_screen_command(base_command: &str, screen_name: Option<&str>, detached:
         format!(
             "screen -dmS \"{}\" bash -c '{}'",
             session_name,
-            escape_quotes(base_command)
+            escape_for_single_quotes(base_command)
         )
     } else {
         // Start attached screen session
         format!(
             "screen -S \"{}\" bash -c '{}'",
             session_name,
-            escape_quotes(base_command)
+            escape_for_single_quotes(base_command)
         )
     }
 }
@@ -149,7 +138,10 @@ fn build_docker_command(
     ));
     command.push_str(&format!(" -w \"{}\"", working_directory));
     command.push_str(" node:18-slim");
-    command.push_str(&format!(" bash -c '{}'", escape_quotes(base_command)));
+    command.push_str(&format!(
+        " bash -c '{}'",
+        escape_for_single_quotes(base_command)
+    ));
 
     command
 }
@@ -311,8 +303,8 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
     // Wrap in bash -c with working directory change
     let mut full_command = format!(
         "bash -c \"cd {} && {}\"",
-        escape_for_bash_c(&escape_arg(&options.working_directory)),
-        escape_for_bash_c(&base_command)
+        escape_for_double_quotes(&escape_arg(&options.working_directory)),
+        escape_for_double_quotes(&base_command)
     );
 
     // Apply isolation wrapper
@@ -372,7 +364,7 @@ pub fn build_docker_stop_command(container_name: &str) -> String {
 /// # Returns
 /// Piped command
 pub fn build_piped_command(input: &str, command: &str) -> String {
-    let escaped_input = escape_quotes(input);
+    let escaped_input = escape_for_single_quotes(input);
     format!("printf '%s' '{}' | {}", escaped_input, command)
 }
 

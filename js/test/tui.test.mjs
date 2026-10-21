@@ -274,3 +274,34 @@ test('normalizeTuiTranscript keeps repeated semantic events in order', () => {
     ]
   );
 });
+
+test(
+  'captureAgentTui forwards frameMode and recording to command-stream',
+  { skip: isDeno || process.platform === 'win32', timeout: 30_000 },
+  async () => {
+    const script =
+      "for screen in one two three; do printf '\\033[2J\\033[H%s\\n' $screen; sleep 0.05; done";
+    const capture = (options) =>
+      captureAgentTui({
+        tool: 'claude',
+        workingDirectory: process.cwd(),
+        executable: '/bin/sh',
+        prefixArgs: ['-c', script, 'claude'],
+        cols: 20,
+        rows: 4,
+        settleMilliseconds: 10,
+        timeoutMilliseconds: 5000,
+        ...options,
+      });
+
+    const full = await capture({ frameMode: 'writes' });
+    assert.ok(full.frames.length >= 3, `${full.frames.length} frames`);
+    assert.ok(full.asciicast.events.length > 0);
+
+    // Without recording only the latest frame and no cast events remain.
+    const latest = await capture({ frameMode: 'writes', recording: false });
+    assert.strictEqual(latest.frames.length, 1);
+    assert.strictEqual(latest.asciicast.events.length, 0);
+    assert.match(latest.transcript, /three/u);
+  }
+);

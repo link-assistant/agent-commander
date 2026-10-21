@@ -68,6 +68,12 @@ pub struct AgentTuiOptions {
     pub timeout: Duration,
     /// Directory for transcript, frame, cast, and animation artifacts.
     pub artifact_directory: Option<PathBuf>,
+    /// Record a frame after every PTY write instead of after each settle
+    /// (command-stream 1.9.0 `frames_on_write`).
+    pub frames_on_write: bool,
+    /// Keep the full recording; `false` keeps only the latest frame and the
+    /// last 1 MB of output (command-stream 1.9.0 `recording`).
+    pub recording: bool,
 }
 
 impl Default for AgentTuiOptions {
@@ -98,6 +104,8 @@ impl Default for AgentTuiOptions {
             stop_marker_grace: Duration::from_millis(250),
             timeout: Duration::from_secs(30),
             artifact_directory: None,
+            frames_on_write: false,
+            recording: true,
         }
     }
 }
@@ -409,7 +417,8 @@ pub fn capture_agent_tui(options: AgentTuiOptions) -> Result<AgentTuiCapture, Ag
         stop_marker_grace: options.stop_marker_grace,
         timeout: Some(options.timeout),
         artifact_directory: options.artifact_directory,
-        ..TerminalCaptureOptions::default()
+        frames_on_write: options.frames_on_write,
+        recording: options.recording,
     })?;
     Ok(AgentTuiCapture {
         tool: options.tool,

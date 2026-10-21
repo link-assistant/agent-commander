@@ -169,6 +169,9 @@ keys, and resizes through a PTY, then returns an unrolled transcript, normalized
 message/tool-call events, settled frames, and asciicast-compatible replay data.
 When `artifact_directory` is set it also writes a transcript, frame data, a
 static snapshot, a cast, and an animated SVG suitable for CI artifacts.
+`frames_on_write: true` records a frame after every PTY write instead of after
+each settle, and `recording: false` keeps only the latest frame and the last
+1 MB of output for long sessions (command-stream 1.9.0).
 
 ```rust,no_run
 use agent_commander::tui::{capture_agent_tui, AgentTuiOptions};

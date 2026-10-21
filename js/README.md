@@ -150,8 +150,11 @@ contains `transcript.txt`, `frames.json`, `session.cast`, `snapshot.svg`, and
 the self-contained animated `recording.svg`, plus `recording.gif` for consumers
 that cannot animate SVG. Use `artifacts` to select bundle formats and
 `artifactOptions` to customize renderer geometry and theme. Explicit `cols` and
-`rows` override the default geometry. Partial artifacts are also written when
-the terminal command times out.
+`rows` override the default geometry. `frameMode: 'writes'` records a frame
+after every PTY write instead of after each settle, and `recording: false`
+keeps only the latest frame and the last 1 MB of output for long sessions
+(command-stream 2.4.0). Partial artifacts are also written when the terminal
+command times out.
 
 For large generated prompts, pass `promptFile` or let the controller create a temporary prompt file automatically for `claude`, `codex`, `opencode`, `agent`, `qwen`, and `gemini`:
 

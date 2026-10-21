@@ -285,6 +285,8 @@ export const captureAgentTui = async (options) => {
     rows,
     aspectRatio = DEFAULT_CAPTURE_GEOMETRY[tool]?.aspectRatio ?? 4 / 3,
     settleMilliseconds,
+    frameMode,
+    recording,
     stopMarker,
     stopMarkerGraceMilliseconds,
     timeoutMilliseconds,
@@ -307,6 +309,8 @@ export const captureAgentTui = async (options) => {
     rows,
     aspectRatio,
     settleMilliseconds,
+    frameMode,
+    recording,
     interactions: [
       ...startupInteractions,
       ...promptInteraction,

@@ -209,3 +209,37 @@ fn unset_env_runs_the_launch_through_env() {
     });
     assert!(invalid.is_err());
 }
+
+#[test]
+fn passes_frame_and_recording_modes_to_command_stream() {
+    let script = r"
+for screen in one two three; do printf '\033[2J\033[H%s\n' $screen; sleep 0.05; done
+";
+    let capture_with = |frames_on_write: bool, recording: bool| {
+        capture_agent_tui(AgentTuiOptions {
+            tool: "claude".into(),
+            working_directory: std::env::current_dir().expect("current directory"),
+            executable: Some("/bin/sh".into()),
+            prefix_args: vec!["-c".into(), script.into(), "claude".into()],
+            cols: 20,
+            rows: 4,
+            settle_duration: Duration::from_millis(10),
+            timeout: Duration::from_secs(3),
+            frames_on_write,
+            recording,
+            ..AgentTuiOptions::default()
+        })
+        .expect("interactive capture")
+        .terminal
+    };
+
+    let full = capture_with(true, true);
+    assert!(full.frames.len() >= 3, "{} frames", full.frames.len());
+    assert_ne!(full.asciicast.events.len(), 0);
+
+    // Without recording only the latest frame and no cast events remain.
+    let latest = capture_with(true, false);
+    assert_eq!(latest.frames.len(), 1);
+    assert_eq!(latest.asciicast.events.len(), 0);
+    assert!(latest.transcript.contains("three"));
+}
