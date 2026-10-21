@@ -48,7 +48,7 @@ fn an_unterminated_record_does_not_hide_later_records() {
 #[test]
 fn scanner_keeps_a_record_split_across_chunks_until_it_balances() {
     let mut scanner = JsonRecordScanner::new();
-    assert!(scanner.write("{\"type\":\n  \"te").is_empty());
+    assert_eq!(scanner.write("{\"type\":\n  \"te"), vec![]);
     let events = scanner.write("xt\"}\nnext line\n");
     assert_eq!(
         events[0],
@@ -57,7 +57,7 @@ fn scanner_keeps_a_record_split_across_chunks_until_it_balances() {
             raw: "{\"type\":\n  \"text\"}".to_string(),
         }
     );
-    assert!(scanner.flush().is_empty());
+    assert_eq!(scanner.flush(), vec![]);
 }
 
 #[test]
