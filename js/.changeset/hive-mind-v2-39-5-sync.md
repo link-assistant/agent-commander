@@ -1,0 +1,5 @@
+---
+'agent-commander': minor
+---
+
+Sync with Hive Mind v2.39.5 (issue #55). Port Hive Mind's usage-limit and agent error classification: `limitResetsAt` and `limitWindow`; server throttles reported as the `rate_limited` error type; recoverable agent tool errors. When a failed Codex or Claude run did not report a usage limit in its output, the limit is now read from the Codex rollout or the Claude transcript, and `limitSource` says which (`canResumeCodexSession`, `applyCodexRolloutUsageLimit`, `applyClaudeTranscriptUsageLimit`). Exits are signal-aware and kill the whole process group. `stop({ closeTimeoutMs, backgroundWaitMs })` closes a process that lingers after its result. New metadata: background tasks, observed models and Claude API error details. `extraEnv` values of `null` unset inherited variables. Rolling Claude aliases are kept, and model aliases match case-insensitively. Pretty-printed and concatenated JSON records are parsed. The model catalogue is synced, and the dev dependencies move to their latest majors.
