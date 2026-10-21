@@ -77,12 +77,12 @@ fn escape_for_bash_c(s: &str) -> String {
 fn build_tool_command(tool: &str, prompt: Option<&str>, system_prompt: Option<&str>) -> String {
     let mut command = tool.to_string();
 
-    if let Some(p) = prompt {
-        command.push_str(&format!(" --prompt \"{}\"", escape_quotes(p)));
+    if let Some(p) = prompt.filter(|p| !p.is_empty()) {
+        command.push_str(&format!(" --prompt {}", escape_arg(p)));
     }
 
-    if let Some(sp) = system_prompt {
-        command.push_str(&format!(" --system-prompt \"{}\"", escape_quotes(sp)));
+    if let Some(sp) = system_prompt.filter(|sp| !sp.is_empty()) {
+        command.push_str(&format!(" --system-prompt {}", escape_arg(sp)));
     }
 
     command
