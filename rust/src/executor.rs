@@ -383,9 +383,16 @@ pub async fn start_command(command: &str, attached: bool) -> io::Result<ProcessH
     })
 }
 
-/// Start a detached command with all standard streams disconnected.
+/// Start a detached command with all standard streams disconnected, in its
+/// own process group (JS `spawn(..., { detached: true })`).
 pub async fn execute_detached(command: &str) -> io::Result<Option<u32>> {
-    let child = Command::new("bash")
+    let mut command_builder = Command::new("bash");
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command_builder.as_std_mut().process_group(0);
+    }
+    let child = command_builder
         .arg("-c")
         .arg(command)
         .stdout(Stdio::null())
@@ -452,5 +459,22 @@ mod tests {
     async fn test_execute_detached() {
         let pid = execute_detached("sleep 0.1").await.unwrap();
         assert!(pid.is_some());
+    }
+
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn test_execute_detached_leads_its_own_process_group() {
+        // Like JS `spawn(..., { detached: true })`: Ctrl+C to the caller's
+        // group must not reach the background agent.
+        let pid = execute_detached("sleep 1").await.unwrap().unwrap();
+        let output = tokio::process::Command::new("ps")
+            .args(["-o", "pgid=", "-p", &pid.to_string()])
+            .output()
+            .await
+            .unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&output.stdout).trim(),
+            pid.to_string()
+        );
     }
 }
