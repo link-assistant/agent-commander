@@ -10,7 +10,6 @@
  * reported.
  */
 
-import os from 'node:os';
 import path from 'node:path';
 
 import {
@@ -19,6 +18,7 @@ import {
   isUsageLimitText,
 } from './usage-limit.mjs';
 import { readFileTail } from './utils/file-tail.mjs';
+import { userHomeDir } from './utils/home-dir.mjs';
 
 /** Bytes read from the end of a transcript. */
 export const TRANSCRIPT_TAIL_BYTES = 1024 * 1024;
@@ -54,14 +54,14 @@ export function claudeTranscriptCandidates({
   workingDirectory,
   sessionId,
   claudeConfigDir = process.env.CLAUDE_CONFIG_DIR,
-  homeDir = os.homedir(),
+  homeDir = userHomeDir(),
 } = {}) {
   if (!workingDirectory || !SESSION_ID_PATTERN.test(String(sessionId || ''))) {
     return [];
   }
   const roots = [
     ...(claudeConfigDir ? [path.join(claudeConfigDir, 'projects')] : []),
-    path.join(homeDir, '.claude', 'projects'),
+    ...(homeDir ? [path.join(homeDir, '.claude', 'projects')] : []),
   ];
   return [
     ...new Set(

@@ -15,11 +15,11 @@
  */
 
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 
 import { formatEpochResetTimeUtc, isUsageLimitText } from './usage-limit.mjs';
 import { readFileTail } from './utils/file-tail.mjs';
+import { userHomeDir } from './utils/home-dir.mjs';
 
 /** Directory under `CODEX_HOME` that holds the rollouts. */
 export const CODEX_SESSIONS_DIRNAME = 'sessions';
@@ -40,14 +40,19 @@ const WINDOW_LABELS = { 300: '5-hour', 10080: 'weekly' };
  * @param {string} [options.codexHome] - `CODEX_HOME`; defaults to the
  *   `CODEX_HOME` environment variable, then `~/.codex`
  * @param {string} [options.homeDir] - Home directory
- * @returns {string}
+ * @returns {string|null} `null` when neither directory is known
  */
 export function codexSessionsDir({
   codexHome = process.env.CODEX_HOME,
-  homeDir = os.homedir(),
+  homeDir,
 } = {}) {
+  // The home directory is read only when `CODEX_HOME` is not set.
+  const home = codexHome ? null : homeDir || userHomeDir();
+  if (!codexHome && !home) {
+    return null;
+  }
   return path.join(
-    codexHome || path.join(homeDir, '.codex'),
+    codexHome || path.join(home, '.codex'),
     CODEX_SESSIONS_DIRNAME
   );
 }
@@ -124,7 +129,9 @@ export async function canResumeCodexSession({
   homeDir,
 } = {}) {
   const sessionsDir = codexSessionsDir({ codexHome, homeDir });
-  return Boolean(await findCodexRolloutFile({ sessionsDir, threadId }));
+  return Boolean(
+    sessionsDir && (await findCodexRolloutFile({ sessionsDir, threadId }))
+  );
 }
 
 const describeWindow = (minutes) =>
@@ -251,6 +258,9 @@ export async function readCodexRolloutLimitFacts({
     return { found: false, reason: 'no thread id' };
   }
   const sessionsDir = codexSessionsDir({ codexHome, homeDir });
+  if (!sessionsDir) {
+    return { found: false, reason: 'no CODEX_HOME or home directory' };
+  }
   const rolloutPath = await findCodexRolloutFile({ sessionsDir, threadId });
   if (!rolloutPath) {
     return { found: false, reason: `no rollout under ${sessionsDir}` };

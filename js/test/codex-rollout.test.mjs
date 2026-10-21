@@ -13,6 +13,7 @@ import {
   applyCodexRolloutUsageLimit,
   canResumeCodexSession,
   classifyCodexRateLimitSnapshot,
+  codexSessionsDir,
   codexRolloutLimitFacts,
   detectCodexRolloutUsageLimit,
   findCodexRolloutFile,
@@ -62,6 +63,19 @@ before(async () => {
 
 after(async () => {
   await rm(codexHome, { recursive: true, force: true });
+});
+
+test('codexSessionsDir reads the home directory only without CODEX_HOME', () => {
+  // Deno denies os.homedir() without --allow-sys=homedir, so an explicit
+  // CODEX_HOME must not touch it.
+  assert.strictEqual(
+    codexSessionsDir({ codexHome: '/c', homeDir: '/unused' }),
+    join('/c', 'sessions')
+  );
+  assert.strictEqual(
+    codexSessionsDir({ codexHome: '', homeDir: '/home/u' }),
+    join('/home/u', '.codex', 'sessions')
+  );
 });
 
 test('isCodexRolloutFileName matches the thread suffix only', () => {
