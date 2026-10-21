@@ -8,6 +8,7 @@
  */
 
 import { syncedModels, syncedDefaults } from './model-catalog.mjs';
+import { createModelMapper, parseJsonLines } from './json-lines.mjs';
 
 import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
 
@@ -25,10 +26,7 @@ export const modelMap = {
  * @param {string} options.model - Model alias or full ID
  * @returns {string} Full model ID
  */
-export function mapModelToId(options) {
-  const { model } = options;
-  return modelMap[model] || model;
-}
+export const mapModelToId = createModelMapper(modelMap);
 
 /**
  * Build command line arguments for Agent
@@ -176,25 +174,7 @@ export function buildCommand(options) {
  * @returns {Object[]} Array of parsed JSON messages
  */
 export function parseOutput(options) {
-  const { output } = options;
-  const messages = [];
-  const lines = output.split('\n');
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || !trimmed.startsWith('{')) {
-      continue;
-    }
-
-    try {
-      const parsed = JSON.parse(trimmed);
-      messages.push(parsed);
-    } catch {
-      // Skip lines that aren't valid JSON
-    }
-  }
-
-  return messages;
+  return parseJsonLines(options);
 }
 
 /**
