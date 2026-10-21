@@ -19,6 +19,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { formatEpochResetTimeUtc, isUsageLimitText } from './usage-limit.mjs';
+import { readFileTail } from './utils/file-tail.mjs';
 
 /** Directory under `CODEX_HOME` that holds the rollouts. */
 export const CODEX_SESSIONS_DIRNAME = 'sessions';
@@ -180,21 +181,6 @@ const isUsageLimitErrorInfo = (info) =>
     typeof info === 'string' ? info : JSON.stringify(info)
   );
 
-async function readTail(file, maxBytes) {
-  const handle = await fs.open(file, 'r');
-  try {
-    const { size } = await handle.stat();
-    const length = Math.min(size, maxBytes);
-    const buffer = Buffer.alloc(length);
-    await handle.read(buffer, 0, length, size - length);
-    const text = buffer.toString('utf8');
-    // A cut first line is not a whole record.
-    return length < size ? text.slice(text.indexOf('\n') + 1) : text;
-  } finally {
-    await handle.close();
-  }
-}
-
 /**
  * Collect usage-limit facts from a rollout's last turn
  * @param {string} text - Rollout text (JSONL)
@@ -269,7 +255,7 @@ export async function readCodexRolloutLimitFacts({
   if (!rolloutPath) {
     return { found: false, reason: `no rollout under ${sessionsDir}` };
   }
-  const text = await readTail(rolloutPath, maxBytes);
+  const text = await readFileTail(rolloutPath, maxBytes);
   return { found: true, rolloutPath, ...codexRolloutLimitFacts(text) };
 }
 

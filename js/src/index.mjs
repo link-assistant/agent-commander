@@ -32,6 +32,7 @@ import { stringifyNdjsonLine } from './streaming/ndjson.mjs';
 import { parseJsonRecords } from './streaming/json-records.mjs';
 import { buildNormalizedResultMetadata } from './result-metadata.mjs';
 import { applyCodexRolloutUsageLimit } from './codex-rollout.mjs';
+import { applyClaudeTranscriptUsageLimit } from './claude-transcript.mjs';
 import { requireCompletedResult } from './completion.mjs';
 import {
   createStdoutMessageReader,
@@ -577,10 +578,10 @@ export function agent(options) {
           toolConfig,
           terminatedAfterResult,
         });
-        // Codex can leave a usage limit only in its rollout (hive-mind#3570)
-        const codexHome = normalizeExtraEnv(toolOptions.extraEnv).find(
-          ([name]) => name === 'CODEX_HOME'
-        );
+        // Codex and Claude can leave a usage limit only in their session
+        // files (hive-mind#3570)
+        const runEnv = normalizeExtraEnv(toolOptions.extraEnv);
+        const codexHome = runEnv.findLast(([name]) => name === 'CODEX_HOME');
         await applyCodexRolloutUsageLimit(
           metadata,
           codexHome ? { codexHome: codexHome[1] } : {}
@@ -588,6 +589,13 @@ export function agent(options) {
         if ((json || tool === 'agent') && toolConfig) {
           requireCompletedResult(metadata, tool, parsedOutput || []);
         }
+        const claudeConfigDir = runEnv.findLast(
+          ([name]) => name === 'CLAUDE_CONFIG_DIR'
+        );
+        await applyClaudeTranscriptUsageLimit(metadata, {
+          workingDirectory,
+          ...(claudeConfigDir ? { claudeConfigDir: claudeConfigDir[1] } : {}),
+        });
 
         return {
           exitCode,
@@ -731,6 +739,14 @@ export {
   isCodexRolloutFileName,
   readCodexRolloutLimitFacts,
 } from './codex-rollout.mjs';
+export {
+  TRANSCRIPT_TAIL_BYTES,
+  applyClaudeTranscriptUsageLimit,
+  claudeProjectSlugs,
+  claudeTranscriptApiError,
+  claudeTranscriptCandidates,
+  readClaudeTranscriptApiError,
+} from './claude-transcript.mjs';
 export {
   DEFAULT_RESULT_POLL_MS,
   createStdoutMessageReader,
