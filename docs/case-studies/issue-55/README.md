@@ -141,6 +141,9 @@ Two findings were not filed:
 5. **Sandbox finding.** In the test sandbox, PID 1 never reaps zombies, so a killed process group stays visible to `kill -0`. [experiments/process-group-reap.mjs](../../../experiments/process-group-reap.mjs) shows this. The group tests therefore check for live, non-zombie members with `ps -A -o pgid=,stat=` instead of `kill -0`.
 6. **Session files, env, aliases** (`c41770c`, `0219c31`, `97be2dc`, `2c1e397`, `36087a3`, `c7066de`). These use synthetic `CODEX_HOME` and `CLAUDE_CONFIG_DIR` trees in temporary directories, so no credentials are read.
 7. **command-stream features and quoting** (`decbeba`, `5e479d0`, `05d7264`), the **agent stderr error** (`6ec13f1`), and the **Rust detached process group** (`3851352`). The last one was found while writing #232.
+8. **CI-only failures** (`d6b4591`, `55d2c74`). Two failures appeared only in the CI matrix:
+   - Deno on all three OSes: `NotCapable: Requires sys access to "homedir"`. The session-file helpers called `os.homedir()` as a default parameter even when `CODEX_HOME` or `CLAUDE_CONFIG_DIR` was set. This also affected Deno consumers. The home directory is now read lazily, with a `HOME` / `USERPROFILE` fallback. The failure was reproduced locally with the CI's `deno test` flags (7 failed), and passes after the fix.
+   - Rust on macOS: `File exists (os error 17)` in `gemini_controller_collects_formatted_json`. Prompt temp directories were named `agent-commander-{pid}-{nanos}`, and parallel tests on macOS's coarse clock got the same name. Names now carry a per-process sequence, and existing names are skipped. `prompt_dirs_are_unique_within_one_clock_tick` creates two directories with the same clock value, which failed under the old naming.
 
 ### Known limits
 
@@ -184,4 +187,4 @@ cd js && npm run check && npm test
 cd rust && cargo fmt --all -- --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-features && cargo doc --no-deps
 ```
 
-Local results on 2026-10-21: `npm run check` clean and `npm test` 360 of 360 passing; `cargo fmt`, `cargo clippy -D warnings` and `cargo doc` clean, and `cargo test` 356 of 356 passing. CI on the PR head is recorded in PR #56.
+Local results on 2026-10-21: `npm run check` clean and `npm test` 362 of 362 passing (Bun 362 of 362, and Deno 355 passing with 7 skipped); `cargo fmt`, `cargo clippy -D warnings` and `cargo doc` clean, and `cargo test` 358 of 358 passing. CI on the PR head is recorded in PR #56.
