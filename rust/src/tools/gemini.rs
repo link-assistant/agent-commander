@@ -1,5 +1,5 @@
 //! Gemini CLI tool configuration
-//! Based on Google's official gemini-cli: https://github.com/google-gemini/gemini-cli
+//! Based on Google's official gemini-cli: <https://github.com/google-gemini/gemini-cli>
 
 use super::usage::{self, count};
 use crate::streaming::parse_json_records;

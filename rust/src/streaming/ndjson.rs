@@ -1,5 +1,5 @@
 //! NDJSON (Newline Delimited JSON) utilities
-//! https://github.com/ndjson/ndjson-spec
+//! <https://github.com/ndjson/ndjson-spec>
 
 use serde_json::Value;
 

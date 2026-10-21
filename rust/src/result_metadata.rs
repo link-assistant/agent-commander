@@ -1,8 +1,15 @@
 //! Normalized result metadata for tool-specific agent output.
 
 use crate::completion::{completion_state, outcome_messages};
+use crate::error_text::first_error_text;
+use crate::usage_limit::{
+    classify_debug_lines, detect_usage_limit_sources, is_recoverable_tool_error, split_output,
+    UsageLimitVerdict,
+};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
+use std::sync::LazyLock;
 
 /// Pricing details derived from a tool's public pricing estimate.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -23,6 +30,10 @@ pub struct ResultMetadata {
     pub limit_reached: bool,
     pub limit_reset_time: Option<String>,
     pub limit_timezone: Option<String>,
+    /// Exact reset epoch (seconds) when a structured source reports one
+    pub limit_resets_at: Option<i64>,
+    /// Limit window from a structured source (`five_hour`, `seven_day`, ...)
+    pub limit_window: Option<String>,
     pub anthropic_total_cost_usd: Option<f64>,
     pub public_pricing_estimate: Option<f64>,
     pub pricing_info: Option<PricingInfo>,
@@ -47,13 +58,6 @@ pub struct BuildMetadataOptions<'a> {
 }
 
 #[derive(Debug, Clone, Default)]
-struct UsageLimit {
-    reached: bool,
-    reset_time: Option<String>,
-    timezone: Option<String>,
-}
-
-#[derive(Debug, Clone, Default)]
 struct ExecutionError {
     has_error: bool,
     error_type: Option<String>,
@@ -68,114 +72,6 @@ fn parse_json_messages(output: &str) -> Vec<Value> {
             message => vec![message],
         })
         .collect()
-}
-
-fn limit_reached(output: &str) -> bool {
-    let lower = output.to_ascii_lowercase();
-    [
-        "usage limit reached",
-        "usage limit exceeded",
-        "rate limit",
-        "rate_limit",
-        "limit reached",
-        "billing hard limit",
-        "please try again at",
-        "available again at",
-        "session limit reached",
-        "weekly limit reached",
-        "daily limit reached",
-        "monthly limit reached",
-        "freeusagelimiterror",
-        "resets ",
-    ]
-    .iter()
-    .any(|pattern| lower.contains(pattern))
-}
-
-fn clean_reset_time(value: &str) -> Option<String> {
-    let cleaned = value
-        .trim()
-        .trim_matches(|c: char| c == ')' || c == ',' || c == ';')
-        .trim();
-    if cleaned.is_empty() || cleaned.len() > 120 {
-        return None;
-    }
-
-    Some(cleaned.to_string())
-}
-
-fn extract_reset_time(output: &str) -> Option<String> {
-    let lower = output.to_ascii_lowercase();
-    for marker in [
-        "limit resets at",
-        "reset time:",
-        "resets at",
-        "reset at",
-        "try again at",
-        "available again at",
-        "available at",
-        "resets",
-        "reset",
-    ] {
-        if let Some(index) = lower.find(marker) {
-            let tail = &output[index + marker.len()..];
-            let candidate = tail.split(['\n', '.']).next().unwrap_or_default().trim();
-            if let Some(cleaned) = clean_reset_time(candidate) {
-                return Some(cleaned);
-            }
-        }
-    }
-
-    None
-}
-
-fn looks_like_timezone(value: &str) -> bool {
-    let value = value.trim();
-    if value.starts_with("UTC") {
-        return true;
-    }
-    if value.contains('/') {
-        return value
-            .chars()
-            .all(|c| c.is_ascii_alphabetic() || c == '/' || c == '_' || c == '-');
-    }
-    value.len() >= 2 && value.len() <= 5 && value.chars().all(|c| c.is_ascii_uppercase())
-}
-
-fn extract_timezone(output: &str, reset_time: Option<&str>) -> Option<String> {
-    for part in output.split('(').skip(1) {
-        if let Some(candidate) = part.split(')').next() {
-            if looks_like_timezone(candidate) {
-                return Some(candidate.trim().to_string());
-            }
-        }
-    }
-
-    if let Some(reset_time) = reset_time {
-        for token in reset_time.split_whitespace() {
-            let candidate = token.trim_matches(|c: char| c == '(' || c == ')' || c == ',');
-            if looks_like_timezone(candidate) {
-                return Some(candidate.to_string());
-            }
-        }
-    }
-
-    None
-}
-
-fn detect_usage_limit(output: &str) -> UsageLimit {
-    if !limit_reached(output) {
-        return UsageLimit::default();
-    }
-
-    let reset_time = extract_reset_time(output);
-    let timezone = extract_timezone(output, reset_time.as_deref());
-
-    UsageLimit {
-        reached: true,
-        reset_time,
-        timezone,
-    }
 }
 
 fn text_from_value(value: Option<&Value>) -> Option<String> {
@@ -404,17 +300,40 @@ fn extract_sub_agent_calls(messages: &[Value]) -> Option<Vec<Value>> {
     }
 }
 
+/// Claude's synthetic API error message carries the error code as a string
+/// (`"error":"rate_limit"`) and the readable text in its content.
+fn api_error_code(messages: &[Value]) -> Option<&str> {
+    messages
+        .iter()
+        .rev()
+        .find(|event| {
+            event["type"] == "assistant"
+                && event["is_api_error_message"] == true
+                && event["error"].is_string()
+        })
+        .and_then(|event| event["error"].as_str())
+}
+
+fn non_empty_str(value: Option<&Value>) -> Option<&str> {
+    value
+        .and_then(Value::as_str)
+        .filter(|text| !text.is_empty())
+}
+
 fn extract_error_from_messages(messages: &[Value]) -> ExecutionError {
+    let code = api_error_code(messages);
     for message in messages.iter().rev() {
-        let message_type = message
-            .get("type")
-            .or_else(|| message.get("subtype"))
-            .or_else(|| message.pointer("/item/type"))
-            .and_then(Value::as_str);
+        if !message.is_object() || is_recoverable_tool_error(message) {
+            // A failed tool call is returned to the model; it does not decide the run.
+            continue;
+        }
+        let message_type = non_empty_str(message.get("type"))
+            .or_else(|| non_empty_str(message.get("subtype")))
+            .or_else(|| non_empty_str(message.pointer("/item/type")));
         let is_error = message.get("is_error").and_then(Value::as_bool) == Some(true)
             || message
                 .get("error")
-                .is_some_and(|e| !e.is_null() && e != &Value::Bool(false))
+                .is_some_and(|e| !e.is_null() && e != &Value::Bool(false) && e != "")
             || matches!(message_type, Some("error" | "step_error" | "turn.failed"))
             || message["status"] == "error"
             || message["subtype"]
@@ -426,25 +345,31 @@ fn extract_error_from_messages(messages: &[Value]) -> ExecutionError {
         }
 
         let error = message.get("error");
-        let error_type = error
-            .and_then(|value| value.get("type").or_else(|| value.get("code")))
-            .and_then(Value::as_str)
-            .or_else(|| message.get("errorType").and_then(Value::as_str))
-            .or_else(|| message.get("error_type").and_then(Value::as_str))
+        let object_error = error.filter(|value| value.is_object());
+        let string_error = non_empty_str(error);
+        let error_type = object_error
+            .and_then(|value| {
+                ["type", "code", "name"]
+                    .iter()
+                    .find_map(|key| non_empty_str(value.get(*key)))
+            })
+            .or(string_error)
+            .or_else(|| non_empty_str(message.get("errorType")))
+            .or_else(|| non_empty_str(message.get("error_type")))
+            .or_else(|| {
+                (message_type == Some("result"))
+                    .then(|| non_empty_str(message.get("api_error")).or(code))
+                    .flatten()
+            })
             .or(message_type)
             .unwrap_or("execution_error")
             .to_string();
-        let error_message = error
-            .and_then(Value::as_str)
-            .map(ToString::to_string)
-            .or_else(|| {
-                error
-                    .and_then(|value| value.get("message").or_else(|| value.get("details")))
-                    .and_then(Value::as_str)
-                    .map(ToString::to_string)
-            })
+        let error_message = object_error
+            .map(|value| first_error_text(&[value], ""))
+            .filter(|text| !text.is_empty())
             .or_else(|| text_from_value(message.get("message")))
             .or_else(|| text_from_value(message.get("result")))
+            .or_else(|| string_error.map(ToString::to_string))
             .unwrap_or_else(|| "Execution failed".to_string());
 
         return ExecutionError {
@@ -455,6 +380,30 @@ fn extract_error_from_messages(messages: &[Value]) -> ExecutionError {
     }
 
     ExecutionError::default()
+}
+
+static PREFERRED_EXIT_LINE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)^(?:error\b|fatal:|(?:/\S*/)?(?:ba|z)?sh:\s)").expect("valid pattern")
+});
+
+/// The reason a process exited is a plain text line: JSON records, the
+/// `ANTHROPIC_LOG=debug` dump and its base64 bodies are not (hive-mind#3570).
+fn exit_reason_line(plain_output: &str) -> Option<String> {
+    let (_, lines) = split_output(plain_output);
+    let debug = classify_debug_lines(&lines);
+    let candidates: Vec<&str> = lines
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| !debug.debug_lines.contains(index))
+        .map(|(_, line)| line.trim())
+        .filter(|line| !line.is_empty())
+        .collect();
+    candidates
+        .iter()
+        .rev()
+        .find(|line| PREFERRED_EXIT_LINE.is_match(line))
+        .or_else(|| candidates.last())
+        .map(|line| (*line).to_string())
 }
 
 fn detect_execution_error(
@@ -490,18 +439,11 @@ fn detect_execution_error(
     }
 
     if exit_code != 0 {
-        let last_line = plain_output
-            .trim()
-            .lines()
-            .rev()
-            .find(|line| !line.trim().is_empty())
-            .map(str::trim)
-            .filter(|line| !line.is_empty())
-            .map(ToString::to_string);
         return ExecutionError {
             has_error: true,
             error_type: Some("exit_code".to_string()),
-            message: last_line.or_else(|| Some(format!("Process exited with code {}", exit_code))),
+            message: exit_reason_line(plain_output)
+                .or_else(|| Some(format!("Process exited with code {exit_code}"))),
         };
     }
 
@@ -554,10 +496,13 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
         .cloned()
         .collect();
     let completion = completion_state(options.tool, &messages);
+    // The raw stream contains HTTP header names (e.g.
+    // "anthropic-ratelimit-unified-5h-reset") even on a successful run, so a
+    // native completion event wins over the text scan (issue #37).
     let usage_limit = if completion == Some("completed") {
-        UsageLimit::default()
+        UsageLimitVerdict::default()
     } else {
-        detect_usage_limit(options.plain_output)
+        detect_usage_limit_sources(options.plain_output, &messages)
     };
     let mut execution_error = detect_execution_error(
         options.tool,
@@ -571,6 +516,10 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
             error_type: Some("incomplete_stream".into()),
             message: Some("Process exited before the native completion event".into()),
         };
+    }
+    // A server-side throttle is transient: callers retry instead of waiting for a reset.
+    if execution_error.has_error && usage_limit.throttled {
+        execution_error.error_type = Some("rate_limited".into());
     }
     let session_id = extract_session_id(options.session_id, &messages);
     let public_pricing_estimate = public_pricing_estimate(options.tool, options.usage.as_ref());
@@ -587,6 +536,8 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
         limit_reached: usage_limit.reached,
         limit_reset_time: usage_limit.reset_time,
         limit_timezone: usage_limit.timezone,
+        limit_resets_at: usage_limit.resets_at,
+        limit_window: usage_limit.window,
         anthropic_total_cost_usd: first_number(
             &messages,
             &["total_cost_usd", "totalCostUsd", "anthropicTotalCostUSD"],

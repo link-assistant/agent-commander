@@ -7,6 +7,7 @@ name = "agent-commander"
 version = "0.3.2"
 dependencies = [
  "command-stream",
+ "regex",
  "serde",
  "serde_json",
  "tempfile",

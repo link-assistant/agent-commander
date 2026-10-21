@@ -12,12 +12,14 @@
 pub mod cli_parser;
 pub mod command_builder;
 mod completion;
+pub mod error_text;
 pub mod executor;
 pub mod permissions;
 pub mod result_metadata;
 pub mod streaming;
 pub mod tools;
 pub mod tui;
+pub mod usage_limit;
 
 use serde_json::Value;
 use std::path::PathBuf;
@@ -48,6 +50,14 @@ pub use executor::{
 
 pub use result_metadata::{
     build_normalized_result_metadata, BuildMetadataOptions, PricingInfo, ResultMetadata,
+};
+
+pub use error_text::{first_error_text, stringify_error_value, MAX_ERROR_TEXT_LENGTH};
+
+pub use usage_limit::{
+    classify_debug_lines, classify_rate_limit_event, detect_usage_limit_sources,
+    extract_reset_time, extract_timezone, format_epoch_reset_time_utc, is_recoverable_tool_error,
+    is_usage_limit_text, limit_scan_text, DebugLines, UsageLimitVerdict,
 };
 
 pub use streaming::{

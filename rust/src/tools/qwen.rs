@@ -1,5 +1,5 @@
 //! Qwen Code CLI tool configuration
-//! Based on https://github.com/QwenLM/qwen-code
+//! Based on <https://github.com/QwenLM/qwen-code>
 //! Qwen Code is an open-source AI agent optimized for Qwen3-Coder models
 
 use super::usage::{self, count};

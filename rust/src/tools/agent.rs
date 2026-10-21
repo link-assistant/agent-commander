@@ -6,6 +6,7 @@
 //! (auto | plan | readonly | ask) and an OpenCode-compatible `--permission`
 //! JSON policy.
 
+use crate::error_text::{first_error_text, stringify_error_value, MAX_ERROR_TEXT_LENGTH};
 use crate::streaming::parse_json_records;
 use crate::tools::shell::{build_command_head, escape_arg, escape_single_quotes};
 use serde_json::Value;
@@ -324,33 +325,97 @@ pub struct ErrorResult {
     pub message: Option<String>,
 }
 
+const FATAL_AGENT_LOG_PATTERNS: [&str; 4] = [
+    "providermodelnotfounderror",
+    "provideriniterror",
+    "nosuchmodelerror",
+    "modelnotfounderror",
+];
+
+fn is_fatal_log_text(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    FATAL_AGENT_LOG_PATTERNS
+        .iter()
+        .any(|pattern| lower.contains(pattern))
+        || lower
+            .find("failed to initialize ")
+            .is_some_and(|index| lower[index..].contains("model"))
+}
+
+/// Detect a `log` record reporting a fatal startup failure
+///
+/// Agent prints it, then `session.idle`, and exits 0 without an `error`
+/// record (hive-mind#2141). Returns the readable failure text.
+pub fn detect_fatal_agent_log_record(record: &Value) -> Option<String> {
+    if record["type"] != "log" || record["level"] != "error" {
+        return None;
+    }
+    let error = stringify_error_value(&record["error"], MAX_ERROR_TEXT_LENGTH, "");
+    let message = stringify_error_value(&record["message"], MAX_ERROR_TEXT_LENGTH, "");
+    if !is_fatal_log_text(&format!("{error} {message}")) {
+        return None;
+    }
+    let hint = stringify_error_value(&record["hint"], MAX_ERROR_TEXT_LENGTH, "");
+    let hint = if hint.is_empty() {
+        hint
+    } else {
+        format!("hint: {hint}")
+    };
+    Some(
+        [error, message, hint]
+            .into_iter()
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>()
+            .join(" — "),
+    )
+}
+
+/// Whether an error record is a failed tool call the model recovers from
+///
+/// A failed tool call is returned to the model as the tool result; agent
+/// 0.26.13 and earlier also repeated it as a top-level error record (agent#332,
+/// hive-mind#3213). Only the session's own errors decide the run.
+pub fn is_recoverable_agent_tool_error(record: &Value) -> bool {
+    crate::usage_limit::is_recoverable_tool_error(record)
+}
+
 /// Detect errors in Agent output
 ///
-/// # Arguments
-/// * `output` - Raw output string
-///
-/// # Returns
-/// Error detection result
+/// The last fatal error record is the one the session ended on; failed tool
+/// calls are skipped.
 pub fn detect_errors(output: &str) -> ErrorResult {
-    let messages = parse_output(output);
+    let mut detection = ErrorResult::default();
 
-    for msg in messages {
-        // Check for explicit error message types from agent
-        let msg_type = msg.get("type").and_then(|t| t.as_str());
-        if msg_type == Some("error") || msg_type == Some("step_error") {
-            return ErrorResult {
+    for msg in parse_output(output) {
+        if let Some(fatal_log) = detect_fatal_agent_log_record(&msg) {
+            let error_type =
+                stringify_error_value(&msg["error"], MAX_ERROR_TEXT_LENGTH, "fatal_log");
+            detection = ErrorResult {
                 has_error: true,
-                error_type: msg_type.map(|s| s.to_string()),
-                message: msg
-                    .get("message")
-                    .and_then(|m| m.as_str())
-                    .map(|s| s.to_string())
-                    .or_else(|| Some("Unknown error".to_string())),
+                error_type: Some(error_type),
+                message: Some(fatal_log),
+            };
+        } else if matches!(msg["type"].as_str(), Some("error" | "step_error"))
+            && !is_recoverable_agent_tool_error(&msg)
+        {
+            let error_type = msg
+                .pointer("/error/name")
+                .and_then(Value::as_str)
+                .filter(|name| !name.is_empty())
+                .or_else(|| msg["type"].as_str())
+                .map(ToString::to_string);
+            detection = ErrorResult {
+                has_error: true,
+                error_type,
+                message: Some(first_error_text(
+                    &[&msg["message"], &msg["error"], &msg["data"]],
+                    "Agent emitted an error event without any details",
+                )),
             };
         }
     }
 
-    ErrorResult::default()
+    detection
 }
 
 /// Agent tool configuration

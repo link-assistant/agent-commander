@@ -32,12 +32,11 @@ pub fn completion_state(tool: &str, messages: &[Value]) -> Option<&'static str> 
                 "step_start" => state = Some("incomplete"),
                 "step_finish" => {
                     state = Some(
-                        if event.pointer("/part/reason").and_then(Value::as_str)
-                            == Some("tool-calls")
-                        {
-                            "incomplete"
-                        } else {
-                            "completed"
+                        match event.pointer("/part/reason").and_then(Value::as_str) {
+                            Some("tool-calls") => "incomplete",
+                            // The step ended on an API error (hive-mind#3570).
+                            Some("error") => "failed",
+                            _ => "completed",
                         },
                     );
                 }
