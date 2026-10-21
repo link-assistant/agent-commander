@@ -55,13 +55,6 @@ const RAW_RESET_TIME_PATTERNS = [
 const TIMEZONE_PATTERN =
   /\b(?:UTC(?:[+-]\d{1,2}(?::\d{2})?)?|(?!(?:AM|PM)\b)[A-Z]{2,5}|[A-Za-z]+\/[A-Za-z_/-]+)\b/;
 
-const RATE_LIMIT_WINDOWS = {
-  five_hour: 'session (5-hour)',
-  seven_day: 'weekly',
-  seven_day_opus: 'weekly Opus',
-  seven_day_sonnet: 'weekly Sonnet',
-};
-
 // `[log_be123b] response error (error; no more retries left) {` from ANTHROPIC_LOG=debug
 const DEBUG_BLOCK_START = /^\[log_[0-9a-f]+\]\s/i;
 const DEBUG_RESPONSE_ERROR = /^\[log_[0-9a-f]+\]\s+response error\b/i;
