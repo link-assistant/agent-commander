@@ -26,10 +26,12 @@ import {
   startCommand,
 } from './executor.mjs';
 import { getTool, isToolSupported } from './tools/index.mjs';
+import { normalizeExtraEnv } from './tools/shell.mjs';
 import { createOutputStream, createInputStream } from './streaming/index.mjs';
 import { stringifyNdjsonLine } from './streaming/ndjson.mjs';
 import { parseJsonRecords } from './streaming/json-records.mjs';
 import { buildNormalizedResultMetadata } from './result-metadata.mjs';
+import { applyCodexRolloutUsageLimit } from './codex-rollout.mjs';
 import { requireCompletedResult } from './completion.mjs';
 import {
   createStdoutMessageReader,
@@ -575,6 +577,14 @@ export function agent(options) {
           toolConfig,
           terminatedAfterResult,
         });
+        // Codex can leave a usage limit only in its rollout (hive-mind#3570)
+        const codexHome = normalizeExtraEnv(toolOptions.extraEnv).find(
+          ([name]) => name === 'CODEX_HOME'
+        );
+        await applyCodexRolloutUsageLimit(
+          metadata,
+          codexHome ? { codexHome: codexHome[1] } : {}
+        );
         if ((json || tool === 'agent') && toolConfig) {
           requireCompletedResult(metadata, tool, parsedOutput || []);
         }
@@ -708,6 +718,19 @@ export {
   trackBackgroundTasks,
 } from './background-tasks.mjs';
 export { extractObservedModels, isRealModelId } from './observed-models.mjs';
+export {
+  CODEX_SESSIONS_DIRNAME,
+  ROLLOUT_TAIL_BYTES,
+  applyCodexRolloutUsageLimit,
+  canResumeCodexSession,
+  classifyCodexRateLimitSnapshot,
+  codexRolloutLimitFacts,
+  codexSessionsDir,
+  detectCodexRolloutUsageLimit,
+  findCodexRolloutFile,
+  isCodexRolloutFileName,
+  readCodexRolloutLimitFacts,
+} from './codex-rollout.mjs';
 export {
   DEFAULT_RESULT_POLL_MS,
   createStdoutMessageReader,
