@@ -238,7 +238,7 @@ but behaviour changes need explicit handling or tests; **Keep** = no fit upstrea
   semantics. The gain does not justify the churn.
 - `executeDetached` / `execute_detached`: no upstream equivalent.
 
-## 5. Upstream bugs and missing features (not filed; existing matches noted)
+## 5. Upstream bugs and missing features (filed issues and existing matches)
 
 Existing open issues (checked 2026-10-21 with `gh issue list --repo link-foundation/command-stream --state all`, 97 issues):
 
@@ -249,7 +249,7 @@ Existing open issues (checked 2026-10-21 with `gh issue list --repo link-foundat
 | #226 | OPEN | crates.io trusted publishing. Release-infra only, no impact. |
 | #187, #192, #202, #205, #207, #208, #218, #219, #221 | CLOSED | Fixed in the versions we target: openTerminal, lightweight ProcessRunner entry, empty-interaction rejection, Windows descendant kill, aborted-signal stream hang, signal exit codes, node-pty optional (2.0.1), Deno esm.sh, braces audit (2.0.2). |
 
-New findings with no matching issue (candidates for upstream reports):
+New findings with no matching issue, and what was filed (drafts in [`../upstream/`](../upstream/)):
 
 1. **No artifact selection in terminal capture (JS + Rust).** JS `writeTerminalArtifacts`
    (`js/src/terminal-artifacts.mjs:493-530`) always renders and writes all six files,
@@ -257,11 +257,11 @@ New findings with no matching issue (candidates for upstream reports):
    `write_terminal_artifacts` (`rust/src/terminal/artifacts.rs:174`) always writes five. Neither has
    an `artifacts`/`formats` option. agent-commander works around it by deleting unrequested files
    after capture (`selectArtifacts`, `js/src/tui.mjs:~145-160`), which wastes the GIF render time.
-   No existing issue matches.
+   **Filed as [#231](https://github.com/link-foundation/command-stream/issues/231).**
 2. **Rust/JS terminal parity gaps.** The Rust `TerminalCaptureOptions` (`rust/src/terminal/types.rs:57-76`) has
    no `aspect_ratio` (JS `aspectRatio`, `js/src/terminal-capture.mjs:454`), no `on_trace` callback
    (JS `onTrace`, `createCaptureRecorder` `:247`), no `label`, and no GIF artifact (JS writes `recording.gif`).
-   No existing issue matches. (#175/#174 introduced the feature; the parity gaps are not tracked.)
+   (#175/#174 introduced the feature.) **Included in [#231](https://github.com/link-foundation/command-stream/issues/231).**
 3. **Rust has no argv runner with a live stdin pipe.** `ProcessRunner` has `write_stdin`/`close_stdin`
    (`rust/src/lib.rs:492-516`) but only accepts a shell string run by `/bin/sh -c` with
    virtual-command interception. `StreamingRunner::from_argv` (`rust/src/stream.rs:123`) has exact
@@ -269,19 +269,26 @@ New findings with no matching issue (candidates for upstream reports):
    write NDJSON frames while streaming. JS supports this (`{mode:'exec'}` + `stdin:'pipe'`). #190
    (argv for streaming on Windows) is closed but did not cover live stdin. This is a new request:
    `OutputStream::write_stdin` / `close_stdin`, or `ProcessRunner::from_argv`.
+   **Filed as [#230](https://github.com/link-foundation/command-stream/issues/230).**
 4. **Minor TERM semantics difference between JS and Rust.** JS `startTerminal` uses
    `env.TERM ?? 'xterm-256color'` over the caller-provided env (`js/src/terminal-capture.mjs:400`).
    Callers usually spread `process.env`, so an inherited `TERM=dumb` (CI) survives unless
    overridden. agent-commander forces `TERM` in `js/src/tui.mjs` for this reason. Rust looks only at the
    explicit `options.env` map and defaults to `xterm-256color` (`rust/src/terminal/capture.rs:346-352`).
-   This is low severity and arguably consistent. Report it as a documentation clarification
-   rather than a bug.
+   **Not filed:** both runtimes honour a caller-supplied `TERM` and fall back to
+   `xterm-256color`, so the behaviour is consistent; the difference is only in what callers pass.
 5. **JS escape helpers not exported.** `escapeForSingleQuotes` / `escapeForDoubleQuotes`
    (`js/src/$.quote.mjs:209,223`) are not exported from `command-stream` (only `quoteForContext`
    with string contexts), while Rust exports `escape_for_single_quotes` / `escape_for_double_quotes` publicly.
-   This is a small JS/Rust API parity gap.
+   **Not filed:** `quoteForContext(value, 'single' | 'double')` is exported and gives the same
+   output, and agent-commander now uses it (`js/src/command-builder.mjs`, `js/src/tools/shell.mjs`).
 6. **No fire-and-forget detached spawn.** There is no `unref`'d detached spawn returning a pid in
-   either language, so agent-commander keeps `executeDetached` / `execute_detached`. Low priority.
+   either language, so agent-commander keeps `executeDetached` / `execute_detached`. Writing the
+   report found that our Rust helper did not start its own process group (fixed in this PR).
+   **Filed as [#232](https://github.com/link-foundation/command-stream/issues/232).**
+7. **Rust: no per-variable env removal.** **Filed as
+   [#229](https://github.com/link-foundation/command-stream/issues/229)**; agent-commander uses
+   `env -u` for TUI launches until then.
 
 ## 6. Upstream release timeline (for the case study)
 
