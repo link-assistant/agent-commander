@@ -17,10 +17,22 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("formalai/formal-ai", "formalai/formal-ai");
     map.insert("gpt4", "openai/gpt-4");
     map.insert("gpt4o", "openai/gpt-4o");
-    map.insert("claude", "anthropic/claude-3-5-sonnet");
-    map.insert("sonnet", "anthropic/claude-3-5-sonnet");
-    map.insert("opus", "anthropic/claude-3-opus");
-    map.insert("gemini", "google/gemini-pro");
+    map.insert("big-pickle", "opencode/big-pickle");
+    map.insert("nemotron-3-ultra-free", "opencode/nemotron-3-ultra-free");
+    map.insert(
+        "nemotron-3.5-lightning-free",
+        "opencode/nemotron-3.5-lightning-free",
+    );
+    map.insert("ling-3.1-flash-free", "opencode/ling-3.1-flash-free");
+    map.insert("mimo-v2.6-flash-free", "opencode/mimo-v2.6-flash-free");
+    map.insert("step-5-preview-free", "opencode/step-5-preview-free");
+    map.insert("exo-free", "opencode/exo-free");
+    map.insert("opus", "anthropic/claude-opus-5-5");
+    map.insert("sonnet", "anthropic/claude-sonnet-5-5");
+    map.insert("haiku", "anthropic/claude-haiku-5-5");
+    map.insert("fable", "anthropic/claude-fable-5-1");
+    map.insert("claude", "anthropic/claude-sonnet-5-5");
+    map.insert("gemini", "google/gemini-3.1-pro-preview");
     map.insert("grok", "opencode/grok-code");
     map.insert("grok-code", "opencode/grok-code");
     map.insert("grok-code-fast-1", "opencode/grok-code");
@@ -217,7 +229,7 @@ impl Default for OpencodeTool {
             supports_resume: true,
             supports_read_only: true, // Supports OPENCODE_PERMISSION
             supports_ask: false, // OPENCODE_PERMISSION is env-based policy, not a relayable JSON approval stream
-            default_model: "grok-code-fast-1",
+            default_model: "big-pickle",
         }
     }
 }

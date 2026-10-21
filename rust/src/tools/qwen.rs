@@ -24,10 +24,24 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("qwen", "qwen3-coder-plus");
     map.insert("qwen-coder", "qwen3-coder-plus");
     map.insert("qwen3", "qwen3-coder-plus");
-    map.insert("qwen3-coder", "qwen3-coder");
-    map.insert("qwen3-coder-plus", "qwen3-coder-plus");
-    map.insert("qwen3-coder-flash", "qwen3-coder-flash");
+    map.insert("max", "qwen3.8-max");
+    map.insert("qwen-max", "qwen3.8-max");
+    map.insert("plus", "qwen3.7-plus");
+    map.insert("qwen-plus", "qwen3.7-plus");
+    map.insert("flash", "qwen3.8-flash");
+    map.insert("qwen-flash", "qwen3.8-flash");
+    map.insert("coder-model", "coder-model");
+    map.insert("qwen3.8-max", "qwen3.8-max");
+    map.insert("qwen3.7-max", "qwen3.7-max");
+    map.insert("qwen3.7-plus", "qwen3.7-plus");
     map.insert("qwen3.6-plus", "qwen3.6-plus");
+    map.insert("qwen3.5-plus", "qwen3.5-plus");
+    map.insert("qwen3.8-flash", "qwen3.8-flash");
+    map.insert("qwen3.6-flash", "qwen3.6-flash");
+    map.insert("qwen3-coder-plus", "qwen3-coder-plus");
+    map.insert("qwen3-coder-next", "qwen3-coder-next");
+    map.insert("qwen3-coder", "qwen3-coder");
+    map.insert("qwen3-coder-flash", "qwen3-coder-flash");
     map.insert("qwen3.6-coder-plus", "qwen3.6-coder-plus");
     map
 }

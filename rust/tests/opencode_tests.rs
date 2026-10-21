@@ -8,7 +8,7 @@ use agent_commander::tools::opencode::{
 #[test]
 fn test_map_model_to_id_with_alias() {
     assert_eq!(map_model_to_id("grok"), "opencode/grok-code");
-    assert_eq!(map_model_to_id("gemini"), "google/gemini-pro");
+    assert_eq!(map_model_to_id("gemini"), "google/gemini-3.1-pro-preview");
 }
 
 #[test]
@@ -80,7 +80,7 @@ fn test_opencode_tool_default() {
     assert!(!tool.supports_json_input);
     assert!(!tool.supports_system_prompt);
     assert!(tool.supports_resume);
-    assert_eq!(tool.default_model, "grok-code-fast-1");
+    assert_eq!(tool.default_model, "big-pickle");
 }
 
 #[test]
@@ -100,9 +100,9 @@ fn test_map_model_to_id_gpt_aliases() {
 
 #[test]
 fn test_map_model_to_id_claude_aliases() {
-    assert_eq!(map_model_to_id("claude"), "anthropic/claude-3-5-sonnet");
-    assert_eq!(map_model_to_id("sonnet"), "anthropic/claude-3-5-sonnet");
-    assert_eq!(map_model_to_id("opus"), "anthropic/claude-3-opus");
+    assert_eq!(map_model_to_id("claude"), "anthropic/claude-sonnet-5-5");
+    assert_eq!(map_model_to_id("sonnet"), "anthropic/claude-sonnet-5-5");
+    assert_eq!(map_model_to_id("opus"), "anthropic/claude-opus-5-5");
 }
 
 #[test]

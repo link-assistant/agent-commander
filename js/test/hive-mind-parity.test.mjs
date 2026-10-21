@@ -15,7 +15,7 @@ const fixtures = JSON.parse(
 const catalog = JSON.parse(
   readFileSync(
     new URL(
-      '../../docs/case-studies/issue-50/data/model-catalog.json',
+      '../../docs/case-studies/issue-55/data/model-catalog.json',
       import.meta.url
     )
   )

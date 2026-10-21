@@ -16,6 +16,8 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("claude", "claude-3-5-sonnet");
     map.insert("sonnet", "claude-3-5-sonnet");
     map.insert("opus", "claude-3-opus");
+    map.insert("openai/formal-ai", "openai/formal-ai");
+    map.insert("openai.formal-ai", "openai.formal-ai");
     map.insert("formal-ai", "formal-ai");
     map.insert("formalai/formal-ai", "formal-ai");
     map.insert("gpt-6.1-sol", "gpt-6.1-sol");
@@ -53,11 +55,12 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("gpt-4", "gpt-4");
     map.insert("gpt4o", "gpt-4o");
     map.insert("gpt-4o", "gpt-4o");
-    map.insert("sol", "gpt-5.6-sol");
+    map.insert("daybreak-blue", "gpt-daybreak-blue-latest");
+    map.insert("daybreak-red", "gpt-daybreak-red-latest");
+    map.insert("astra", "gpt-6-astra");
+    map.insert("sol", "gpt-6.1-sol");
+    map.insert("luna", "gpt-6-luna");
     map.insert("terra", "gpt-5.6-terra");
-    map.insert("luna", "gpt-5.6-luna");
-    map.insert("openai/formal-ai", "openai/formal-ai");
-    map.insert("openai.formal-ai", "openai.formal-ai");
     map.insert("openai/gpt-6.1-sol", "openai/gpt-6.1-sol");
     map.insert("openai.gpt-6.1-sol", "openai.gpt-6.1-sol");
     map.insert("openai/gpt-6-sol", "openai/gpt-6-sol");
@@ -119,12 +122,18 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("openai.gpt-4", "openai.gpt-4");
     map.insert("openai/gpt-4o", "openai/gpt-4o");
     map.insert("openai.gpt-4o", "openai.gpt-4o");
-    map.insert("openai/sol", "openai/gpt-5.6-sol");
-    map.insert("openai.sol", "openai.gpt-5.6-sol");
+    map.insert("openai/daybreak-blue", "openai/gpt-daybreak-blue-latest");
+    map.insert("openai.daybreak-blue", "openai.gpt-daybreak-blue-latest");
+    map.insert("openai/daybreak-red", "openai/gpt-daybreak-red-latest");
+    map.insert("openai.daybreak-red", "openai.gpt-daybreak-red-latest");
+    map.insert("openai/astra", "openai/gpt-6-astra");
+    map.insert("openai.astra", "openai.gpt-6-astra");
+    map.insert("openai/sol", "openai/gpt-6.1-sol");
+    map.insert("openai.sol", "openai.gpt-6.1-sol");
+    map.insert("openai/luna", "openai/gpt-6-luna");
+    map.insert("openai.luna", "openai.gpt-6-luna");
     map.insert("openai/terra", "openai/gpt-5.6-terra");
     map.insert("openai.terra", "openai.gpt-5.6-terra");
-    map.insert("openai/luna", "openai/gpt-5.6-luna");
-    map.insert("openai.luna", "openai.gpt-5.6-luna");
     map
 }
 

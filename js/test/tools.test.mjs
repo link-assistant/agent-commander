@@ -56,15 +56,15 @@ test('getTool - throws for unknown tool', () => {
 test('claudeTool - mapModelToId with alias', () => {
   assert.strictEqual(
     claudeTool.mapModelToId({ model: 'sonnet' }),
-    'claude-sonnet-5'
+    'claude-sonnet-5-5'
   );
   assert.strictEqual(
     claudeTool.mapModelToId({ model: 'opus' }),
-    'claude-opus-5'
+    'claude-opus-5-5'
   );
   assert.strictEqual(
     claudeTool.mapModelToId({ model: 'haiku' }),
-    'claude-haiku-4-5-20251001'
+    'claude-haiku-5-5'
   );
 });
 
@@ -100,7 +100,7 @@ test('claudeTool - buildArgs with prompt', () => {
 test('claudeTool - buildArgs with model', () => {
   const args = claudeTool.buildArgs({ model: 'sonnet' });
   assert.ok(args.includes('--model'));
-  assert.ok(args.includes('claude-sonnet-5'));
+  assert.ok(args.includes('claude-sonnet-5-5'));
 });
 
 test('claudeTool - parseOutput with NDJSON', () => {
@@ -135,7 +135,7 @@ test('claudeTool - buildArgs with fallback model', () => {
   assert.ok(args.includes('--model'));
   assert.ok(args.includes('opus'));
   assert.ok(args.includes('--fallback-model'));
-  assert.ok(args.includes('claude-sonnet-5'));
+  assert.ok(args.includes('claude-sonnet-5-5'));
 });
 
 test('claudeTool - buildArgs with append-system-prompt', () => {
@@ -255,7 +255,7 @@ test('opencodeTool - mapModelToId with alias', () => {
   );
   assert.strictEqual(
     opencodeTool.mapModelToId({ model: 'gemini' }),
-    'google/gemini-pro'
+    'google/gemini-3.1-pro-preview'
   );
 });
 
@@ -274,7 +274,7 @@ test('agentTool - mapModelToId with alias', () => {
   );
   assert.strictEqual(
     agentTool.mapModelToId({ model: 'sonnet' }),
-    'anthropic/claude-3-5-sonnet'
+    'anthropic/claude-sonnet-5-5'
   );
 });
 
@@ -379,7 +379,7 @@ test('agentTool - detectErrors returns false for normal output', () => {
 test('agentTool - mapModelToId with nemotron-3-super-free (new default)', () => {
   assert.strictEqual(
     agentTool.mapModelToId({ model: 'nemotron-3-super-free' }),
-    'opencode/nemotron-3-super-free'
+    'kilo/nemotron-3-super-free'
   );
 });
 
@@ -602,22 +602,13 @@ test('qwenTool - buildCommand reads prompt file with passthrough options', () =>
 });
 // Gemini tool tests
 test('geminiTool - mapModelToId with alias', () => {
-  assert.strictEqual(
-    geminiTool.mapModelToId({ model: 'flash' }),
-    'gemini-2.5-flash'
-  );
-  assert.strictEqual(
-    geminiTool.mapModelToId({ model: 'pro' }),
-    'gemini-2.5-pro'
-  );
+  assert.strictEqual(geminiTool.mapModelToId({ model: 'flash' }), 'flash');
+  assert.strictEqual(geminiTool.mapModelToId({ model: 'pro' }), 'pro');
   assert.strictEqual(
     geminiTool.mapModelToId({ model: '3-flash' }),
     'gemini-3-flash-preview'
   );
-  assert.strictEqual(
-    geminiTool.mapModelToId({ model: 'lite' }),
-    'gemini-2.5-flash-lite'
-  );
+  assert.strictEqual(geminiTool.mapModelToId({ model: 'lite' }), 'flash-lite');
   assert.strictEqual(
     geminiTool.mapModelToId({ model: '3-pro' }),
     'gemini-3-pro-preview'
@@ -640,7 +631,7 @@ test('geminiTool - buildArgs with prompt', () => {
 test('geminiTool - buildArgs with model', () => {
   const args = geminiTool.buildArgs({ model: 'flash', yolo: false });
   assert.ok(args.includes('-m'));
-  assert.ok(args.includes('gemini-2.5-flash'));
+  assert.ok(args.includes('flash'));
 });
 
 test('geminiTool - buildArgs with yolo mode', () => {

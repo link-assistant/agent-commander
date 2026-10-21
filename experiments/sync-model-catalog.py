@@ -1,8 +1,10 @@
 # Synchronize pinned catalogue additions, retaining older aliases absent upstream.
-import json, re
+import json, re, sys
 from pathlib import Path
-catalog = json.loads(Path('docs/case-studies/issue-50/data/model-catalog.json').read_text())
-Path('js/src/tools/model-catalog.mjs').write_text('// Hive Mind bundled catalogue; provenance: docs/case-studies/issue-50.\n// Updated by experiments/sync-model-catalog.py. Native CLIs validate availability.\nexport const syncedModels = ' + json.dumps(catalog['models'], indent=2) + ';\nexport const syncedDefaults = ' + json.dumps(catalog['defaults'], indent=2) + ';\n')
+case_study = sys.argv[1] if len(sys.argv) > 1 else 'docs/case-studies/issue-55'
+snapshot = Path(case_study) / 'data/model-catalog.json'
+catalog = json.loads(snapshot.read_text())
+Path('js/src/tools/model-catalog.mjs').write_text('// Hive Mind bundled catalogue; provenance: ' + case_study + '.\n// Updated by experiments/sync-model-catalog.py. Native CLIs validate availability.\nexport const syncedModels = ' + json.dumps(catalog['models'], indent=2) + ';\nexport const syncedDefaults = ' + json.dumps(catalog['defaults'], indent=2) + ';\n')
 for tool, models in catalog['models'].items():
     path = Path('js/src/tools/' + tool + '.mjs')
     source = path.read_text()
@@ -29,4 +31,4 @@ for tool, models in catalog['models'].items():
     path.write_text(source)
 
 Path('rust/tests/fixtures').mkdir(parents=True, exist_ok=True)
-Path('rust/tests/fixtures/model-catalog.json').write_text(Path('docs/case-studies/issue-50/data/model-catalog.json').read_text())
+Path('rust/tests/fixtures/model-catalog.json').write_text(snapshot.read_text())

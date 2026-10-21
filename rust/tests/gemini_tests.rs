@@ -7,10 +7,10 @@ use agent_commander::tools::gemini::{
 
 #[test]
 fn test_map_model_to_id_with_alias() {
-    assert_eq!(map_model_to_id("flash"), "gemini-2.5-flash");
-    assert_eq!(map_model_to_id("pro"), "gemini-2.5-pro");
+    assert_eq!(map_model_to_id("flash"), "flash");
+    assert_eq!(map_model_to_id("pro"), "pro");
     assert_eq!(map_model_to_id("3-flash"), "gemini-3-flash-preview");
-    assert_eq!(map_model_to_id("lite"), "gemini-2.5-flash-lite");
+    assert_eq!(map_model_to_id("lite"), "flash-lite");
     assert_eq!(map_model_to_id("3-pro"), "gemini-3-pro-preview");
 }
 
@@ -38,7 +38,7 @@ fn test_build_args_with_model() {
     };
     let args = build_args(&options);
     assert!(args.contains(&"-m".to_string()));
-    assert!(args.contains(&"gemini-2.5-flash".to_string()));
+    assert!(args.contains(&"flash".to_string()));
 }
 
 #[test]

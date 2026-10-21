@@ -24,7 +24,16 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("big-pickle", "opencode/big-pickle");
     map.insert("gpt-5-nano", "opencode/gpt-5-nano");
     map.insert("minimax-m2.5-free", "opencode/minimax-m2.5-free");
-    map.insert("nemotron-3-super-free", "opencode/nemotron-3-super-free");
+    map.insert("nemotron-3-super-free", "kilo/nemotron-3-super-free");
+    map.insert("nemotron-3-ultra-free", "opencode/nemotron-3-ultra-free");
+    map.insert(
+        "nemotron-3.5-lightning-free",
+        "opencode/nemotron-3.5-lightning-free",
+    );
+    map.insert("ling-3.1-flash-free", "opencode/ling-3.1-flash-free");
+    map.insert("mimo-v2.6-flash-free", "opencode/mimo-v2.6-flash-free");
+    map.insert("step-5-preview-free", "opencode/step-5-preview-free");
+    map.insert("exo-free", "opencode/exo-free");
     map.insert("glm-5-free", "kilo/glm-5-free");
     map.insert("glm-4.5-air-free", "kilo/glm-4.5-air-free");
     map.insert("deepseek-r1-free", "kilo/deepseek-r1-free");
@@ -36,6 +45,7 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("kilo/deepseek-r1-free", "kilo/deepseek-r1-free");
     map.insert("kilo/giga-potato-free", "kilo/giga-potato-free");
     map.insert("kilo/trinity-large-preview", "kilo/trinity-large-preview");
+    map.insert("kilo/nemotron-3-super-free", "kilo/nemotron-3-super-free");
     map.insert("qwen3.6-plus-free", "opencode/qwen3.6-plus-free");
     map.insert("kimi-k2.5-free", "opencode/kimi-k2.5-free");
     map.insert("glm-4.7-free", "opencode/glm-4.7-free");
@@ -43,10 +53,12 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("kilo/glm-4.7-free", "kilo/glm-4.7-free");
     map.insert("kilo/kimi-k2.5-free", "kilo/kimi-k2.5-free");
     map.insert("kilo/minimax-m2.1-free", "kilo/minimax-m2.1-free");
-    map.insert("sonnet", "anthropic/claude-3-5-sonnet");
-    map.insert("haiku", "anthropic/claude-3-5-haiku");
-    map.insert("opus", "anthropic/claude-3-opus");
-    map.insert("gemini-3-pro", "google/gemini-3-pro");
+    map.insert("opus", "anthropic/claude-opus-5-5");
+    map.insert("sonnet", "anthropic/claude-sonnet-5-5");
+    map.insert("haiku", "anthropic/claude-haiku-5-5");
+    map.insert("fable", "anthropic/claude-fable-5-1");
+    map.insert("gemini-pro", "google/gemini-3.1-pro-preview");
+    map.insert("gemini-3-pro", "google/gemini-3.1-pro-preview");
     map
 }
 

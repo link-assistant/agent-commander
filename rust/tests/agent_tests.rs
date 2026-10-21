@@ -8,7 +8,7 @@ use agent_commander::tools::agent::{
 #[test]
 fn test_map_model_to_id_with_alias() {
     assert_eq!(map_model_to_id("grok"), "opencode/grok-code");
-    assert_eq!(map_model_to_id("sonnet"), "anthropic/claude-3-5-sonnet");
+    assert_eq!(map_model_to_id("sonnet"), "anthropic/claude-sonnet-5-5");
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn test_agent_tool_default() {
 fn test_map_model_to_id_nemotron_3_super_free() {
     assert_eq!(
         map_model_to_id("nemotron-3-super-free"),
-        "opencode/nemotron-3-super-free"
+        "kilo/nemotron-3-super-free"
     );
 }
 
@@ -160,12 +160,15 @@ fn test_map_model_to_id_grok_variants() {
 
 #[test]
 fn test_map_model_to_id_anthropic_models() {
-    assert_eq!(map_model_to_id("haiku"), "anthropic/claude-3-5-haiku");
-    assert_eq!(map_model_to_id("opus"), "anthropic/claude-3-opus");
+    assert_eq!(map_model_to_id("haiku"), "anthropic/claude-haiku-5-5");
+    assert_eq!(map_model_to_id("opus"), "anthropic/claude-opus-5-5");
 }
 
 #[test]
 fn test_map_model_to_id_other_providers() {
-    assert_eq!(map_model_to_id("gemini-3-pro"), "google/gemini-3-pro");
+    assert_eq!(
+        map_model_to_id("gemini-3-pro"),
+        "google/gemini-3.1-pro-preview"
+    );
     assert_eq!(map_model_to_id("gpt-5-nano"), "opencode/gpt-5-nano");
 }
