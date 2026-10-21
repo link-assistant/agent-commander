@@ -2,30 +2,19 @@
  * Shared parsing helpers for native CLI tool output
  */
 
+import { parseJsonRecords } from '../streaming/json-records.mjs';
+
 /**
- * Parse newline-delimited JSON objects, skipping diagnostics and invalid lines
+ * Parse JSON objects from tool output, skipping diagnostics and invalid text
+ * Accepts NDJSON as well as pretty-printed and concatenated records.
  * @param {Object} options - Options
  * @param {string} options.output - Raw output string
  * @returns {Object[]} Array of parsed JSON messages
  */
 export function parseJsonLines(options) {
-  const { output } = options;
-  const messages = [];
-
-  for (const line of output.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || !trimmed.startsWith('{')) {
-      continue;
-    }
-
-    try {
-      messages.push(JSON.parse(trimmed));
-    } catch {
-      // Skip lines that aren't valid JSON
-    }
-  }
-
-  return messages;
+  return parseJsonRecords(options.output).filter(
+    (value) => value && typeof value === 'object' && !Array.isArray(value)
+  );
 }
 
 /**

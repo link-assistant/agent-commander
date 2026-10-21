@@ -28,6 +28,7 @@ import {
 import { getTool, isToolSupported } from './tools/index.mjs';
 import { createOutputStream, createInputStream } from './streaming/index.mjs';
 import { stringifyNdjsonLine } from './streaming/ndjson.mjs';
+import { parseJsonRecords } from './streaming/json-records.mjs';
 import { buildNormalizedResultMetadata } from './result-metadata.mjs';
 import { requireCompletedResult } from './completion.mjs';
 import { PermissionRelay, askUnsupportedError } from './permissions/index.mjs';
@@ -138,32 +139,11 @@ function parseJsonMessages(options) {
     }
   }
 
-  // Default parsing logic
-  try {
-    // Try to parse as JSON array
-    const parsed = JSON.parse(output);
-    if (Array.isArray(parsed)) {
-      return parsed;
-    }
-    // If single object, wrap in array
-    return [parsed];
-  } catch {
-    // Try to extract JSON objects line by line (NDJSON)
-    const lines = output.split('\n');
-    const messages = [];
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-        try {
-          const parsed = JSON.parse(trimmed);
-          messages.push(parsed);
-        } catch {
-          // Skip lines that aren't valid JSON
-        }
-      }
-    }
-    return messages.length > 0 ? messages : null;
-  }
+  // Default parsing logic: NDJSON, pretty-printed, or concatenated records
+  const messages = parseJsonRecords(output).flatMap((value) =>
+    Array.isArray(value) ? value : [value]
+  );
+  return messages.length > 0 ? messages : null;
 }
 
 /**
@@ -670,6 +650,10 @@ export {
 export { tools, getTool, listTools, isToolSupported } from './tools/index.mjs';
 export { JsonOutputStream, JsonInputStream } from './streaming/index.mjs';
 export { parseNdjsonLine, stringifyNdjsonLine } from './streaming/ndjson.mjs';
+export {
+  createJsonRecordScanner,
+  parseJsonRecords,
+} from './streaming/json-records.mjs';
 export { buildNormalizedResultMetadata } from './result-metadata.mjs';
 export {
   buildAgentTuiLaunch,

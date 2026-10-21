@@ -6,8 +6,11 @@
 import { JsonOutputStream } from './output-stream.mjs';
 import { JsonInputStream } from './input-stream.mjs';
 import { parseNdjsonLine, stringifyNdjsonLine } from './ndjson.mjs';
+import { createJsonRecordScanner, parseJsonRecords } from './json-records.mjs';
 
 export {
+  createJsonRecordScanner,
+  parseJsonRecords,
   JsonOutputStream,
   JsonInputStream,
   parseNdjsonLine,

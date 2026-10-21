@@ -1,4 +1,5 @@
 import { completionState, outcomeMessages } from './completion.mjs';
+import { parseJsonRecords } from './streaming/json-records.mjs';
 const USAGE_LIMIT_PATTERNS = [
   /usage limit (?:reached|exceeded)/i,
   // Require an explicit qualifier so a bare "ratelimit" does not match. The raw
@@ -27,34 +28,9 @@ const TIMEZONE_PATTERN =
   /\b(?:UTC(?:[+-]\d{1,2}(?::\d{2})?)?|[A-Z]{2,5}|[A-Za-z]+\/[A-Za-z_/-]+)\b/;
 
 function parseJsonMessages(output) {
-  if (!output) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(output);
-    return Array.isArray(parsed) ? parsed : [parsed];
-  } catch {
-    const messages = [];
-    for (const line of output.split('\n')) {
-      const trimmed = line.trim();
-      if (!trimmed || (!trimmed.startsWith('{') && !trimmed.startsWith('['))) {
-        continue;
-      }
-
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) {
-          messages.push(...parsed);
-        } else {
-          messages.push(parsed);
-        }
-      } catch {
-        // Ignore non-JSON lines mixed into CLI output.
-      }
-    }
-    return messages;
-  }
+  return parseJsonRecords(output || '').flatMap((value) =>
+    Array.isArray(value) ? value : [value]
+  );
 }
 
 function normalizeMessages({ parsedOutput, plainOutput, toolConfig }) {
