@@ -1,5 +1,8 @@
 import { completionState, outcomeMessages } from './completion.mjs';
+import { assessBackgroundTasks } from './background-tasks.mjs';
 import { firstErrorText } from './error-text.mjs';
+import { signalFromExitCode } from './executor.mjs';
+import { extractObservedModels, isRealModelId } from './observed-models.mjs';
 import { parseJsonRecords } from './streaming/json-records.mjs';
 import {
   classifyDebugLines,
@@ -158,7 +161,7 @@ function extractResultModelUsage(messages) {
       message.model || message.message?.model || message.part?.model;
     const usage =
       message.usage || message.message?.usage || message.part?.tokens;
-    if (model && usage && typeof usage === 'object') {
+    if (isRealModelId(model) && usage && typeof usage === 'object') {
       usageByModel[model] = usageByModel[model] || [];
       usageByModel[model].push(usage);
     }
@@ -275,6 +278,10 @@ function extractErrorFromMessages(messages) {
 }
 
 const PREFERRED_EXIT_LINE = /^(?:error\b|fatal:|(?:\/\S*\/)?(?:ba|z)?sh:\s)/i;
+// `2026-05-01T10:00:00.123Z DEBUG codex_core::...` tracing telemetry is not an
+// exit reason (hive-mind codex.process-exit).
+const TRACING_LINE =
+  /^\S*?\d{4}-\d{2}-\d{2}T[\d:.]+Z\s+(?:TRACE|DEBUG|INFO|WARN|ERROR)\s/;
 
 // The reason a process exited is a plain text line: JSON records, the
 // ANTHROPIC_LOG=debug dump and its base64 bodies are not (hive-mind#3570).
@@ -284,7 +291,7 @@ function exitReasonLine(plainOutput) {
   const candidates = lines
     .filter((_, index) => !debugLines.has(index))
     .map((line) => line.trim())
-    .filter(Boolean);
+    .filter((line) => line && !TRACING_LINE.test(line));
   return (
     candidates.findLast((line) => PREFERRED_EXIT_LINE.test(line)) ||
     candidates.at(-1) ||
@@ -292,7 +299,31 @@ function exitReasonLine(plainOutput) {
   );
 }
 
-function detectExecutionError({ exitCode, plainOutput, messages, toolConfig }) {
+function exitCodeError({ exitCode, signal, plainOutput }) {
+  const reason = exitReasonLine(plainOutput || '');
+  if (!signal) {
+    return {
+      hasError: true,
+      errorType: 'exit_code',
+      message: reason || `Process exited with code ${exitCode}`,
+    };
+  }
+  // A signal is the cause; a preferred error line may still say why it came.
+  const preferred = reason && PREFERRED_EXIT_LINE.test(reason) ? reason : null;
+  return {
+    hasError: true,
+    errorType: 'signal',
+    message: `Process exited with code ${exitCode} (${signal})${preferred ? `: ${preferred}` : ''}`,
+  };
+}
+
+function detectExecutionError({
+  exitCode,
+  signal,
+  plainOutput,
+  messages,
+  toolConfig,
+}) {
   if (toolConfig?.detectErrors) {
     const detected = toolConfig.detectErrors({
       output: messages.map((message) => JSON.stringify(message)).join('\n'),
@@ -312,16 +343,36 @@ function detectExecutionError({ exitCode, plainOutput, messages, toolConfig }) {
   }
 
   if (exitCode !== 0) {
-    return {
-      hasError: true,
-      errorType: 'exit_code',
-      message:
-        exitReasonLine(plainOutput || '') ||
-        `Process exited with code ${exitCode}`,
-    };
+    return exitCodeError({ exitCode, signal, plainOutput });
   }
 
   return { hasError: false, errorType: null, message: null };
+}
+
+// Claude's API failure details, passed through for callers that log or
+// classify them (hive-mind feca4bcfb: errorCode, api_error_status, terminal_reason).
+function extractApiErrorDetails(messages) {
+  const result = [...messages]
+    .reverse()
+    .find((event) => event?.type === 'result');
+  const apiMessage = [...messages]
+    .reverse()
+    .find(
+      (event) =>
+        event?.type === 'assistant' && event.is_api_error_message === true
+    );
+  const stringError = (event) =>
+    typeof event?.error === 'string' ? event.error : null;
+  return {
+    apiError:
+      result?.api_error ??
+      stringError(result) ??
+      stringError(apiMessage) ??
+      null,
+    apiErrorStatus: result?.api_error_status ?? null,
+    terminalReason: result?.terminal_reason ?? null,
+    requestId: result?.request_id ?? apiMessage?.request_id ?? null,
+  };
 }
 
 function extractSessionId({ explicitSessionId, messages }) {
@@ -378,6 +429,10 @@ function publicPricingEstimate({ tool, usage }) {
  * @param {string|null} [options.sessionId] - Extracted session ID
  * @param {Object|null} [options.usage] - Aggregated stream token usage
  * @param {Object|null} [options.toolConfig] - Tool parser configuration
+ * @param {string|null} [options.signal] - Signal that ended the process;
+ *   inferred from an exit code above 128 when omitted
+ * @param {boolean} [options.terminatedAfterResult] - The caller stopped the
+ *   process after its result arrived
  * @returns {Object} Normalized result metadata
  */
 export function buildNormalizedResultMetadata(options) {
@@ -389,7 +444,9 @@ export function buildNormalizedResultMetadata(options) {
     sessionId = null,
     usage = null,
     toolConfig = null,
+    terminatedAfterResult = false,
   } = options;
+  const signal = options.signal ?? signalFromExitCode(exitCode);
   const allMessages = normalizeMessages({
     parsedOutput,
     plainOutput,
@@ -397,8 +454,13 @@ export function buildNormalizedResultMetadata(options) {
   });
   const messages = allMessages.filter((event) => !event?.parent_tool_use_id);
   const usageLimit = detectUsageLimit({ plainOutput, messages, tool });
+  const completed = completionState(tool, messages) === 'completed';
+  // Stopping a process after its completed result is the caller's own
+  // signal, not the tool's verdict (hive-mind#3015 interpretClaudeExitCode).
+  const exitForgiven = terminatedAfterResult && completed;
   const error = detectExecutionError({
-    exitCode,
+    exitCode: exitForgiven ? 0 : exitCode,
+    signal,
     plainOutput,
     messages: outcomeMessages(tool, messages),
     toolConfig,
@@ -408,6 +470,18 @@ export function buildNormalizedResultMetadata(options) {
       hasError: true,
       errorType: 'incomplete_stream',
       message: 'Process exited before the native completion event',
+    });
+  }
+  const background = assessBackgroundTasks({
+    messages: allMessages,
+    output: plainOutput,
+    terminatedAfterResult,
+  });
+  if (!error.hasError && background.incomplete) {
+    Object.assign(error, {
+      hasError: true,
+      errorType: 'background_tasks_stopped',
+      message: background.cause,
     });
   }
   // A server-side throttle is transient: callers retry instead of waiting for a reset.
@@ -424,7 +498,12 @@ export function buildNormalizedResultMetadata(options) {
   return {
     tool,
     exitCode,
-    success: exitCode === 0 && !usageLimit.reached && !error.hasError,
+    signal,
+    success:
+      (exitCode === 0 || exitForgiven) &&
+      !usageLimit.reached &&
+      !error.hasError,
+    terminatedAfterResult: Boolean(terminatedAfterResult),
     sessionId: extractSessionId({
       explicitSessionId: sessionId,
       messages,
@@ -445,10 +524,16 @@ export function buildNormalizedResultMetadata(options) {
           },
     resultSummary: extractResultSummary({ messages, plainOutput }),
     resultModelUsage: extractResultModelUsage(messages),
+    ...extractObservedModels(allMessages),
     streamTokenUsage: usage,
     subAgentCalls: extractSubAgentCalls(allMessages),
     errorDuringExecution: error.hasError,
     errorType: error.errorType,
     errorMessage: error.message,
+    ...extractApiErrorDetails(messages),
+    runningBackgroundTasks: background.runningBackgroundTasks,
+    backgroundTasksStopped: background.backgroundTasksStopped,
+    stoppedBackgroundTasks: background.stoppedBackgroundTasks,
+    printWaitCeilingSeconds: background.printWaitCeilingSeconds,
   };
 }

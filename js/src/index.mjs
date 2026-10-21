@@ -31,6 +31,11 @@ import { stringifyNdjsonLine } from './streaming/ndjson.mjs';
 import { parseJsonRecords } from './streaming/json-records.mjs';
 import { buildNormalizedResultMetadata } from './result-metadata.mjs';
 import { requireCompletedResult } from './completion.mjs';
+import {
+  createStdoutMessageReader,
+  hasFinalResult,
+  waitForExitAfterResult,
+} from './result-close.mjs';
 import { PermissionRelay, askUnsupportedError } from './permissions/index.mjs';
 
 const PROMPT_FILE_TOOLS = new Set([
@@ -430,10 +435,16 @@ export function agent(options) {
    * Stop the agent and collect output
    * @param {Object} [stopOptions] - Stop options
    * @param {boolean} [stopOptions.dryRun] - If true, just show the command
+   * @param {number} [stopOptions.closeTimeoutMs] - Stop a process that stays
+   *   this long after its final result (no isolation only); waits forever
+   *   when omitted
+   * @param {number} [stopOptions.backgroundWaitMs] - Extra time granted while
+   *   Claude background tasks still run; leaves them to Claude's own print
+   *   wait ceiling when omitted
    * @returns {Promise<Object>} Result with exitCode, output, session info, usage, and metadata
    */
   const stop = async (stopOptions = {}) => {
-    const { dryRun = false } = stopOptions;
+    const { dryRun = false, closeTimeoutMs, backgroundWaitMs } = stopOptions;
 
     // For isolation modes, send stop command
     if (isolation === 'screen' || isolation === 'docker') {
@@ -502,9 +513,20 @@ export function agent(options) {
       }
 
       try {
-        // Wait for the process to exit
-        const exitCode = await processHandle.waitForExit();
-        const { stdout, stderr } = processHandle.getOutput();
+        // Wait for the process to exit, closing it when it outlives its result
+        const waited = await waitForExitAfterResult({
+          tool,
+          waitForExit: () => processHandle.waitForExit(),
+          terminate: () => processHandle.terminate(),
+          readMessages: currentMessages,
+          closeTimeoutMs,
+          backgroundWaitMs,
+        });
+        const exitCode = waited.exitCode;
+        const terminatedAfterResult =
+          stopOptions.terminatedAfterResult === true ||
+          waited.terminatedAfterResult;
+        const { stdout, stderr, signal } = processHandle.getOutput();
 
         // Combine stdout and stderr for plain output
         const plainOutput = stdout + (stderr ? `\n${stderr}` : '');
@@ -545,11 +567,13 @@ export function agent(options) {
         const metadata = buildNormalizedResultMetadata({
           tool,
           exitCode,
+          signal,
           plainOutput,
           parsedOutput,
           sessionId,
           usage,
           toolConfig,
+          terminatedAfterResult,
         });
         if ((json || tool === 'agent') && toolConfig) {
           requireCompletedResult(metadata, tool, parsedOutput || []);
@@ -581,6 +605,21 @@ export function agent(options) {
    */
   const getSessionId = () => sessionId;
 
+  let readStdoutMessages = null;
+  // Events seen so far, from the output stream or from the raw stdout
+  const currentMessages = () => {
+    if (outputStream) {
+      return outputStream.getMessages();
+    }
+    if (!processHandle?.getOutput) {
+      return [];
+    }
+    readStdoutMessages ??= createStdoutMessageReader(
+      () => processHandle.getOutput().stdout
+    );
+    return readStdoutMessages();
+  };
+
   /**
    * Get all collected messages from the output stream
    * @returns {Object[]} Array of parsed messages
@@ -598,11 +637,20 @@ export function agent(options) {
    */
   const getToolConfig = () => toolConfig;
 
+  /**
+   * Stop the agent now and collect output. A process stopped after its final
+   * result is still judged by that result.
+   * @returns {Promise<Object>} Same result as stop()
+   */
   const cancel = async () => {
-    if (isolation === 'none') {
-      processHandle?.terminate?.();
+    let terminatedAfterResult = false;
+    if (isolation === 'none' && processHandle) {
+      terminatedAfterResult =
+        processHandle.getOutput?.().hasExited !== true &&
+        hasFinalResult(tool, currentMessages());
+      processHandle.terminate?.();
     }
-    return stop();
+    return stop({ terminatedAfterResult });
   };
 
   return {
@@ -643,10 +691,29 @@ export {
   buildDockerStopCommand,
 } from './command-builder.mjs';
 export {
+  DEFAULT_KILL_AFTER_MS,
+  DEFAULT_PIPE_DRAIN_MS,
   executeCommand,
   executeDetached,
+  isProcessGroupAlive,
+  normalizeExit,
   setupSignalHandler,
+  signalFromExitCode,
+  startCommand,
 } from './executor.mjs';
+export {
+  PRINT_BG_CEILING_PATTERN,
+  assessBackgroundTasks,
+  printWaitCeilingSeconds,
+  trackBackgroundTasks,
+} from './background-tasks.mjs';
+export { extractObservedModels, isRealModelId } from './observed-models.mjs';
+export {
+  DEFAULT_RESULT_POLL_MS,
+  createStdoutMessageReader,
+  hasFinalResult,
+  waitForExitAfterResult,
+} from './result-close.mjs';
 export { tools, getTool, listTools, isToolSupported } from './tools/index.mjs';
 export { JsonOutputStream, JsonInputStream } from './streaming/index.mjs';
 export { parseNdjsonLine, stringifyNdjsonLine } from './streaming/ndjson.mjs';
