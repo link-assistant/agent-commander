@@ -27,7 +27,8 @@ pub mod tui;
 pub mod usage_limit;
 
 use serde_json::Value;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::AsyncWriteExt;
 
@@ -236,6 +237,37 @@ fn build_prompt_file_content(
     }
 }
 
+/// Names of prompt directories created by this process
+static PROMPT_DIR_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+/// Names tried before a prompt directory is given up
+const PROMPT_DIR_ATTEMPTS: usize = 16;
+
+/// Create a new directory for a prompt file under `parent`.
+///
+/// The name holds the pid, the clock and a per-process sequence, because
+/// controllers started in parallel can read the same clock tick (macOS clocks
+/// are coarse). A name that already exists, such as a leftover from a reused
+/// pid, is skipped.
+async fn create_prompt_temp_dir(parent: &Path, nanos: u128) -> Result<PathBuf, String> {
+    for _ in 0..PROMPT_DIR_ATTEMPTS {
+        let sequence = PROMPT_DIR_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+        let dir = parent.join(format!(
+            "agent-commander-{}-{nanos}-{sequence}",
+            std::process::id()
+        ));
+        match tokio::fs::create_dir(&dir).await {
+            Ok(()) => return Ok(dir),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error.to_string()),
+        }
+    }
+    Err(format!(
+        "could not create a prompt directory in {}",
+        parent.display()
+    ))
+}
+
 fn should_create_prompt_file(options: &AgentOptions, dry_run: bool) -> bool {
     if dry_run || options.prompt_file.is_some() || !supports_prompt_file_input(&options.tool) {
         return false;
@@ -309,18 +341,11 @@ impl Agent {
             return Ok(self.options.prompt_file.clone());
         }
 
-        let unique_id = SystemTime::now()
+        let nanos = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|e| e.to_string())?
             .as_nanos();
-        let temp_dir = std::env::temp_dir().join(format!(
-            "agent-commander-{}-{}",
-            std::process::id(),
-            unique_id
-        ));
-        tokio::fs::create_dir(&temp_dir)
-            .await
-            .map_err(|e| e.to_string())?;
+        let temp_dir = create_prompt_temp_dir(&std::env::temp_dir(), nanos).await?;
         self.prompt_temp_dir = Some(temp_dir.clone());
         let prompt_file = temp_dir.join("prompt.txt");
         let content = build_prompt_file_content(
@@ -706,3 +731,34 @@ pub fn agent(options: AgentOptions) -> Result<Agent, String> {
 }
 
 // Tests are in rust/tests/lib_tests.rs
+
+#[cfg(test)]
+mod prompt_dir_tests {
+    use super::{create_prompt_temp_dir, PROMPT_DIR_SEQUENCE};
+    use std::sync::atomic::Ordering;
+
+    #[tokio::test]
+    async fn prompt_dirs_are_unique_within_one_clock_tick() {
+        let parent = tempfile::tempdir().expect("parent directory");
+        let first = create_prompt_temp_dir(parent.path(), 7).await.unwrap();
+        let second = create_prompt_temp_dir(parent.path(), 7).await.unwrap();
+        assert_ne!(first, second);
+        assert!(first.is_dir() && second.is_dir());
+    }
+
+    #[tokio::test]
+    async fn existing_prompt_dir_names_are_skipped() {
+        let parent = tempfile::tempdir().expect("parent directory");
+        let next = PROMPT_DIR_SEQUENCE.load(Ordering::Relaxed);
+        for sequence in next..next + 3 {
+            std::fs::create_dir(parent.path().join(format!(
+                "agent-commander-{}-9-{sequence}",
+                std::process::id()
+            )))
+            .unwrap();
+        }
+        let dir = create_prompt_temp_dir(parent.path(), 9).await.unwrap();
+        assert!(dir.is_dir());
+        assert_eq!(std::fs::read_dir(parent.path()).unwrap().count(), 4);
+    }
+}
