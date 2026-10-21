@@ -97,6 +97,8 @@ let mut controller = agent(AgentOptions {
     prompt_file: Some("/tmp/agent-prompt.txt".to_string()),
     executable: Some("/opt/claude-code/bin/claude".to_string()),
     extra_env: vec![("MCP_TIMEOUT".to_string(), "10000".to_string())],
+    // Inherited variables removed from the tool's environment
+    unset_env: vec!["ANTHROPIC_API_KEY".to_string()],
     extra_args: vec![
         "--mcp-config".to_string(),
         "/tmp/mcp.json".to_string(),
@@ -112,11 +114,13 @@ let mut controller = agent(AgentOptions {
 
 For direct JSON runs, `metadata.success` requires native completion and a successful process exit. Empty or unfinished streams return `incomplete_stream`; Agent's default NDJSON mode uses the same check. Protocol parsing and usage use stdout, while `plain_output` retains stderr diagnostics. Parent session metadata excludes Claude subagent-scoped results.
 
-`stop()` waits for a direct process to finish. `controller.cancel().await?` interrupts it and collects the final result. Unix cancellation signals the process group; Windows cancellation signals the immediate child. A native CLI that ignores SIGTERM needs a caller-managed termination policy. Process pipes drain concurrently from start, including when attached output is disabled. Set `AGENT_COMMANDER_DEBUG=1` for cancellation diagnostics.
+`stop()` waits for a direct process to finish. `AgentStopOptions { close_timeout, background_wait, .. }` ends a process that stays alive after its final result (the Claude print-mode hang, hive-mind#1280), allowing `background_wait` more while the result reports running background tasks. Such a run keeps `success` with `terminated_after_result`. `controller.cancel().await?` interrupts it and collects the final result. Unix cancellation signals the process group; Windows cancellation signals the immediate child. A native CLI that ignores SIGTERM needs a caller-managed termination policy. Process pipes drain concurrently from start, including when attached output is disabled. Set `AGENT_COMMANDER_DEBUG=1` for cancellation diagnostics.
+
+When a failed Codex or Claude run did not print its usage limit, `stop()` reads the last turn of the Codex rollout or the last entry of the Claude transcript and sets `limit_source` to `codex-rollout` or `claude-transcript` (hive-mind#3570). A `CODEX_HOME` or `CLAUDE_CONFIG_DIR` in `extra_env` is honoured. The checks are public: `apply_codex_rollout_usage_limit`, `detect_codex_rollout_usage_limit`, `can_resume_codex_session` (hive-mind#2888), `apply_claude_transcript_usage_limit` and `read_claude_transcript_api_error`, with `CodexRolloutOptions` and `ClaudeTranscriptOptions`. `detect_usage_limit_sources` and `is_recoverable_tool_error` are Hive Mind's classifiers.
 
 Usage preserves native final totals without adding repeated assistant snapshots. Codex `input_tokens` now counts fresh input; add `cache_read_tokens` to recover inclusive input. Serializable usage structs expose cache and reasoning fields, and Qwen/Gemini results now include `usage` too.
 
-Bundled aliases track a recorded Hive Mind catalogue; exact model IDs pass through for caller-managed live discovery. Omitting `model` leaves selection to the native CLI. Claude's `opus` execution alias stays rolling. Common `resume` works for all six tools; Agent adds `--no-fork`, and OpenCode uses `--session`.
+Bundled aliases track a recorded Hive Mind catalogue (v2.39.5: `sonnet` is `claude-sonnet-5-5`, `opus` is `claude-opus-5-5`); exact model IDs pass through for caller-managed live discovery. Omitting `model` leaves selection to the native CLI. Claude's `opus` execution alias stays rolling. Common `resume` works for all six tools; Agent adds `--no-fork`, and OpenCode uses `--session`.
 
 See the [parity audit](../docs/case-studies/issue-50/README.md) for the feature matrix and regression evidence.
 

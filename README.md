@@ -347,12 +347,24 @@ console.log("Metadata:", result.metadata); // Normalized cross-tool summary
 
 `stop()` returns `result.metadata` for all six supported tools. The metadata object gives callers a stable summary without tool-specific output parsing:
 
-- `success`, `exitCode`, `errorDuringExecution`, `errorType`, and `errorMessage`
+- `success`, `exitCode`, `signal`, `terminatedAfterResult`, `errorDuringExecution`, `errorType`, and `errorMessage`. `errorType` includes `rate_limited` (a transient server throttle: retry it), `incomplete_stream` (the process exited before the native completion event) and `background_tasks_stopped`. A process that `stop()` ends after its completed result is not a failure.
 - `sessionId`
-- `limitReached`, `limitResetTime`, and `limitTimezone`
+- `limitReached`, `limitResetTime`, `limitTimezone`, `limitResetsAt` (epoch seconds, from structured sources) and `limitWindow` (`5-hour`, `weekly`, ...)
+- `limitSource`: set when the limit was found outside the output, as `codex-rollout` or `claude-transcript` (see below)
+- `apiError`, `apiErrorStatus`, `terminalReason`, and `requestId` (Claude API failure details)
 - `resultSummary`
 - `anthropicTotalCostUSD`, `publicPricingEstimate`, and `pricingInfo`
-- `resultModelUsage`, `streamTokenUsage`, and `subAgentCalls`
+- `resultModelUsage`, `streamTokenUsage`, `subAgentCalls`, `observedModels`, and `observedModel` (the models that actually answered)
+- `runningBackgroundTasks`, `backgroundTasksStopped`, `stoppedBackgroundTasks`, and `printWaitCeilingSeconds`
+
+#### Usage limits that only the session files report
+
+`codex exec --json` and `claude -p` do not always print a usage limit when they fail on one. For a failed run that ended on its own, without a signal and without a limit in its output, `stop()` checks the session file the CLI wrote:
+
+- **Codex**: the last turn of `$CODEX_HOME/sessions/YYYY/MM/DD/rollout-*-<thread id>.jsonl`. It uses a `token_count` `rate_limits` window at 100% with a `resets_at`, or an `error` event with `usage_limit_exceeded`.
+- **Claude**: `${CLAUDE_CONFIG_DIR:-~/.claude}/projects/<working-directory slug>/<session id>.jsonl`, when its last conversation entry is an `isApiErrorMessage` usage-limit message.
+
+A `CODEX_HOME` or `CLAUDE_CONFIG_DIR` passed in `toolOptions.extraEnv` is honoured. Only the last turn or entry is read, so a limit the session recovered from is not reported. The same checks are exported for callers that run the CLIs themselves: `applyCodexRolloutUsageLimit`, `detectCodexRolloutUsageLimit`, `canResumeCodexSession` (a missing rollout means `codex exec resume` cannot work, so start a new session), `applyClaudeTranscriptUsageLimit` and `readClaudeTranscriptApiError`. Hive Mind's text classifiers are exported too: `detectUsageLimitSources`, `isUsageLimitText`, `extractResetTime` and `isRecoverableToolError`.
 
 ### Using Different Tools
 
@@ -534,11 +546,11 @@ console.log(isToolSupported({ toolName: "claude" })); // true
 
 // Get tool configuration
 const claudeTool = getTool({ toolName: "claude" });
-console.log(claudeTool.modelMap); // { sonnet: 'claude-sonnet-5', opus: 'claude-opus-5', ... }
+console.log(claudeTool.modelMap); // { sonnet: 'claude-sonnet-5-5', opus: 'claude-opus-5-5', ... }
 
 // Map model alias to full ID
 const fullId = claudeTool.mapModelToId({ model: "opus" });
-console.log(fullId); // 'claude-opus-5'
+console.log(fullId); // 'claude-opus-5-5'
 ```
 
 ## API Reference
@@ -564,7 +576,7 @@ Creates an agent controller.
 - `options.containerName` (string, optional) - Container name (required for docker isolation)
 - `options.toolOptions` (object, optional) - Additional tool-specific options
   - `executable` (string, optional) - Override the native executable path/name for any supported tool
-  - `extraEnv` (object or `KEY=VALUE` / `[key, value]` array, optional) - Environment variables applied to the native tool process
+  - `extraEnv` (object or `KEY=VALUE` / `[key, value]` array, optional) - Environment variables applied to the native tool process. A `null` value unsets an inherited variable (`env -u`), for example `{ ANTHROPIC_API_KEY: null }`.
   - `extraArgs` (string array, optional) - Raw native tool arguments appended after typed agent-commander arguments
   - `skipDefaultSafetyFlags` (boolean, optional) - Do not add default autonomous safety bypass flags such as Claude/Codex bypass flags or Qwen/Gemini `--yolo`
   - `permissionMode` (string, optional) - Explicit permission mode for Claude or `agent` (agent: `auto` | `plan` | `readonly` | `ask`)
@@ -598,6 +610,8 @@ For `isolation: 'screen'` or `'docker'`: Sends stop command to the isolated envi
 **Parameters:**
 
 - `stopOptions.dryRun` (boolean, optional) - Preview command without executing
+- `stopOptions.closeTimeoutMs` (number, optional) - Stop a process that stays alive this long after its final result (the Claude print-mode hang). The whole process group is stopped.
+- `stopOptions.backgroundWaitMs` (number, optional) - Extra time allowed while the result reports background tasks that are still running
 
 **Returns:** Promise resolving to:
 
@@ -609,7 +623,8 @@ For `isolation: 'screen'` or `'docker'`: Sends stop command to the isolated envi
     parsed: Array|null  // JSON-parsed messages (if tool supports it)
   },
   sessionId: string|null,  // Session ID for resuming
-  usage: Object|null       // Token usage statistics
+  usage: Object|null,      // Token usage statistics
+  metadata: Object         // Normalized result metadata (see above)
 }
 ```
 
