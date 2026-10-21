@@ -3,7 +3,7 @@
 
 use super::usage::{self, count};
 use crate::streaming::parse_json_records;
-use crate::tools::shell::{build_command_head, escape_arg};
+use crate::tools::shell::{build_command_head, escape_arg, lookup_model_alias};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -90,11 +90,71 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
 /// # Returns
 /// Full model ID
 pub fn map_model_to_id(model: &str) -> String {
-    let model_map = get_model_map();
-    model_map
-        .get(model)
-        .map(|s| s.to_string())
+    if let Some(base) = strip_one_million_suffix(model) {
+        return format!("{}[1m]", map_base_model_to_id(base));
+    }
+    map_base_model_to_id(model)
+}
+
+/// Rolling Claude Code aliases. Claude Code resolves them itself, so a direct
+/// run keeps them and follows the vendor's newest model (hive-mind#2290).
+pub const ROLLING_CLAUDE_ALIASES: [&str; 3] = ["opus", "sonnet", "haiku"];
+
+fn strip_one_million_suffix(model: &str) -> Option<&str> {
+    let split = model.len().checked_sub(4)?;
+    (model.is_char_boundary(split) && model[split..].eq_ignore_ascii_case("[1m]") && split > 0)
+        .then(|| &model[..split])
+}
+
+fn map_base_model_to_id(model: &str) -> String {
+    lookup_model_alias(&get_model_map(), model)
+        .or_else(|| expand_claude_version_shorthand(model))
         .unwrap_or_else(|| model.to_string())
+}
+
+/// Expand a version shorthand for a known Claude family (hive-mind#2591).
+///
+/// `opus-6` / `opus-6.1` / `claude-opus-6.1` become `claude-opus-6` /
+/// `claude-opus-6-1`, so a release newer than this build reaches Claude Code
+/// under its canonical ID.
+pub fn expand_claude_version_shorthand(model: &str) -> Option<String> {
+    let lower = model.to_ascii_lowercase();
+    let rest = lower.strip_prefix("claude-").unwrap_or(&lower);
+    let (family, version) = rest.split_once('-')?;
+    let (major, minor) = match version.split_once(['.', '-']) {
+        Some((major, minor)) => (major, Some(minor)),
+        None => (version, None),
+    };
+    let is_number = |part: &str| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit());
+    if family.is_empty()
+        || !family.bytes().all(|b| b.is_ascii_lowercase())
+        || !is_number(major)
+        || !minor.is_none_or(is_number)
+    {
+        return None;
+    }
+    let known_family = get_model_map().values().any(|id| {
+        id.strip_prefix("claude-")
+            .and_then(|id| id.strip_prefix(family))
+            .and_then(|id| id.strip_prefix('-'))
+            .is_some_and(|id| id.starts_with(|c: char| c.is_ascii_digit()))
+    });
+    known_family.then(|| match minor {
+        Some(minor) => format!("claude-{family}-{major}-{minor}"),
+        None => format!("claude-{family}-{major}"),
+    })
+}
+
+/// Model value for `--model` / `--fallback-model`: rolling aliases stay
+/// (lower-cased, `[1m]` kept), everything else maps to its full ID.
+pub fn model_arg(model: &str) -> String {
+    let (base, suffix) = strip_one_million_suffix(model).map_or((model, ""), |base| (base, "[1m]"));
+    let lower = base.to_ascii_lowercase();
+    if ROLLING_CLAUDE_ALIASES.contains(&lower.as_str()) {
+        format!("{lower}{suffix}")
+    } else {
+        map_model_to_id(model)
+    }
 }
 
 /// Claude command build options
@@ -164,17 +224,12 @@ pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
     }
 
     if let Some(ref model) = options.model {
-        let mapped_model = if model == "opus" {
-            model.clone()
-        } else {
-            map_model_to_id(model)
-        };
         args.push("--model".to_string());
-        args.push(mapped_model);
+        args.push(model_arg(model));
     }
 
     if let Some(ref fallback_model) = options.fallback_model {
-        let mapped_fallback = map_model_to_id(fallback_model);
+        let mapped_fallback = model_arg(fallback_model);
         args.push("--fallback-model".to_string());
         args.push(mapped_fallback);
     }

@@ -98,9 +98,51 @@ test('claudeTool - buildArgs with prompt', () => {
 });
 
 test('claudeTool - buildArgs with model', () => {
-  const args = claudeTool.buildArgs({ model: 'sonnet' });
+  const args = claudeTool.buildArgs({ model: 'sonnet-5.5' });
   assert.ok(args.includes('--model'));
   assert.ok(args.includes('claude-sonnet-5-5'));
+});
+
+test('claudeTool - rolling aliases reach Claude Code unpinned (hive-mind#2290)', () => {
+  for (const [model, expected] of [
+    ['opus', 'opus'],
+    ['Sonnet', 'sonnet'],
+    ['HAIKU', 'haiku'],
+    ['opus[1m]', 'opus[1m]'],
+    ['fable', claudeTool.modelMap.fable],
+    ['sonnet-5.5[1m]', 'claude-sonnet-5-5[1m]'],
+  ]) {
+    const args = claudeTool.buildArgs({ model, fallbackModel: model });
+    assert.strictEqual(args[args.indexOf('--model') + 1], expected, model);
+    assert.strictEqual(
+      args[args.indexOf('--fallback-model') + 1],
+      expected,
+      model
+    );
+  }
+  assert.strictEqual(
+    claudeTool.mapModelToId({ model: 'sonnet' }),
+    'claude-sonnet-5-5'
+  );
+});
+
+test('claudeTool - aliases match case-insensitively and versions expand (hive-mind#2591)', () => {
+  assert.strictEqual(
+    claudeTool.mapModelToId({ model: 'Opus-4.7' }),
+    'claude-opus-4-7'
+  );
+  assert.strictEqual(
+    claudeTool.mapModelToId({ model: 'opus-6.1' }),
+    'claude-opus-6-1'
+  );
+  assert.strictEqual(
+    claudeTool.mapModelToId({ model: 'claude-sonnet-7' }),
+    'claude-sonnet-7'
+  );
+  assert.strictEqual(
+    claudeTool.mapModelToId({ model: 'unknown-6' }),
+    'unknown-6'
+  );
 });
 
 test('claudeTool - parseOutput with NDJSON', () => {
@@ -131,7 +173,10 @@ test('claudeTool - buildArgs uses stream-json output format', () => {
 });
 
 test('claudeTool - buildArgs with fallback model', () => {
-  const args = claudeTool.buildArgs({ model: 'opus', fallbackModel: 'sonnet' });
+  const args = claudeTool.buildArgs({
+    model: 'opus',
+    fallbackModel: 'sonnet-5.5',
+  });
   assert.ok(args.includes('--model'));
   assert.ok(args.includes('opus'));
   assert.ok(args.includes('--fallback-model'));

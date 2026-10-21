@@ -431,7 +431,7 @@ mod tests {
         assert!(command.contains("--model"));
         assert!(command.contains("--model opus"));
         assert!(command.contains("--fallback-model"));
-        assert!(command.contains("claude-sonnet-5"));
+        assert!(command.contains("--fallback-model sonnet"));
     }
 
     #[test]

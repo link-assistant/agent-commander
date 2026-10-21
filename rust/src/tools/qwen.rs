@@ -4,7 +4,7 @@
 
 use super::usage::{self, count};
 use crate::streaming::parse_json_records;
-use crate::tools::shell::{build_command_head, escape_arg};
+use crate::tools::shell::{build_command_head, escape_arg, lookup_model_alias};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -54,11 +54,7 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
 /// # Returns
 /// Full model ID
 pub fn map_model_to_id(model: &str) -> String {
-    let model_map = get_model_map();
-    model_map
-        .get(model)
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| model.to_string())
+    lookup_model_alias(&get_model_map(), model).unwrap_or_else(|| model.to_string())
 }
 
 /// Qwen command build options

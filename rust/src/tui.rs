@@ -158,7 +158,7 @@ pub enum AgentTuiError {
 
 fn mapped_model(tool: &str, model: &str) -> String {
     match tool {
-        "claude" => claude::map_model_to_id(model),
+        "claude" => claude::model_arg(model),
         "codex" => codex::map_model_to_id(model),
         "opencode" => opencode::map_model_to_id(model),
         "agent" => agent::map_model_to_id(model),

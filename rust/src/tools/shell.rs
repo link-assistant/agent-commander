@@ -23,6 +23,23 @@ pub fn escape_single_quotes(s: &str) -> String {
     s.replace('\'', "'\\''")
 }
 
+/// Look a model alias up, exactly first and then case-insensitively
+/// (`Opus` is `opus`, as in Hive Mind).
+pub fn lookup_model_alias(
+    model_map: &std::collections::HashMap<&'static str, &'static str>,
+    model: &str,
+) -> Option<String> {
+    model_map
+        .get(model)
+        .or_else(|| {
+            model_map
+                .iter()
+                .find(|(alias, _)| alias.eq_ignore_ascii_case(model))
+                .map(|(_, id)| id)
+        })
+        .map(|id| (*id).to_string())
+}
+
 pub fn is_valid_env_name(name: &str) -> bool {
     let mut chars = name.chars();
     let Some(first) = chars.next() else {

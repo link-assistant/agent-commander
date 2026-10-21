@@ -41,7 +41,7 @@ fn test_build_args_with_prompt() {
 #[test]
 fn test_build_args_with_model() {
     let options = ClaudeBuildOptions {
-        model: Some("sonnet".to_string()),
+        model: Some("sonnet-5.5".to_string()),
         ..Default::default()
     };
     let args = build_args(&options);
@@ -93,7 +93,7 @@ fn test_build_args_uses_stream_json_format() {
 fn test_build_args_with_fallback_model() {
     let options = ClaudeBuildOptions {
         model: Some("opus".to_string()),
-        fallback_model: Some("sonnet".to_string()),
+        fallback_model: Some("sonnet-5.5".to_string()),
         ..Default::default()
     };
     let args = build_args(&options);
@@ -237,4 +237,39 @@ fn test_build_command_unsets_inherited_environment() {
         cmd.contains("env -u GH_TOKEN -u MAX_THINKING_TOKENS MCP_TIMEOUT=1 claude"),
         "{cmd}"
     );
+}
+
+#[test]
+fn test_rolling_aliases_reach_claude_code_unpinned() {
+    let fable = map_model_to_id("fable");
+    for (model, expected) in [
+        ("opus", "opus"),
+        ("Sonnet", "sonnet"),
+        ("HAIKU", "haiku"),
+        ("opus[1m]", "opus[1m]"),
+        ("fable", fable.as_str()),
+        ("sonnet-5.5[1m]", "claude-sonnet-5-5[1m]"),
+    ] {
+        let args = build_args(&ClaudeBuildOptions {
+            model: Some(model.to_string()),
+            fallback_model: Some(model.to_string()),
+            ..Default::default()
+        });
+        let value = |flag: &str| {
+            let index = args.iter().position(|arg| arg == flag).expect(flag);
+            args[index + 1].clone()
+        };
+        assert_eq!(value("--model"), expected, "{model}");
+        assert_eq!(value("--fallback-model"), expected, "{model}");
+    }
+    assert_eq!(map_model_to_id("sonnet"), "claude-sonnet-5-5");
+}
+
+#[test]
+fn test_aliases_match_case_insensitively_and_versions_expand() {
+    assert_eq!(map_model_to_id("Opus-4.7"), "claude-opus-4-7");
+    assert_eq!(map_model_to_id("opus-6.1"), "claude-opus-6-1");
+    assert_eq!(map_model_to_id("claude-sonnet-7"), "claude-sonnet-7");
+    assert_eq!(map_model_to_id("unknown-6"), "unknown-6");
+    assert_eq!(map_model_to_id("[1m]"), "[1m]");
 }

@@ -18,12 +18,72 @@ export const modelMap = {
 };
 
 /**
+ * Rolling Claude Code aliases. Claude Code resolves them itself, so a direct
+ * run keeps them and follows the vendor's newest model (hive-mind#2290).
+ */
+export const ROLLING_CLAUDE_ALIASES = new Set(['opus', 'sonnet', 'haiku']);
+
+const CLAUDE_FAMILIES = new Set(
+  Object.values(modelMap)
+    .map((id) => /^claude-([a-z]+)-\d/.exec(id)?.[1])
+    .filter(Boolean)
+);
+
+/**
+ * Expand a version shorthand for a known Claude family, so a release newer
+ * than this build reaches Claude Code under its canonical ID
+ * (hive-mind#2591): `opus-6` / `opus-6.1` / `claude-opus-6.1` →
+ * `claude-opus-6` / `claude-opus-6-1`.
+ * @param {string} model - Model alias
+ * @returns {string|null} Canonical model ID
+ */
+export function expandClaudeVersionShorthand(model) {
+  const match =
+    typeof model === 'string'
+      ? /^(?:claude-)?([a-z]+)-(\d+)(?:[.-](\d+))?$/.exec(model.toLowerCase())
+      : null;
+  if (!match || !CLAUDE_FAMILIES.has(match[1])) {
+    return null;
+  }
+  return `claude-${match[1]}-${match[2]}${match[3] === undefined ? '' : `-${match[3]}`}`;
+}
+
+const mapBaseModelToId = createModelMapper(
+  modelMap,
+  expandClaudeVersionShorthand
+);
+
+/**
  * Map model alias to full model ID
+ * Aliases match case-insensitively; a `[1m]` context suffix is kept.
  * @param {Object} options - Options
  * @param {string} options.model - Model alias or full ID
  * @returns {string} Full model ID
  */
-export const mapModelToId = createModelMapper(modelMap);
+export function mapModelToId({ model }) {
+  const match = typeof model === 'string' ? /^(.+?)\[1m\]$/i.exec(model) : null;
+  return match
+    ? `${mapBaseModelToId({ model: match[1] })}[1m]`
+    : mapBaseModelToId({ model });
+}
+
+/**
+ * Model value for `--model` / `--fallback-model`: rolling aliases stay
+ * (lower-cased, `[1m]` kept), everything else maps to its full ID.
+ * @param {Object} options - Options
+ * @param {string} options.model - Model alias or full ID
+ * @returns {string} CLI model value
+ */
+export function modelArg({ model }) {
+  if (typeof model !== 'string') {
+    return model;
+  }
+  const match = /^(.+?)(\[1m\])?$/i.exec(model);
+  const base = match[1].toLowerCase();
+  return ROLLING_CLAUDE_ALIASES.has(base)
+    ? `${base}${match[2] ? '[1m]' : ''}`
+    : mapModelToId({ model });
+}
 
 /**
  * Build command line arguments for Claude
@@ -87,13 +147,11 @@ export function buildArgs(options) {
   }
 
   if (model) {
-    const mappedModel = model === 'opus' ? model : mapModelToId({ model });
-    args.push('--model', mappedModel);
+    args.push('--model', modelArg({ model }));
   }
 
   if (fallbackModel) {
-    const mappedFallback = mapModelToId({ model: fallbackModel });
-    args.push('--fallback-model', mappedFallback);
+    args.push('--fallback-model', modelArg({ model: fallbackModel }));
   }
 
   if (prompt) {
@@ -268,6 +326,7 @@ export const claudeTool = {
   defaultModel: syncedDefaults.claude,
   modelMap,
   mapModelToId,
+  modelArg,
   buildArgs,
   buildCommand,
   parseOutput,

@@ -19,10 +19,27 @@ export function parseJsonLines(options) {
 
 /**
  * Create a mapper from model aliases to full model IDs
- * Unknown values are exact model IDs and pass through unchanged.
+ * Aliases match case-insensitively (`Opus` is `opus`, as in Hive Mind).
+ * Unknown values are exact model IDs and pass through unchanged, unless
+ * `fallback` names a model ID for them.
  * @param {Object<string, string>} modelMap - Alias to model ID map
+ * @param {function(string): (string|null)} [fallback] - Resolves values the
+ *   map does not know
  * @returns {function({model: string}): string} Mapper
  */
-export function createModelMapper(modelMap) {
-  return ({ model }) => modelMap[model] || model;
+export function createModelMapper(modelMap, fallback = () => null) {
+  const lowerCaseMap = new Map(
+    Object.entries(modelMap).map(([alias, id]) => [alias.toLowerCase(), id])
+  );
+  return ({ model }) => {
+    if (typeof model !== 'string') {
+      return model;
+    }
+    return (
+      modelMap[model] ||
+      lowerCaseMap.get(model.toLowerCase()) ||
+      fallback(model) ||
+      model
+    );
+  };
 }

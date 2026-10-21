@@ -8,8 +8,10 @@ import { normalizeExtraArgs, normalizeExtraEnv } from './tools/shell.mjs';
 const READ_ONLY_OPENCODE_PERMISSION =
   '{"edit":"deny","bash":"deny","task":"deny"}';
 
-const mappedModel = (tool, model) =>
-  model && tool.mapModelToId ? tool.mapModelToId({ model }) : model;
+const mappedModel = (tool, model) => {
+  const mapper = tool.modelArg || tool.mapModelToId;
+  return model && mapper ? mapper({ model }) : model;
+};
 
 const safetyArgs = ({ readOnly, approveEach, skipDefaultSafetyFlags }) => {
   if (readOnly) {
