@@ -32,6 +32,7 @@ await writeFile(
 for (const file of [
   "agent-commander.lib.mjs",
   "models/catalog.mjs",
+  "models/aliases.mjs",
   "formal-ai-model.lib.mjs",
 ]) {
   await copyFile(
