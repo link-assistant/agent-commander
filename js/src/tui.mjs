@@ -174,13 +174,20 @@ const launchEnvironment = ({ extraEnv, tool, readOnly }) => {
   if (tool === 'opencode' && readOnly) {
     entries.push(['OPENCODE_PERMISSION', READ_ONLY_OPENCODE_PERMISSION]);
   }
-  return {
+  const env = {
     ...process.env,
     // Interactive clients such as Codex refuse to start their TUI when the
     // parent process inherited TERM=dumb (common in CI).
     TERM: 'xterm-256color',
-    ...Object.fromEntries(entries),
   };
+  for (const [name, value] of entries) {
+    if (value === null) {
+      delete env[name];
+    } else {
+      env[name] = value;
+    }
+  }
+  return env;
 };
 
 /**

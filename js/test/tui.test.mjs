@@ -40,6 +40,14 @@ test('buildAgentTuiLaunch selects interactive mode for every supported tool', ()
     extraEnv: { TERM: 'screen-256color' },
   });
   assert.strictEqual(explicitTerm.env.TERM, 'screen-256color');
+
+  const unset = buildAgentTuiLaunch({
+    tool: 'codex',
+    workingDirectory: '/workspace',
+    executable: 'codex-test',
+    extraEnv: { HOME: null },
+  });
+  assert.ok(!('HOME' in unset.env));
 });
 
 test('buildAgentTuiLaunch maps interactive safety and resume options', () => {

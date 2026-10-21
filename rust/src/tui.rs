@@ -28,6 +28,10 @@ pub struct AgentTuiOptions {
     pub extra_args: Vec<String>,
     /// Additional environment variables.
     pub extra_env: HashMap<String, String>,
+    /// Variables removed from the inherited environment; the launch then
+    /// runs through `env -u NAME`, because the terminal capture can only add
+    /// variables.
+    pub unset_env: Vec<String>,
     /// Optional model name or alias.
     pub model: Option<String>,
     /// Initial user prompt.
@@ -75,6 +79,7 @@ impl Default for AgentTuiOptions {
             prefix_args: Vec::new(),
             extra_args: Vec::new(),
             extra_env: HashMap::new(),
+            unset_env: Vec::new(),
             model: None,
             prompt: None,
             system_prompt: None,
@@ -307,11 +312,29 @@ pub fn build_agent_tui_launch(options: &AgentTuiOptions) -> Result<AgentTuiLaunc
             READ_ONLY_OPENCODE_PERMISSION.into(),
         );
     }
+    let mut file = options
+        .executable
+        .clone()
+        .unwrap_or_else(|| options.tool.clone());
+    if !options.unset_env.is_empty() {
+        let mut wrapped = Vec::with_capacity(options.unset_env.len() * 2 + args.len() + 1);
+        for name in &options.unset_env {
+            if !crate::tools::shell::is_valid_env_name(name) {
+                return Err(AgentTuiError::Launch(format!(
+                    "invalid environment variable name: {name}"
+                )));
+            }
+            env.remove(name);
+            wrapped.push("-u".to_string());
+            wrapped.push(name.clone());
+        }
+        wrapped.push(file);
+        wrapped.extend(args);
+        file = "env".into();
+        args = wrapped;
+    }
     Ok(AgentTuiLaunch {
-        file: options
-            .executable
-            .clone()
-            .unwrap_or_else(|| options.tool.clone()),
+        file,
         args,
         cwd: Some(options.working_directory.clone()),
         env,

@@ -223,3 +223,18 @@ fn test_claude_tool_default() {
     assert!(tool.supports_resume);
     assert_eq!(tool.default_model, "opus");
 }
+
+#[test]
+fn test_build_command_unsets_inherited_environment() {
+    let options = ClaudeBuildOptions {
+        prompt: Some("hi".to_string()),
+        unset_env: vec!["GH_TOKEN".to_string(), "MAX_THINKING_TOKENS".to_string()],
+        extra_env: vec![("MCP_TIMEOUT".to_string(), "1".to_string())],
+        ..ClaudeBuildOptions::new()
+    };
+    let cmd = agent_commander::tools::claude::build_command(&options);
+    assert!(
+        cmd.contains("env -u GH_TOKEN -u MAX_THINKING_TOKENS MCP_TIMEOUT=1 claude"),
+        "{cmd}"
+    );
+}

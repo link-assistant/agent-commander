@@ -66,6 +66,8 @@ pub struct OpencodeBuildOptions {
     pub read_only: bool,
     pub executable: Option<String>,
     pub extra_env: Vec<(String, String)>,
+    /// Variables removed from the inherited environment (`env -u`)
+    pub unset_env: Vec<String>,
     pub extra_args: Vec<String>,
 }
 
@@ -139,7 +141,7 @@ pub fn build_command(options: &OpencodeBuildOptions) -> String {
     format!(
         "{} | {} {}",
         input_command,
-        build_command_head(executable, &extra_env, &[]),
+        build_command_head(executable, &options.unset_env, &extra_env, &[]),
         args_str.join(" ")
     )
     .trim()

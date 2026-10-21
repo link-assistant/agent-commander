@@ -135,6 +135,8 @@ pub struct AgentOptions {
     pub extra_args: Vec<String>,
     /// Extra environment variables applied to the tool executable
     pub extra_env: Vec<(String, String)>,
+    /// Variables removed from the inherited environment of the tool
+    pub unset_env: Vec<String>,
     /// Do not add default autonomous safety bypass flags
     pub skip_default_safety_flags: bool,
 }
@@ -378,6 +380,7 @@ impl Agent {
             executable: self.options.executable.clone(),
             extra_args: self.options.extra_args.clone(),
             extra_env: self.options.extra_env.clone(),
+            unset_env: self.options.unset_env.clone(),
             skip_default_safety_flags: self.options.skip_default_safety_flags,
             isolation: self.options.isolation.clone(),
             screen_name: self.options.screen_name.clone(),

@@ -184,3 +184,28 @@ fn prompt_uses_enter_control_key() {
     };
     assert_eq!(options.prompt_key, TerminalKey::Enter);
 }
+
+#[test]
+fn unset_env_runs_the_launch_through_env() {
+    let launch = build_agent_tui_launch(&AgentTuiOptions {
+        tool: "claude".into(),
+        working_directory: "/workspace".into(),
+        executable: Some("claude-test".into()),
+        extra_env: [("GH_TOKEN".to_string(), "x".to_string())].into(),
+        unset_env: vec!["GH_TOKEN".into()],
+        ..AgentTuiOptions::default()
+    })
+    .expect("interactive launch");
+
+    assert_eq!(launch.file, "env");
+    assert_eq!(launch.args[..3], ["-u", "GH_TOKEN", "claude-test"]);
+    assert!(!launch.env.contains_key("GH_TOKEN"));
+
+    let invalid = build_agent_tui_launch(&AgentTuiOptions {
+        tool: "claude".into(),
+        working_directory: "/workspace".into(),
+        unset_env: vec!["A=B".into()],
+        ..AgentTuiOptions::default()
+    });
+    assert!(invalid.is_err());
+}

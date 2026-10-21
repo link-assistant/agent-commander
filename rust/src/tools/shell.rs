@@ -23,7 +23,7 @@ pub fn escape_single_quotes(s: &str) -> String {
     s.replace('\'', "'\\''")
 }
 
-fn is_valid_env_name(name: &str) -> bool {
+pub fn is_valid_env_name(name: &str) -> bool {
     let mut chars = name.chars();
     let Some(first) = chars.next() else {
         return false;
@@ -34,16 +34,26 @@ fn is_valid_env_name(name: &str) -> bool {
     chars.all(|c| c == '_' || c.is_ascii_alphanumeric())
 }
 
-/// Build a command head with optional env vars and executable prefix args.
+/// Build a command head with optional env vars and executable prefix args;
+/// `unset_env` is removed from the inherited environment (Hive Mind drops `GH_TOKEN`, `MAX_THINKING_TOKENS`, ... per run).
 pub fn build_command_head(
     executable: &str,
+    unset_env: &[String],
     extra_env: &[(String, String)],
     prefix_args: &[String],
 ) -> String {
     let mut parts = Vec::new();
 
-    if !extra_env.is_empty() {
+    if !extra_env.is_empty() || !unset_env.is_empty() {
         parts.push("env".to_string());
+        for key in unset_env {
+            assert!(
+                is_valid_env_name(key),
+                "invalid environment variable name: {}",
+                key
+            );
+            parts.push(format!("-u {key}"));
+        }
         for (key, value) in extra_env {
             assert!(
                 is_valid_env_name(key),

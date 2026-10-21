@@ -80,6 +80,8 @@ pub struct GeminiBuildOptions {
     pub interactive: bool,
     pub executable: Option<String>,
     pub extra_env: Vec<(String, String)>,
+    /// Variables removed from the inherited environment (`env -u`)
+    pub unset_env: Vec<String>,
     pub extra_args: Vec<String>,
     pub skip_default_safety_flags: bool,
 }
@@ -189,7 +191,7 @@ pub fn build_command(options: &GeminiBuildOptions) -> String {
     let executable = options.executable.as_deref().unwrap_or("gemini");
     let command = format!(
         "{} {}",
-        build_command_head(executable, &options.extra_env, &[]),
+        build_command_head(executable, &options.unset_env, &options.extra_env, &[]),
         args_str.join(" ")
     )
     .trim()

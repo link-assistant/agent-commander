@@ -119,6 +119,8 @@ pub struct ClaudeBuildOptions {
     pub approve_each: bool,
     pub executable: Option<String>,
     pub extra_env: Vec<(String, String)>,
+    /// Variables removed from the inherited environment (`env -u`)
+    pub unset_env: Vec<String>,
     pub extra_args: Vec<String>,
     pub skip_default_safety_flags: bool,
     pub permission_mode: Option<String>,
@@ -256,7 +258,7 @@ pub fn build_command(options: &ClaudeBuildOptions) -> String {
     let executable = options.executable.as_deref().unwrap_or("claude");
     let command = format!(
         "{} {}",
-        build_command_head(executable, &options.extra_env, &[]),
+        build_command_head(executable, &options.unset_env, &options.extra_env, &[]),
         args_str.join(" ")
     )
     .trim()

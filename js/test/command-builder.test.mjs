@@ -255,6 +255,27 @@ test('buildAgentCommand - claude supports raw passthrough options', () => {
   assert.ok(!command.includes('--dangerously-skip-permissions'));
 });
 
+test('buildAgentCommand - a null extraEnv value unsets the variable', () => {
+  const command = buildAgentCommand({
+    tool: 'claude',
+    workingDirectory: '/tmp/test',
+    prompt: 'Hello',
+    extraEnv: {
+      GH_TOKEN: null,
+      MAX_THINKING_TOKENS: undefined,
+      MCP_TIMEOUT: '1',
+    },
+    isolation: 'none',
+  });
+  assert.ok(
+    command.includes(
+      'env -u GH_TOKEN -u MAX_THINKING_TOKENS MCP_TIMEOUT=1 claude'
+    ),
+    command
+  );
+  assert.ok(!command.includes('null'));
+});
+
 test('buildAgentCommand - codex read-only uses sandbox and no approvals', () => {
   const command = buildAgentCommand({
     tool: 'codex',

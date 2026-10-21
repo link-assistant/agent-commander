@@ -35,6 +35,8 @@ pub struct AgentCommandOptions {
     pub executable: Option<String>,
     pub extra_args: Vec<String>,
     pub extra_env: Vec<(String, String)>,
+    /// Variables removed from the inherited environment (`env -u`)
+    pub unset_env: Vec<String>,
     pub skip_default_safety_flags: bool,
     pub isolation: String,
     pub screen_name: Option<String>,
@@ -201,6 +203,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 approve_each: options.approve_each,
                 executable: options.executable.clone(),
                 extra_env: options.extra_env.clone(),
+                unset_env: options.unset_env.clone(),
                 extra_args: options.extra_args.clone(),
                 skip_default_safety_flags: options.skip_default_safety_flags,
                 permission_mode: None,
@@ -216,6 +219,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 read_only: read_only_requested,
                 executable: options.executable.clone(),
                 extra_env: options.extra_env.clone(),
+                unset_env: options.unset_env.clone(),
                 extra_args: options.extra_args.clone(),
                 skip_default_safety_flags: options.skip_default_safety_flags,
                 sandbox_mode: None,
@@ -231,6 +235,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 read_only: read_only_requested,
                 executable: options.executable.clone(),
                 extra_env: options.extra_env.clone(),
+                unset_env: options.unset_env.clone(),
                 extra_args: options.extra_args.clone(),
             }),
             "agent" => agent::build_command(&AgentBuildOptions {
@@ -249,6 +254,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 stream_input: false,
                 executable: options.executable.clone(),
                 extra_env: options.extra_env.clone(),
+                unset_env: options.unset_env.clone(),
                 extra_args: options.extra_args.clone(),
             }),
             "gemini" => {
@@ -262,6 +268,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                     read_only: read_only_requested,
                     executable: options.executable.clone(),
                     extra_env: options.extra_env.clone(),
+                    unset_env: options.unset_env.clone(),
                     extra_args: options.extra_args.clone(),
                     skip_default_safety_flags: options.skip_default_safety_flags,
                     ..GeminiBuildOptions::new()
@@ -279,6 +286,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                     read_only: read_only_requested,
                     executable: options.executable.clone(),
                     extra_env: options.extra_env.clone(),
+                    unset_env: options.unset_env.clone(),
                     extra_args: options.extra_args.clone(),
                     skip_default_safety_flags: options.skip_default_safety_flags,
                     ..QwenBuildOptions::new()

@@ -162,6 +162,8 @@ pub struct CodexBuildOptions {
     pub read_only: bool,
     pub executable: Option<String>,
     pub extra_env: Vec<(String, String)>,
+    /// Variables removed from the inherited environment (`env -u`)
+    pub unset_env: Vec<String>,
     pub extra_args: Vec<String>,
     pub skip_default_safety_flags: bool,
     pub sandbox_mode: Option<String>,
@@ -255,7 +257,12 @@ pub fn build_command(options: &CodexBuildOptions) -> String {
     format!(
         "{} | {} {}",
         input_command,
-        build_command_head(executable, &options.extra_env, &prefix_args),
+        build_command_head(
+            executable,
+            &options.unset_env,
+            &options.extra_env,
+            &prefix_args
+        ),
         args_str.join(" ")
     )
     .trim()
