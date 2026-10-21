@@ -343,10 +343,25 @@ function detectExecutionError({
   }
 
   if (exitCode !== 0) {
-    return exitCodeError({ exitCode, signal, plainOutput });
+    return (
+      (!signal && errorRecordInOutput(plainOutput)) ||
+      exitCodeError({ exitCode, signal, plainOutput })
+    );
   }
 
   return { hasError: false, errorType: null, message: null };
+}
+
+// A process that failed without an error event on stdout may have written it
+// to stderr: Agent prints its fatal errors there (agent src/cli/output.ts
+// outputError; hive-mind agent.lib.mjs scans both streams). Only explains a
+// failed exit, so diagnostics cannot fail a successful run.
+function errorRecordInOutput(plainOutput) {
+  const records = parseJsonMessages(plainOutput).filter(
+    (record) => record?.type === 'error'
+  );
+  const error = extractErrorFromMessages(records);
+  return error.hasError ? error : null;
 }
 
 // Claude's API failure details, passed through for callers that log or

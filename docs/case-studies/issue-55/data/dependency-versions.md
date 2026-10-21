@@ -99,7 +99,7 @@ which 8) are resolved in `rust/Cargo.lock`. Their upgrades are handled inside co
   list since the baseline are in `hive-mind-changelog-2.33.15-2.39.5.md` and
   `hive-mind-commits-since-baseline.txt`.
 
-## Remaining recommendations (not yet applied on the branch)
+## Recommendations and what was applied
 
 1. `.github/workflows/e2e-gemini.yml` and `.github/workflows/e2e-qwen.yml`: set node to `24.x` and
    bump `actions/checkout@v4` / `actions/setup-node@v4` / `actions/cache@v4` to the versions used in
@@ -108,6 +108,10 @@ which 8) are resolved in `rust/Cargo.lock`. Their upgrades are handled inside co
 2. Optionally bump checkout -> v7, setup-node -> v7 (verify the npm publish auth step), cache -> v6,
    crates-io-auth-action -> v1.0.6 (SHA `3268eb413133e2960fa4ae0e963ca76380c54cd9`), and
    pre-commit-hooks -> v6.0.0.
+Items 1 and 2 were applied in `4082d59` (checkout v7, setup-node v7, cache v6, Node 24 in every
+workflow, crates-io-auth-action v1.0.6) and in `.pre-commit-config.yaml` (pre-commit-hooks v6.0.0).
+
 3. Optionally pin `use('command-stream@2.4.0')` in `scripts/js/*.mjs` so that release automation
    does not silently pick up future majors. Be aware of upstream #228 (login shell stdout
-   pollution) when those scripts parse `$` output.
+   pollution) when those scripts parse `$` output. Not applied: the release scripts keep loading
+   the latest command-stream, as Hive Mind's do, and only use `$` for git, gh, npm and node commands.

@@ -502,10 +502,26 @@ fn detect_execution_error(
     }
 
     if exit_code != 0 {
-        return exit_code_error(exit_code, signal, plain_output);
+        return signal
+            .is_none()
+            .then(|| error_record_in_output(plain_output))
+            .flatten()
+            .unwrap_or_else(|| exit_code_error(exit_code, signal, plain_output));
     }
 
     ExecutionError::default()
+}
+
+/// A process that failed without an error event on stdout may have written it
+/// to stderr: Agent prints its fatal errors there (agent `src/cli/output.ts`
+/// `outputError`; hive-mind `agent.lib.mjs` scans both streams). Only explains
+/// a failed exit, so diagnostics cannot fail a successful run.
+fn error_record_in_output(plain_output: &str) -> Option<ExecutionError> {
+    let records: Vec<Value> = parse_json_messages(plain_output)
+        .into_iter()
+        .filter(|record| record.get("type").and_then(Value::as_str) == Some("error"))
+        .collect();
+    Some(extract_error_from_messages(&records)).filter(|error| error.has_error)
 }
 
 struct ApiErrorDetails {

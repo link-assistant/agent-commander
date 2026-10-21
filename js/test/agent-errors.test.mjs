@@ -140,3 +140,49 @@ test('agent - pretty-printed error records are classified', () => {
   assert.strictEqual(detected.hasError, true);
   assert.strictEqual(detected.message, 'RetryTimeoutExceededError');
 });
+
+// Agent writes events to stdout but fatal errors only to stderr, pretty-printed
+// unless --compact-json (agent src/cli/output.ts outputError); hive-mind
+// agent.lib.mjs scans both streams.
+for (const [form, stderr] of [
+  [
+    'pretty-printed',
+    '{\n  "type": "error",\n  "errorType": "ProviderModelNotFoundError",\n  "message": "Model kilo/foo not found"\n}',
+  ],
+  [
+    'compact',
+    '{"type":"error","errorType":"ProviderModelNotFoundError","message":"Model kilo/foo not found"}',
+  ],
+]) {
+  test(`agent - a ${form} stderr error record explains a failed exit`, () => {
+    const stdout = '{"type":"status","mode":"stdin-stream"}';
+    const metadata = buildNormalizedResultMetadata({
+      tool: 'agent',
+      exitCode: 1,
+      plainOutput: `${stdout}\n${stderr}`,
+      parsedOutput: [JSON.parse(stdout)],
+      toolConfig: agentTool,
+    });
+
+    assert.strictEqual(metadata.success, false);
+    assert.strictEqual(metadata.errorType, 'ProviderModelNotFoundError');
+    assert.strictEqual(metadata.errorMessage, 'Model kilo/foo not found');
+  });
+}
+
+test('agent - stderr records do not fail a successful exit', () => {
+  const stdout = lines([
+    { type: 'step_start', sessionID: 'ses_ok' },
+    { type: 'step_finish', part: { reason: 'stop' } },
+  ]);
+  const metadata = buildNormalizedResultMetadata({
+    tool: 'agent',
+    exitCode: 0,
+    plainOutput: `${stdout}\n{"type":"error","message":"diagnostic"}`,
+    parsedOutput: stdout.split('\n').map((line) => JSON.parse(line)),
+    toolConfig: agentTool,
+  });
+
+  assert.strictEqual(metadata.success, true);
+  assert.strictEqual(metadata.errorMessage, null);
+});

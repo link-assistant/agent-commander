@@ -137,3 +137,63 @@ fn pretty_printed_error_records_are_classified() {
         Some("RetryTimeoutExceededError")
     );
 }
+
+// Agent writes events to stdout but fatal errors only to stderr, pretty-printed
+// unless --compact-json (agent src/cli/output.ts outputError).
+fn stderr_failure(stderr: &str) -> ResultMetadata {
+    let stdout = json!({ "type": "status", "mode": "stdin-stream" });
+    let parsed = [stdout.clone()];
+    build_normalized_result_metadata(BuildMetadataOptions {
+        tool: "agent",
+        exit_code: 1,
+        plain_output: &format!("{stdout}\n{stderr}"),
+        parsed_output: Some(&parsed),
+        ..Default::default()
+    })
+}
+
+#[test]
+fn a_stderr_error_record_explains_a_failed_exit() {
+    let record = json!({
+        "type": "error",
+        "errorType": "ProviderModelNotFoundError",
+        "message": "Model kilo/foo not found"
+    });
+    for stderr in [
+        serde_json::to_string_pretty(&record).unwrap(),
+        record.to_string(),
+    ] {
+        let metadata = stderr_failure(&stderr);
+        assert!(!metadata.success);
+        assert_eq!(
+            metadata.error_type.as_deref(),
+            Some("ProviderModelNotFoundError")
+        );
+        assert_eq!(
+            metadata.error_message.as_deref(),
+            Some("Model kilo/foo not found")
+        );
+    }
+}
+
+#[test]
+fn stderr_records_do_not_fail_a_successful_exit() {
+    let stdout = [
+        json!({ "type": "step_start", "sessionID": "ses_ok" }),
+        json!({ "type": "step_finish", "part": { "reason": "stop" } }),
+    ];
+    let plain_output = format!(
+        "{}\n{}",
+        lines(&stdout),
+        json!({ "type": "error", "message": "diagnostic" })
+    );
+    let metadata = build_normalized_result_metadata(BuildMetadataOptions {
+        tool: "agent",
+        exit_code: 0,
+        plain_output: &plain_output,
+        parsed_output: Some(&stdout),
+        ..Default::default()
+    });
+    assert!(metadata.success);
+    assert_eq!(metadata.error_message, None);
+}

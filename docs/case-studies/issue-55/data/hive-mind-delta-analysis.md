@@ -140,4 +140,6 @@ Native event shapes:
 ## To verify against the native CLIs
 
 - **Agent events on stderr.** Hive Mind #1151 (before the baseline) and the #3213 stub say `@link-assistant/agent` writes JSON events to stderr, at least with `--verbose`. agent-commander only parses stdout for agent runs. If that is true natively, such runs end as `incomplete_stream`.
+  - **Checked** against the agent 0.26.15 package source (`src/cli/output.ts`): events, status, logs and warnings go to stdout; only `outputError` (fatal errors such as an unknown model) goes to stderr, pretty-printed unless `--compact-json`. Session runs therefore parse correctly, but such a fatal error was reported as `Process exited with code 1`. Both bindings now use the last JSON error record of the output when a failed exit has no error event on stdout (`experiments/agent-stderr-error.mjs`).
 - **Kilo overlay.** Before injecting it (A4), check whether the Agent CLI already resolves `kilo/nemotron-3-super-free` natively.
+  - **Checked:** agent 0.26.12 to 0.26.15 define it in `src/provider/kilo.ts` `FREE_MODELS`, so no overlay is injected.
