@@ -11,6 +11,7 @@
 
 pub mod background_tasks;
 pub mod cli_parser;
+pub mod codex_rollout;
 pub mod command_builder;
 mod completion;
 pub mod error_text;
@@ -60,6 +61,14 @@ pub use background_tasks::{
 pub use result_close::{
     has_final_result, wait_for_exit_after_result, ResultCloseOptions, StdoutMessageReader,
     DEFAULT_RESULT_POLL,
+};
+
+pub use codex_rollout::{
+    apply_codex_rollout_usage_limit, can_resume_codex_session, classify_codex_rate_limit_snapshot,
+    codex_rollout_limit_facts, codex_sessions_dir, detect_codex_rollout_usage_limit,
+    find_codex_rollout_file, is_codex_rollout_file_name, read_codex_rollout_limit_facts,
+    CodexLimitVerdict, CodexRolloutLimitFacts, CodexRolloutOptions, CODEX_ROLLOUT_LIMIT_SOURCE,
+    CODEX_SESSIONS_DIRNAME, ROLLOUT_TAIL_BYTES,
 };
 
 pub use result_metadata::{
@@ -595,6 +604,11 @@ impl Agent {
                 signal: handle.signal().map(String::from),
                 terminated_after_result,
             });
+            // Codex can leave a usage limit only in its rollout (hive-mind#3570)
+            codex_rollout::apply_codex_rollout_usage_limit(
+                &mut metadata,
+                &CodexRolloutOptions::for_run_env(&self.options.extra_env, &self.options.unset_env),
+            );
             if (self.options.json || self.options.tool == "agent")
                 && is_tool_supported(&self.options.tool)
             {

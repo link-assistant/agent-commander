@@ -43,6 +43,9 @@ pub struct ResultMetadata {
     pub limit_resets_at: Option<i64>,
     /// Limit window from a structured source (`five_hour`, `seven_day`, ...)
     pub limit_window: Option<String>,
+    /// Where a limit found outside the output came from (`codex-rollout`)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit_source: Option<String>,
     pub anthropic_total_cost_usd: Option<f64>,
     pub public_pricing_estimate: Option<f64>,
     pub pricing_info: Option<PricingInfo>,
@@ -654,6 +657,7 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
         limit_timezone: usage_limit.timezone,
         limit_resets_at: usage_limit.resets_at,
         limit_window: usage_limit.window,
+        limit_source: None,
         anthropic_total_cost_usd: first_number(
             &messages,
             &["total_cost_usd", "totalCostUsd", "anthropicTotalCostUSD"],
