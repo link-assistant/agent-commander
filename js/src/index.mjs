@@ -656,6 +656,19 @@ export {
 } from './streaming/json-records.mjs';
 export { buildNormalizedResultMetadata } from './result-metadata.mjs';
 export {
+  USAGE_LIMIT_PATTERNS,
+  classifyDebugLines,
+  classifyRateLimitEvent,
+  detectUsageLimitSources,
+  extractResetTime,
+  extractTimezone,
+  formatEpochResetTimeUtc,
+  isRecoverableToolError,
+  isUsageLimitText,
+  limitScanText,
+} from './usage-limit.mjs';
+export { firstErrorText, stringifyErrorValue } from './error-text.mjs';
+export {
   buildAgentTuiLaunch,
   captureAgentTui,
   normalizeTuiTranscript,

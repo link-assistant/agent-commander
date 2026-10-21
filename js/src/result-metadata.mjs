@@ -1,31 +1,12 @@
 import { completionState, outcomeMessages } from './completion.mjs';
+import { firstErrorText } from './error-text.mjs';
 import { parseJsonRecords } from './streaming/json-records.mjs';
-const USAGE_LIMIT_PATTERNS = [
-  /usage limit (?:reached|exceeded)/i,
-  // Require an explicit qualifier so a bare "ratelimit" does not match. The raw
-  // stream-json output emitted by Claude contains HTTP header names such as
-  // "anthropic-ratelimit-unified-5h-reset", which previously triggered a false
-  // positive on every successful run. See issue #37.
-  /rate[_\s-]?limit(?:ed|\s+reached|\s+exceeded)/i,
-  /limit reached/i,
-  /billing hard limit/i,
-  /please try again at/i,
-  /available again at/i,
-  /session limit reached/i,
-  /weekly limit reached/i,
-  /daily limit reached/i,
-  /monthly limit reached/i,
-  /freeusagelimiterror/i,
-  /resets\s+(?:(?:at\s+)?[0-9]|month)/i,
-];
-
-const RESET_TIME_PATTERNS = [
-  /(?:resets?|reset|try again|available again|available)\s+(?:at|on)?\s*([^\n.]+)/i,
-  /(?:reset time|limit resets at)\s*:?\s*([^\n.]+)/i,
-];
-
-const TIMEZONE_PATTERN =
-  /\b(?:UTC(?:[+-]\d{1,2}(?::\d{2})?)?|[A-Z]{2,5}|[A-Za-z]+\/[A-Za-z_/-]+)\b/;
+import {
+  classifyDebugLines,
+  detectUsageLimitSources,
+  isRecoverableToolError,
+  splitOutput,
+} from './usage-limit.mjs';
 
 function parseJsonMessages(output) {
   return parseJsonRecords(output || '').flatMap((value) =>
@@ -45,14 +26,6 @@ function normalizeMessages({ parsedOutput, plainOutput, toolConfig }) {
   return parseJsonMessages(plainOutput || '');
 }
 
-function cleanResetTime(value) {
-  const cleaned = value?.trim().replace(/[),;]+$/g, '');
-  if (!cleaned || cleaned.length > 120) {
-    return null;
-  }
-  return cleaned;
-}
-
 // A structured result message that reports an explicit success is authoritative.
 // The raw stream-json output contains HTTP header names (e.g.
 // "anthropic-ratelimit-unified-5h-reset") that can match usage-limit patterns
@@ -62,35 +35,20 @@ function hasStructuredSuccess(messages, tool) {
   return completionState(tool, messages) === 'completed';
 }
 
+const NO_USAGE_LIMIT = {
+  reached: false,
+  throttled: false,
+  resetTime: null,
+  timezone: null,
+  resetsAt: null,
+  window: null,
+};
+
 function detectUsageLimit({ plainOutput, messages = [], tool }) {
-  const output = plainOutput || '';
-
   if (hasStructuredSuccess(messages, tool)) {
-    return { reached: false, resetTime: null, timezone: null };
+    return NO_USAGE_LIMIT;
   }
-
-  const reached = USAGE_LIMIT_PATTERNS.some((pattern) => pattern.test(output));
-  let resetTime = null;
-  let timezone = null;
-
-  if (reached) {
-    for (const pattern of RESET_TIME_PATTERNS) {
-      const match = output.match(pattern);
-      resetTime = cleanResetTime(match?.[1]);
-      if (resetTime) {
-        break;
-      }
-    }
-
-    const parentheticalTimezone = output.match(/\(([^)]+)\)/)?.[1];
-    const timezoneCandidate =
-      parentheticalTimezone?.match(TIMEZONE_PATTERN)?.[0] ||
-      resetTime?.match(TIMEZONE_PATTERN)?.[0] ||
-      output.match(/\btimezone\s*:?\s*([A-Za-z_/-]+|UTC[+-]?\d*)\b/i)?.[1];
-    timezone = timezoneCandidate || null;
-  }
-
-  return { reached, resetTime, timezone };
+  return detectUsageLimitSources({ plainOutput: plainOutput || '', messages });
 }
 
 function textFromValue(value) {
@@ -256,9 +214,28 @@ function extractSubAgentCalls(messages) {
   return calls.length > 0 ? calls : null;
 }
 
+// Claude's synthetic API error message carries the error code as a string
+// (`"error":"rate_limit"`) and the readable text in its content.
+function apiErrorCode(messages) {
+  const message = [...messages]
+    .reverse()
+    .find(
+      (event) =>
+        event?.type === 'assistant' &&
+        event.is_api_error_message === true &&
+        typeof event.error === 'string'
+    );
+  return message?.error || null;
+}
+
 function extractErrorFromMessages(messages) {
+  const code = apiErrorCode(messages);
   for (const message of [...messages].reverse()) {
     if (!message || typeof message !== 'object') {
+      continue;
+    }
+    // A failed tool call is returned to the model; it does not decide the run.
+    if (isRecoverableToolError(message)) {
       continue;
     }
 
@@ -273,19 +250,21 @@ function extractErrorFromMessages(messages) {
       message.subtype?.startsWith('error')
     ) {
       const error = message.error;
+      const objectError = error && typeof error === 'object' ? error : null;
       const errorType =
-        (error && typeof error === 'object' && (error.type || error.code)) ||
+        (objectError &&
+          (objectError.type || objectError.code || objectError.name)) ||
+        (typeof error === 'string' && error) ||
         message.errorType ||
         message.error_type ||
+        (messageType === 'result' && (message.api_error || code)) ||
         messageType ||
         'execution_error';
       const errorMessage =
-        (typeof error === 'string' && error) ||
-        (error &&
-          typeof error === 'object' &&
-          (error.message || error.details)) ||
+        (objectError && firstErrorText([objectError])) ||
         textFromValue(message.message) ||
         textFromValue(message.result) ||
+        (typeof error === 'string' && error) ||
         'Execution failed';
 
       return { hasError: true, errorType, message: errorMessage };
@@ -293,6 +272,24 @@ function extractErrorFromMessages(messages) {
   }
 
   return { hasError: false, errorType: null, message: null };
+}
+
+const PREFERRED_EXIT_LINE = /^(?:error\b|fatal:|(?:\/\S*\/)?(?:ba|z)?sh:\s)/i;
+
+// The reason a process exited is a plain text line: JSON records, the
+// ANTHROPIC_LOG=debug dump and its base64 bodies are not (hive-mind#3570).
+function exitReasonLine(plainOutput) {
+  const { lines } = splitOutput(plainOutput);
+  const { debugLines } = classifyDebugLines(lines);
+  const candidates = lines
+    .filter((_, index) => !debugLines.has(index))
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return (
+    candidates.findLast((line) => PREFERRED_EXIT_LINE.test(line)) ||
+    candidates.at(-1) ||
+    null
+  );
 }
 
 function detectExecutionError({ exitCode, plainOutput, messages, toolConfig }) {
@@ -315,15 +312,12 @@ function detectExecutionError({ exitCode, plainOutput, messages, toolConfig }) {
   }
 
   if (exitCode !== 0) {
-    const lastLine = (plainOutput || '')
-      .trim()
-      .split('\n')
-      .filter(Boolean)
-      .pop();
     return {
       hasError: true,
       errorType: 'exit_code',
-      message: lastLine || `Process exited with code ${exitCode}`,
+      message:
+        exitReasonLine(plainOutput || '') ||
+        `Process exited with code ${exitCode}`,
     };
   }
 
@@ -416,6 +410,10 @@ export function buildNormalizedResultMetadata(options) {
       message: 'Process exited before the native completion event',
     });
   }
+  // A server-side throttle is transient: callers retry instead of waiting for a reset.
+  if (error.hasError && usageLimit.throttled) {
+    error.errorType = 'rate_limited';
+  }
   const anthropicTotalCostUSD = firstNumber(messages, [
     'total_cost_usd',
     'totalCostUsd',
@@ -434,6 +432,8 @@ export function buildNormalizedResultMetadata(options) {
     limitReached: usageLimit.reached,
     limitResetTime: usageLimit.resetTime,
     limitTimezone: usageLimit.timezone,
+    limitResetsAt: usageLimit.resetsAt,
+    limitWindow: usageLimit.window,
     anthropicTotalCostUSD,
     publicPricingEstimate: estimate,
     pricingInfo:
