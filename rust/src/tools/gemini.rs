@@ -2,7 +2,7 @@
 //! Based on Google's official gemini-cli: https://github.com/google-gemini/gemini-cli
 
 use super::usage::{self, count};
-use crate::streaming::parse_ndjson;
+use crate::streaming::parse_json_records;
 use crate::tools::shell::{build_command_head, escape_arg};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -211,13 +211,9 @@ pub fn build_command(options: &GeminiBuildOptions) -> String {
 /// # Returns
 /// Vector of parsed JSON messages
 pub fn parse_output(output: &str) -> Vec<Value> {
-    // Native single JSON output can be formatted across multiple lines.
-    if let Ok(message) = serde_json::from_str::<Value>(output) {
-        if message.is_object() {
-            return vec![message];
-        }
-    }
-    parse_ndjson(output)
+    // Native single JSON output can be formatted across multiple lines; the
+    // record scanner handles it together with stream-json NDJSON.
+    parse_json_records(output)
 }
 
 /// Extract session ID from Gemini CLI output

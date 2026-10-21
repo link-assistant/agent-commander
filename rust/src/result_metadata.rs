@@ -61,27 +61,8 @@ struct ExecutionError {
 }
 
 fn parse_json_messages(output: &str) -> Vec<Value> {
-    if output.trim().is_empty() {
-        return Vec::new();
-    }
-
-    if let Ok(parsed) = serde_json::from_str::<Value>(output) {
-        return match parsed {
-            Value::Array(messages) => messages,
-            message => vec![message],
-        };
-    }
-
-    output
-        .lines()
-        .filter_map(|line| {
-            let trimmed = line.trim();
-            if trimmed.is_empty() || (!trimmed.starts_with('{') && !trimmed.starts_with('[')) {
-                return None;
-            }
-
-            serde_json::from_str::<Value>(trimmed).ok()
-        })
+    crate::streaming::parse_json_records(output)
+        .into_iter()
         .flat_map(|value| match value {
             Value::Array(values) => values,
             message => vec![message],

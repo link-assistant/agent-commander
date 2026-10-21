@@ -168,7 +168,8 @@ export function buildCommand(options) {
 
 /**
  * Parse JSON messages from Agent output
- * Agent outputs NDJSON format with specific event types
+ * Agent pretty-prints JSON events by default and emits NDJSON with
+ * `--compact-json`; both shapes are parsed by the record scanner.
  * @param {Object} options - Options
  * @param {string} options.output - Raw output string
  * @returns {Object[]} Array of parsed JSON messages

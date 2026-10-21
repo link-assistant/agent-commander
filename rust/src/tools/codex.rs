@@ -2,7 +2,7 @@
 //! Based on hive-mind's codex.lib.mjs implementation
 
 use super::usage::{self, count};
-use crate::streaming::parse_ndjson;
+use crate::streaming::parse_json_records;
 use crate::tools::shell::{build_command_head, escape_arg, escape_single_quotes};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -273,7 +273,7 @@ pub fn build_command(options: &CodexBuildOptions) -> String {
 /// # Returns
 /// Vector of parsed JSON messages
 pub fn parse_output(output: &str) -> Vec<Value> {
-    parse_ndjson(output)
+    parse_json_records(output)
 }
 
 /// Extract session/thread ID from Codex output

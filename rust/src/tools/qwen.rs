@@ -3,7 +3,7 @@
 //! Qwen Code is an open-source AI agent optimized for Qwen3-Coder models
 
 use super::usage::{self, count};
-use crate::streaming::parse_ndjson;
+use crate::streaming::parse_json_records;
 use crate::tools::shell::{build_command_head, escape_arg};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -216,7 +216,7 @@ pub fn build_command(options: &QwenBuildOptions) -> String {
 /// # Returns
 /// Vector of parsed JSON messages
 pub fn parse_output(output: &str) -> Vec<Value> {
-    parse_ndjson(output)
+    parse_json_records(output)
 }
 
 /// Extract session ID from Qwen Code output

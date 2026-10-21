@@ -1,7 +1,7 @@
 //! OpenCode CLI tool configuration
 //! Based on hive-mind's opencode.lib.mjs implementation
 
-use crate::streaming::parse_ndjson;
+use crate::streaming::parse_json_records;
 use crate::tools::shell::{build_command_head, escape_arg, escape_single_quotes};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -155,7 +155,7 @@ pub fn build_command(options: &OpencodeBuildOptions) -> String {
 /// # Returns
 /// Vector of parsed JSON messages
 pub fn parse_output(output: &str) -> Vec<Value> {
-    parse_ndjson(output)
+    parse_json_records(output)
 }
 
 /// Extract session ID from OpenCode output

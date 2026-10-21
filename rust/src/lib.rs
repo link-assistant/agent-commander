@@ -51,8 +51,9 @@ pub use result_metadata::{
 };
 
 pub use streaming::{
-    create_input_stream, create_output_stream, parse_ndjson, parse_ndjson_line, stringify_ndjson,
-    stringify_ndjson_line, JsonInputStream, JsonOutputStream, ParseError,
+    create_input_stream, create_output_stream, parse_json_records, parse_ndjson, parse_ndjson_line,
+    stringify_ndjson, stringify_ndjson_line, JsonInputStream, JsonOutputStream, JsonRecordEvent,
+    JsonRecordScanner, ParseError,
 };
 
 pub use tools::{
@@ -511,7 +512,7 @@ impl Agent {
                 parsed_output = Some(if self.options.tool == "gemini" {
                     tools::gemini::parse_output(stdout)
                 } else {
-                    streaming::parse_ndjson(stdout)
+                    streaming::parse_json_records(stdout)
                 });
             }
 

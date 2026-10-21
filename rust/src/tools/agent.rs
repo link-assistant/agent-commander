@@ -6,7 +6,7 @@
 //! (auto | plan | readonly | ask) and an OpenCode-compatible `--permission`
 //! JSON policy.
 
-use crate::streaming::parse_ndjson;
+use crate::streaming::parse_json_records;
 use crate::tools::shell::{build_command_head, escape_arg, escape_single_quotes};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -217,7 +217,8 @@ pub fn build_command(options: &AgentBuildOptions) -> String {
 }
 
 /// Parse JSON messages from Agent output
-/// Agent outputs NDJSON format with specific event types
+/// Agent pretty-prints JSON events by default and emits NDJSON with
+/// `--compact-json`; both shapes are parsed by the record scanner.
 ///
 /// # Arguments
 /// * `output` - Raw output string
@@ -225,7 +226,7 @@ pub fn build_command(options: &AgentBuildOptions) -> String {
 /// # Returns
 /// Vector of parsed JSON messages
 pub fn parse_output(output: &str) -> Vec<Value> {
-    parse_ndjson(output)
+    parse_json_records(output)
 }
 
 /// Extract session ID from Agent output
