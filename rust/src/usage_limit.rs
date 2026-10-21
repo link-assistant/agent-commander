@@ -174,7 +174,11 @@ pub fn extract_reset_time(text: &str) -> Option<String> {
             continue;
         }
         let hour: u32 = captures[1].parse().unwrap_or(0);
-        let hour12 = if hour.is_multiple_of(12) { 12 } else { hour % 12 };
+        let hour12 = if hour.is_multiple_of(12) {
+            12
+        } else {
+            hour % 12
+        };
         let ampm = if hour >= 12 { "PM" } else { "AM" };
         return Some(format!("{}:{} {}", hour12, &captures[2], ampm));
     }

@@ -16,8 +16,6 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("claude", "claude-3-5-sonnet");
     map.insert("sonnet", "claude-3-5-sonnet");
     map.insert("opus", "claude-3-opus");
-    map.insert("openai/formal-ai", "openai/formal-ai");
-    map.insert("openai.formal-ai", "openai.formal-ai");
     map.insert("formal-ai", "formal-ai");
     map.insert("formalai/formal-ai", "formal-ai");
     map.insert("gpt-6.1-sol", "gpt-6.1-sol");

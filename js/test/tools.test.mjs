@@ -774,3 +774,9 @@ test('geminiTool - buildCommand reads prompt file with passthrough options', () 
   assert.ok(!cmd.includes('system prompt'));
   assert.ok(!cmd.includes('--yolo'));
 });
+
+test('codex - withdrawn openai/formal-ai aliases pass through unmapped', () => {
+  const codex = getTool({ toolName: 'codex' });
+  assert.strictEqual(codex.modelMap['openai/formal-ai'], undefined);
+  assert.strictEqual(codex.modelMap['openai.formal-ai'], undefined);
+});

@@ -134,3 +134,12 @@ fn test_map_model_to_id_gpt_variants() {
     assert_eq!(map_model_to_id("gpt4o"), "gpt-4o");
     assert_eq!(map_model_to_id("gpt5-codex"), "gpt-5-codex");
 }
+
+#[test]
+fn test_codex_model_map_drops_withdrawn_formal_ai_aliases() {
+    // Hive Mind v2.39.5 removed `openai/formal-ai` (it ran against OpenAI).
+    let map = agent_commander::tools::codex::get_model_map();
+    assert!(!map.contains_key("openai/formal-ai"));
+    assert!(!map.contains_key("openai.formal-ai"));
+    assert_eq!(map_model_to_id("formal-ai"), "formal-ai");
+}
