@@ -9,6 +9,7 @@ import { createModelMapper, parseJsonLines } from './json-lines.mjs';
 import {
   buildCommandHead,
   escapeArg,
+  escapeSingleQuotes,
   normalizeExtraArgs,
   normalizeExtraEnv,
 } from './shell.mjs';
@@ -102,7 +103,7 @@ export function buildCommand(options) {
   // Build command with stdin piping
   const inputCommand = promptFile
     ? `cat ${escapeArg(promptFile)}`
-    : `printf '%s' '${combinedPrompt.replace(/'/g, "'\\''")}'`;
+    : `printf '%s' '${escapeSingleQuotes(combinedPrompt)}'`;
   const env = readOnly
     ? [
         ['OPENCODE_PERMISSION', READ_ONLY_PERMISSION],

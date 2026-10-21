@@ -2,6 +2,8 @@
  * Shared shell helpers for tool command builders.
  */
 
+import { quoteForContext } from 'command-stream';
+
 const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /**
@@ -12,9 +14,19 @@ const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 export function escapeArg(arg) {
   const value = String(arg);
   if (!/^[-a-zA-Z0-9_./:=+,@%]+$/.test(value)) {
-    return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`')}"`;
+    return `"${quoteForContext(value, 'double')}"`;
   }
   return value;
+}
+
+/**
+ * Escape a value for printing inside '...' (command-stream's single-quote
+ * context).
+ * @param {string} value - Value to escape
+ * @returns {string} Escaped value without surrounding quotes
+ */
+export function escapeSingleQuotes(value) {
+  return quoteForContext(value ?? '', 'single');
 }
 
 /**

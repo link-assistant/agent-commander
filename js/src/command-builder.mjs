@@ -2,6 +2,7 @@
  * Build command strings for different agent tools
  */
 
+import { quoteForContext } from 'command-stream';
 import { isToolSupported, getTool } from './tools/index.mjs';
 import { escapeArg } from './tools/shell.mjs';
 import { askUnsupportedError } from './permissions/index.mjs';
@@ -230,16 +231,15 @@ export function buildDockerStopCommand(containerName) {
   return `docker stop "${containerName}" && docker rm "${containerName}"`;
 }
 
+// The same quoting rules command-stream audits for `bash -c` strings.
+
 /**
  * Escape quotes in strings for shell commands (single quotes)
  * @param {string} str - String to escape
  * @returns {string} Escaped string
  */
 function escapeQuotes(str) {
-  if (!str) {
-    return '';
-  }
-  return str.replace(/'/g, "'\\''");
+  return str ? quoteForContext(str, 'single') : '';
 }
 
 /**
@@ -248,15 +248,7 @@ function escapeQuotes(str) {
  * @returns {string} Escaped string
  */
 function escapeForBashC(str) {
-  if (!str) {
-    return '';
-  }
-  // Escape backslashes first, then double quotes, dollar signs, and backticks
-  return str
-    .replace(/\\/g, '\\\\')
-    .replace(/"/g, '\\"')
-    .replace(/\$/g, '\\$')
-    .replace(/`/g, '\\`');
+  return str ? quoteForContext(str, 'double') : '';
 }
 
 /**
@@ -268,6 +260,6 @@ function escapeForBashC(str) {
  */
 export function buildPipedCommand(options) {
   const { input, command } = options;
-  const escapedInput = (input || '').replace(/'/g, "'\\''");
+  const escapedInput = escapeQuotes(input);
   return `printf '%s' '${escapedInput}' | ${command}`;
 }

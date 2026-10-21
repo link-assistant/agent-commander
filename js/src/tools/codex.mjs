@@ -7,7 +7,12 @@ import { nativeUsage } from './usage.mjs';
 import { syncedModels, syncedDefaults } from './model-catalog.mjs';
 import { createModelMapper, parseJsonLines } from './json-lines.mjs';
 
-import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
+import {
+  buildCommandHead,
+  escapeArg,
+  escapeSingleQuotes,
+  normalizeExtraArgs,
+} from './shell.mjs';
 
 /**
  * Available Codex model configurations
@@ -128,7 +133,7 @@ export function buildCommand(options) {
   // Build command with stdin piping
   const inputCommand = promptFile
     ? `cat ${escapeArg(promptFile)}`
-    : `printf '%s' '${combinedPrompt.replace(/'/g, "'\\''")}'`;
+    : `printf '%s' '${escapeSingleQuotes(combinedPrompt)}'`;
   const prefixArgs = [];
   if (argOptions.readOnly) {
     prefixArgs.push('--ask-for-approval', 'never');

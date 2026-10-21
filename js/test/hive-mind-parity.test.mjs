@@ -7,7 +7,7 @@ import {
   buildNormalizedResultMetadata,
   buildAgentCommand,
 } from '../src/index.mjs';
-import { escapeArg } from '../src/tools/shell.mjs';
+import { escapeArg, escapeSingleQuotes } from '../src/tools/shell.mjs';
 import { executeCommand } from '../src/executor.mjs';
 const fixtures = JSON.parse(
   readFileSync(new URL('./fixtures/hive-mind-parity.json', import.meta.url))
@@ -69,6 +69,30 @@ test(
     const command = `printf '%s' ${escapeArg(value)}`;
     const result = await executeCommand(command, { attached: false });
     assert.ok(result.stdout.includes(value));
+  }
+);
+test(
+  'Quoted prompts and bash -c commands keep shell metacharacters literal',
+  { skip: process.platform === 'win32' },
+  async () => {
+    const value = 'a\'b"c$HOME`id`\\d';
+    const printed = await executeCommand(
+      `printf '%s' '${escapeSingleQuotes(value)}'`,
+      { attached: false }
+    );
+    assert.equal(printed.stdout, value);
+    assert.equal(escapeSingleQuotes(undefined), '');
+
+    // escapeArg, then the bash -c double-quote layer of buildAgentCommand.
+    const nested = await executeCommand(
+      buildAgentCommand({
+        tool: 'echo',
+        workingDirectory: '/tmp',
+        prompt: value,
+      }),
+      { attached: false }
+    );
+    assert.equal(nested.stdout, `--prompt ${value}\n`);
   }
 );
 test(

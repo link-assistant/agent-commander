@@ -10,7 +10,12 @@
 import { syncedModels, syncedDefaults } from './model-catalog.mjs';
 import { createModelMapper, parseJsonLines } from './json-lines.mjs';
 
-import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
+import {
+  buildCommandHead,
+  escapeArg,
+  escapeSingleQuotes,
+  normalizeExtraArgs,
+} from './shell.mjs';
 import { firstErrorText, stringifyErrorValue } from '../error-text.mjs';
 
 /**
@@ -163,7 +168,7 @@ export function buildCommand(options) {
   // Build command with stdin piping
   const inputCommand = promptFile
     ? `cat ${escapeArg(promptFile)}`
-    : `printf '%s' '${combinedPrompt.replace(/'/g, "'\\''")}'`;
+    : `printf '%s' '${escapeSingleQuotes(combinedPrompt)}'`;
   return `${inputCommand} | ${commandHead}`.trim();
 }
 
