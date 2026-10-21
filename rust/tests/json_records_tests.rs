@@ -86,6 +86,7 @@ fn agent_metadata_is_complete_for_default_pretty_printed_output() {
         parsed_output: Some(&parsed),
         session_id: None,
         usage: None,
+        ..Default::default()
     });
     assert!(metadata.success);
     assert_eq!(metadata.session_id.as_deref(), Some("ses_pretty"));

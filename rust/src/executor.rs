@@ -335,6 +335,10 @@ impl ProcessHandle {
     pub const fn signal(&self) -> Option<&'static str> {
         self.signal
     }
+    /// Whether the wrapper process has exited, without waiting for it.
+    pub fn try_wait(&mut self) -> io::Result<bool> {
+        Ok(self.exit_code.is_some() || self.child.try_wait()?.is_some())
+    }
     /// Check whether completion has been collected.
     pub const fn has_exited(&self) -> bool {
         self.exit_code.is_some()

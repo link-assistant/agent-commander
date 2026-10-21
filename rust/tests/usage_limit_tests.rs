@@ -44,6 +44,7 @@ fn metadata(tool: &str, exit_code: i32, plain_output: &str) -> ResultMetadata {
         parsed_output: None,
         session_id: None,
         usage: None,
+        ..Default::default()
     })
 }
 

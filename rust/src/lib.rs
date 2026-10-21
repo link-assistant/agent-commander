@@ -9,12 +9,14 @@
 //! - qwen: Qwen Code CLI
 //! - gemini: Gemini CLI
 
+pub mod background_tasks;
 pub mod cli_parser;
 pub mod command_builder;
 mod completion;
 pub mod error_text;
 pub mod executor;
 pub mod permissions;
+pub mod result_close;
 pub mod result_metadata;
 pub mod streaming;
 pub mod tools;
@@ -44,8 +46,20 @@ pub use permissions::{
 };
 
 pub use executor::{
-    execute_command, execute_detached, setup_signal_handler, start_command, ExecutionResult,
-    ProcessHandle,
+    execute_command, execute_detached, is_process_group_alive, normalize_exit,
+    setup_signal_handler, signal_from_exit_code, signal_name, start_command, ExecutionResult,
+    ProcessHandle, DEFAULT_KILL_AFTER, DEFAULT_PIPE_DRAIN,
+};
+
+pub use background_tasks::{
+    assess_background_tasks, extract_observed_models, is_real_model_id, print_wait_ceiling_seconds,
+    track_background_tasks, BackgroundTask, BackgroundTaskAssessment, BackgroundTaskState,
+    StoppedBackgroundTask, PRINT_BG_CEILING_PATTERN,
+};
+
+pub use result_close::{
+    has_final_result, wait_for_exit_after_result, ResultCloseOptions, StdoutMessageReader,
+    DEFAULT_RESULT_POLL,
 };
 
 pub use result_metadata::{
@@ -158,6 +172,14 @@ pub struct AgentStartOptions {
 pub struct AgentStopOptions {
     /// If true, just show the command
     pub dry_run: bool,
+    /// Stop a process that stays this long after its final result once no
+    /// background task runs (hive-mind#1280); `None` waits for it to exit
+    pub close_timeout: Option<std::time::Duration>,
+    /// Extra time a process may stay after its result while background tasks
+    /// run; `None` leaves them to the tool's own ceiling
+    pub background_wait: Option<std::time::Duration>,
+    /// The caller already stopped the process after its final result
+    pub terminated_after_result: bool,
 }
 
 /// Agent controller
@@ -442,6 +464,7 @@ impl Agent {
                         parsed_output: None,
                         session_id: None,
                         usage: None,
+                        ..Default::default()
                     }),
                     ..Default::default()
                 });
@@ -466,6 +489,8 @@ impl Agent {
                 parsed_output: None,
                 session_id: None,
                 usage: None,
+                signal: result.signal.clone(),
+                ..Default::default()
             });
 
             return Ok(AgentResult {
@@ -489,9 +514,18 @@ impl Agent {
                 .as_mut()
                 .ok_or("Agent not started or already stopped")?;
 
-            // Wait for the process to exit
-            let exit_code = match handle.wait_for_exit().await.map_err(|e| e.to_string()) {
-                Ok(exit_code) => exit_code,
+            // Wait for the process to exit, closing it when it outlives its result
+            let close = ResultCloseOptions {
+                close_timeout: stop_options.close_timeout,
+                background_wait: stop_options.background_wait,
+                ..Default::default()
+            };
+            let waited = wait_for_exit_after_result(handle, &self.options.tool, close).await;
+            let (exit_code, terminated_after_result) = match waited.map_err(|e| e.to_string()) {
+                Ok((exit_code, terminated)) => (
+                    exit_code,
+                    terminated || stop_options.terminated_after_result,
+                ),
                 Err(error) => {
                     self.cleanup_prompt_temp_dir().await;
                     return Err(error);
@@ -555,6 +589,8 @@ impl Agent {
                 parsed_output: parsed_output.as_deref(),
                 session_id: self.session_id.clone(),
                 usage: usage.clone(),
+                signal: handle.signal().map(String::from),
+                terminated_after_result,
             });
             if (self.options.json || self.options.tool == "agent")
                 && is_tool_supported(&self.options.tool)
@@ -585,16 +621,26 @@ impl Agent {
     }
 
     /// Cancel a running process and collect its final output and metadata.
+    ///
+    /// A process cancelled after its final result is judged by that result.
     pub async fn cancel(&mut self) -> Result<AgentResult, String> {
+        let mut terminated_after_result = false;
         if self.options.isolation == "none" || self.options.isolation.is_empty() {
             if let Some(handle) = self.process_handle.as_mut() {
+                let mut reader = StdoutMessageReader::new();
+                terminated_after_result = !handle.try_wait().map_err(|e| e.to_string())?
+                    && has_final_result(&self.options.tool, reader.read(&handle.peek_stdout()));
                 handle
                     .terminate()
                     .await
                     .map_err(|error| error.to_string())?;
             }
         }
-        self.stop(AgentStopOptions::default()).await
+        self.stop(AgentStopOptions {
+            terminated_after_result,
+            ..Default::default()
+        })
+        .await
     }
 
     /// Get the current session ID (if available)

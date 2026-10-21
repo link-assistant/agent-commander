@@ -1,7 +1,12 @@
 //! Normalized result metadata for tool-specific agent output.
 
+use crate::background_tasks::{
+    assess_background_tasks, extract_observed_models, is_real_model_id, BackgroundTask,
+    StoppedBackgroundTask,
+};
 use crate::completion::{completion_state, outcome_messages};
 use crate::error_text::first_error_text;
+use crate::executor::signal_from_exit_code;
 use crate::usage_limit::{
     classify_debug_lines, detect_usage_limit_sources, is_recoverable_tool_error, split_output,
     UsageLimitVerdict,
@@ -25,7 +30,11 @@ pub struct PricingInfo {
 pub struct ResultMetadata {
     pub tool: String,
     pub exit_code: i32,
+    /// Signal that ended the process (`SIGTERM`, `SIGKILL`, ...), if any
+    pub signal: Option<String>,
     pub success: bool,
+    /// The caller stopped the process after its final result
+    pub terminated_after_result: bool,
     pub session_id: Option<String>,
     pub limit_reached: bool,
     pub limit_reset_time: Option<String>,
@@ -39,15 +48,31 @@ pub struct ResultMetadata {
     pub pricing_info: Option<PricingInfo>,
     pub result_summary: Option<String>,
     pub result_model_usage: Option<Value>,
+    /// Real model ids seen in the stream: main thread first, then subagents
+    pub observed_models: Vec<String>,
+    /// Main-thread model observed last
+    pub observed_model: Option<String>,
     pub stream_token_usage: Option<Value>,
     pub sub_agent_calls: Option<Vec<Value>>,
     pub error_during_execution: bool,
     pub error_type: Option<String>,
     pub error_message: Option<String>,
+    /// Claude `result.api_error` (or the API error message's `error`)
+    pub api_error: Option<String>,
+    pub api_error_status: Option<i64>,
+    pub terminal_reason: Option<String>,
+    pub request_id: Option<String>,
+    /// Background tasks that never reported an end
+    pub running_background_tasks: Vec<BackgroundTask>,
+    /// Background tasks stopped while the main thread was idle
+    pub background_tasks_stopped: u64,
+    pub stopped_background_tasks: Vec<StoppedBackgroundTask>,
+    /// Claude's print-mode background wait ceiling, when it announced one
+    pub print_wait_ceiling_seconds: Option<u64>,
 }
 
 /// Inputs used to build normalized result metadata.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct BuildMetadataOptions<'a> {
     pub tool: &'a str,
     pub exit_code: i32,
@@ -55,6 +80,10 @@ pub struct BuildMetadataOptions<'a> {
     pub parsed_output: Option<&'a [Value]>,
     pub session_id: Option<String>,
     pub usage: Option<Value>,
+    /// Signal that ended the process; inferred from a 128 + N exit code when `None`
+    pub signal: Option<String>,
+    /// The caller stopped the process after its final result
+    pub terminated_after_result: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -198,7 +227,8 @@ fn extract_result_model_usage(messages: &[Value]) -> Option<Value> {
             .get("model")
             .or_else(|| message.pointer("/message/model"))
             .or_else(|| message.pointer("/part/model"))
-            .and_then(Value::as_str);
+            .and_then(Value::as_str)
+            .filter(|model| is_real_model_id(model));
         let usage = message
             .get("usage")
             .or_else(|| message.pointer("/message/usage"))
@@ -386,6 +416,12 @@ static PREFERRED_EXIT_LINE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)^(?:error\b|fatal:|(?:/\S*/)?(?:ba|z)?sh:\s)").expect("valid pattern")
 });
 
+/// A `tracing` log line (`2026-01-01T00:00:00.000Z DEBUG ...`) names no exit reason.
+static TRACING_LINE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^\S*?\d{4}-\d{2}-\d{2}T[\d:.]+Z\s+(?:TRACE|DEBUG|INFO|WARN|ERROR)\s")
+        .expect("valid pattern")
+});
+
 /// The reason a process exited is a plain text line: JSON records, the
 /// `ANTHROPIC_LOG=debug` dump and its base64 bodies are not (hive-mind#3570).
 fn exit_reason_line(plain_output: &str) -> Option<String> {
@@ -396,7 +432,7 @@ fn exit_reason_line(plain_output: &str) -> Option<String> {
         .enumerate()
         .filter(|(index, _)| !debug.debug_lines.contains(index))
         .map(|(_, line)| line.trim())
-        .filter(|line| !line.is_empty())
+        .filter(|line| !line.is_empty() && !TRACING_LINE.is_match(line))
         .collect();
     candidates
         .iter()
@@ -406,9 +442,33 @@ fn exit_reason_line(plain_output: &str) -> Option<String> {
         .map(|line| (*line).to_string())
 }
 
+fn exit_code_error(exit_code: i32, signal: Option<&str>, plain_output: &str) -> ExecutionError {
+    let reason = exit_reason_line(plain_output);
+    let Some(signal) = signal else {
+        return ExecutionError {
+            has_error: true,
+            error_type: Some("exit_code".to_string()),
+            message: reason.or_else(|| Some(format!("Process exited with code {exit_code}"))),
+        };
+    };
+    // A signal is the cause; a preferred error line may still say why it came.
+    let preferred = reason
+        .filter(|line| PREFERRED_EXIT_LINE.is_match(line))
+        .map(|line| format!(": {line}"))
+        .unwrap_or_default();
+    ExecutionError {
+        has_error: true,
+        error_type: Some("signal".to_string()),
+        message: Some(format!(
+            "Process exited with code {exit_code} ({signal}){preferred}"
+        )),
+    }
+}
+
 fn detect_execution_error(
     tool: &str,
     exit_code: i32,
+    signal: Option<&str>,
     plain_output: &str,
     messages: &[Value],
 ) -> ExecutionError {
@@ -439,15 +499,45 @@ fn detect_execution_error(
     }
 
     if exit_code != 0 {
-        return ExecutionError {
-            has_error: true,
-            error_type: Some("exit_code".to_string()),
-            message: exit_reason_line(plain_output)
-                .or_else(|| Some(format!("Process exited with code {exit_code}"))),
-        };
+        return exit_code_error(exit_code, signal, plain_output);
     }
 
     ExecutionError::default()
+}
+
+struct ApiErrorDetails {
+    api_error: Option<String>,
+    api_error_status: Option<i64>,
+    terminal_reason: Option<String>,
+    request_id: Option<String>,
+}
+
+/// API failure details from Claude's last `result` or its API error message.
+fn extract_api_error_details(messages: &[Value]) -> ApiErrorDetails {
+    let result = messages
+        .iter()
+        .rev()
+        .find(|event| event["type"] == "result");
+    let api_message = messages
+        .iter()
+        .rev()
+        .find(|event| event["type"] == "assistant" && event["is_api_error_message"] == true);
+    let text = |event: Option<&Value>, key: &str| {
+        event
+            .and_then(|event| event.get(key))
+            .and_then(Value::as_str)
+            .map(String::from)
+    };
+    ApiErrorDetails {
+        api_error: text(result, "api_error")
+            .or_else(|| text(result, "error"))
+            .or_else(|| text(api_message, "error")),
+        api_error_status: result
+            .and_then(|result| result.get("api_error_status"))
+            .and_then(Value::as_i64),
+        terminal_reason: text(result, "terminal_reason"),
+        request_id: text(result, "request_id").or_else(|| text(api_message, "request_id")),
+    }
 }
 
 fn extract_session_id(explicit_session_id: Option<String>, messages: &[Value]) -> Option<String> {
@@ -495,7 +585,14 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
         .filter(|event| event["parent_tool_use_id"].is_null())
         .cloned()
         .collect();
+    let signal = options
+        .signal
+        .clone()
+        .or_else(|| signal_from_exit_code(options.exit_code).map(String::from));
     let completion = completion_state(options.tool, &messages);
+    // Stopping a process after its completed result is the caller's own
+    // signal, not the tool's verdict (hive-mind#3015 interpretClaudeExitCode).
+    let exit_forgiven = options.terminated_after_result && completion == Some("completed");
     // The raw stream contains HTTP header names (e.g.
     // "anthropic-ratelimit-unified-5h-reset") even on a successful run, so a
     // native completion event wins over the text scan (issue #37).
@@ -506,7 +603,8 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
     };
     let mut execution_error = detect_execution_error(
         options.tool,
-        options.exit_code,
+        if exit_forgiven { 0 } else { options.exit_code },
+        signal.as_deref(),
         options.plain_output,
         outcome_messages(options.tool, &messages),
     );
@@ -515,6 +613,18 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
             has_error: true,
             error_type: Some("incomplete_stream".into()),
             message: Some("Process exited before the native completion event".into()),
+        };
+    }
+    let background = assess_background_tasks(
+        &all_messages,
+        options.plain_output,
+        options.terminated_after_result,
+    );
+    if !execution_error.has_error && background.incomplete {
+        execution_error = ExecutionError {
+            has_error: true,
+            error_type: Some("background_tasks_stopped".into()),
+            message: background.cause.clone(),
         };
     }
     // A server-side throttle is transient: callers retry instead of waiting for a reset.
@@ -527,11 +637,17 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
         total_cost_usd,
         source: format!("{}-stream-usage", options.tool),
     });
+    let (observed_models, observed_model) = extract_observed_models(&all_messages);
+    let api = extract_api_error_details(&messages);
 
     ResultMetadata {
         tool: options.tool.to_string(),
         exit_code: options.exit_code,
-        success: options.exit_code == 0 && !usage_limit.reached && !execution_error.has_error,
+        signal,
+        success: (options.exit_code == 0 || exit_forgiven)
+            && !usage_limit.reached
+            && !execution_error.has_error,
+        terminated_after_result: options.terminated_after_result,
         session_id,
         limit_reached: usage_limit.reached,
         limit_reset_time: usage_limit.reset_time,
@@ -546,11 +662,21 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
         pricing_info,
         result_summary: extract_result_summary(&messages, options.plain_output),
         result_model_usage: extract_result_model_usage(&messages),
+        observed_models,
+        observed_model,
         stream_token_usage: options.usage,
         sub_agent_calls: extract_sub_agent_calls(&all_messages),
         error_during_execution: execution_error.has_error,
         error_type: execution_error.error_type,
         error_message: execution_error.message,
+        api_error: api.api_error,
+        api_error_status: api.api_error_status,
+        terminal_reason: api.terminal_reason,
+        request_id: api.request_id,
+        running_background_tasks: background.running_background_tasks,
+        background_tasks_stopped: background.background_tasks_stopped,
+        stopped_background_tasks: background.stopped_background_tasks,
+        print_wait_ceiling_seconds: background.print_wait_ceiling_seconds,
     }
 }
 
@@ -573,6 +699,7 @@ mod tests {
             parsed_output: None,
             session_id: None,
             usage: Some(usage.clone()),
+            ..Default::default()
         });
 
         assert_eq!(metadata.tool, "codex");
@@ -610,6 +737,7 @@ mod tests {
             parsed_output: Some(&messages),
             session_id: None,
             usage: Some(usage.clone()),
+            ..Default::default()
         });
 
         assert_eq!(metadata.tool, "agent");
