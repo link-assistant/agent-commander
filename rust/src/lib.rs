@@ -10,12 +10,14 @@
 //! - gemini: Gemini CLI
 
 pub mod background_tasks;
+pub mod claude_transcript;
 pub mod cli_parser;
 pub mod codex_rollout;
 pub mod command_builder;
 mod completion;
 pub mod error_text;
 pub mod executor;
+pub mod file_tail;
 pub mod permissions;
 pub mod result_close;
 pub mod result_metadata;
@@ -70,6 +72,14 @@ pub use codex_rollout::{
     CodexLimitVerdict, CodexRolloutLimitFacts, CodexRolloutOptions, CODEX_ROLLOUT_LIMIT_SOURCE,
     CODEX_SESSIONS_DIRNAME, ROLLOUT_TAIL_BYTES,
 };
+
+pub use claude_transcript::{
+    apply_claude_transcript_usage_limit, claude_project_slugs, claude_transcript_api_error,
+    claude_transcript_candidates, read_claude_transcript_api_error, ClaudeTranscriptApiError,
+    ClaudeTranscriptOptions, CLAUDE_TRANSCRIPT_LIMIT_SOURCE, TRANSCRIPT_TAIL_BYTES,
+};
+
+pub use file_tail::read_file_tail;
 
 pub use result_metadata::{
     build_normalized_result_metadata, BuildMetadataOptions, PricingInfo, ResultMetadata,
@@ -604,7 +614,8 @@ impl Agent {
                 signal: handle.signal().map(String::from),
                 terminated_after_result,
             });
-            // Codex can leave a usage limit only in its rollout (hive-mind#3570)
+            // Codex and Claude can leave a usage limit only in their session
+            // files (hive-mind#3570)
             codex_rollout::apply_codex_rollout_usage_limit(
                 &mut metadata,
                 &CodexRolloutOptions::for_run_env(&self.options.extra_env, &self.options.unset_env),
@@ -618,6 +629,14 @@ impl Agent {
                     parsed_output.as_deref().unwrap_or_default(),
                 );
             }
+            claude_transcript::apply_claude_transcript_usage_limit(
+                &mut metadata,
+                &ClaudeTranscriptOptions::for_run_env(
+                    &self.options.working_directory,
+                    &self.options.extra_env,
+                    &self.options.unset_env,
+                ),
+            );
 
             let result = AgentResult {
                 exit_code,

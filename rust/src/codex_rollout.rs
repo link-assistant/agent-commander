@@ -15,10 +15,10 @@
 use regex::Regex;
 use serde_json::Value;
 use std::fs;
-use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
+use crate::file_tail::{default_home_dir, read_file_tail};
 use crate::result_metadata::ResultMetadata;
 use crate::usage_limit::{format_epoch_reset_time_utc, is_usage_limit_text};
 
@@ -77,13 +77,6 @@ impl CodexRolloutOptions {
     fn max_bytes(&self) -> u64 {
         self.max_bytes.unwrap_or(ROLLOUT_TAIL_BYTES)
     }
-}
-
-fn default_home_dir() -> PathBuf {
-    std::env::var_os("HOME")
-        .or_else(|| std::env::var_os("USERPROFILE"))
-        .map(PathBuf::from)
-        .unwrap_or_default()
 }
 
 /// Codex `sessions` directory
@@ -355,23 +348,6 @@ pub fn codex_rollout_limit_facts(text: &str) -> CodexRolloutLimitFacts {
     facts
 }
 
-fn read_tail(path: &Path, max_bytes: u64) -> std::io::Result<String> {
-    let mut file = fs::File::open(path)?;
-    let size = file.metadata()?.len();
-    let length = size.min(max_bytes);
-    file.seek(SeekFrom::Start(size - length))?;
-    let mut buffer = Vec::new();
-    file.take(length).read_to_end(&mut buffer)?;
-    let text = String::from_utf8_lossy(&buffer).into_owned();
-    // A cut first line is not a whole record.
-    if length < size {
-        if let Some(index) = text.find('\n') {
-            return Ok(text[index + 1..].to_string());
-        }
-    }
-    Ok(text)
-}
-
 /// Read the last turn of a thread's rollout.
 ///
 /// Returns the rollout path and its facts, or why no rollout was read.
@@ -385,7 +361,8 @@ pub fn read_codex_rollout_limit_facts(
     let sessions_dir = codex_sessions_dir(options);
     let rollout_path = find_codex_rollout_file(&sessions_dir, thread_id)
         .ok_or_else(|| format!("no rollout under {}", sessions_dir.display()))?;
-    let text = read_tail(&rollout_path, options.max_bytes()).map_err(|error| error.to_string())?;
+    let text =
+        read_file_tail(&rollout_path, options.max_bytes()).map_err(|error| error.to_string())?;
     Ok((rollout_path, codex_rollout_limit_facts(&text)))
 }
 
