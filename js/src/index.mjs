@@ -793,6 +793,13 @@ export {
 } from './usage-limit.mjs';
 export { firstErrorText, stringifyErrorValue } from './error-text.mjs';
 export {
+  buildVersionCommand,
+  compareVersions,
+  getToolVersion,
+  parseToolVersion,
+  toolVersionFromOutput,
+} from './tool-version.mjs';
+export {
   assertLaunchOptionsSupported,
   codexMcpServersOverride,
   definedLaunchOptions,

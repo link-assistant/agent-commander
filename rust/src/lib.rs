@@ -22,6 +22,7 @@ pub mod permissions;
 pub mod result_close;
 pub mod result_metadata;
 pub mod streaming;
+pub mod tool_version;
 pub mod tools;
 pub mod tui;
 pub mod usage_limit;
@@ -103,6 +104,11 @@ pub use streaming::{
 pub use tools::{
     get_tool, is_tool_supported, list_tools, AgentTool, ClaudeTool, CodexTool, OpencodeTool, Tool,
     ToolRegistry,
+};
+
+pub use tool_version::{
+    build_version_command, compare_versions, get_tool_version, parse_tool_version,
+    tool_version_from_output, ToolVersion,
 };
 
 pub use tools::launch_options::{
