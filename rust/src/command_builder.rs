@@ -2,6 +2,7 @@
 
 use crate::tools::shell::escape_arg;
 // The same quoting rules command-stream audits for `bash -c` strings.
+use crate::tools::launch_options::{check_launch_options_supported, LaunchOptions};
 use crate::tools::{
     agent::{self, AgentBuildOptions},
     claude::{self, ClaudeBuildOptions},
@@ -44,6 +45,8 @@ pub struct AgentCommandOptions {
     pub screen_name: Option<String>,
     pub container_name: Option<String>,
     pub detached: bool,
+    /// Shared launch options (reasoning effort, MCP servers, extra directories)
+    pub launch: LaunchOptions,
 }
 
 /// Check whether a tool has an enforceable native read-only/planning mode.
@@ -173,6 +176,10 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
         crate::permissions::ask_unsupported_error(&options.tool)
     );
 
+    if let Err(error) = check_launch_options_supported(&options.tool, &options.launch) {
+        panic!("{error}");
+    }
+
     // Build base command using tool-specific builder if available
     let base_command = if is_tool_supported(&options.tool) {
         match options.tool.as_str() {
@@ -200,6 +207,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 skip_default_safety_flags: options.skip_default_safety_flags,
                 permission_mode: None,
                 stream_input: false,
+                launch: options.launch.clone(),
             }),
             "codex" => codex::build_command(&CodexBuildOptions {
                 prompt: options.prompt.clone(),
@@ -216,6 +224,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 skip_default_safety_flags: options.skip_default_safety_flags,
                 sandbox_mode: None,
                 approval_mode: None,
+                launch: options.launch.clone(),
             }),
             "opencode" => opencode::build_command(&OpencodeBuildOptions {
                 prompt: options.prompt.clone(),
@@ -229,6 +238,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 extra_env: options.extra_env.clone(),
                 unset_env: options.unset_env.clone(),
                 extra_args: options.extra_args.clone(),
+                launch: options.launch.clone(),
             }),
             "agent" => agent::build_command(&AgentBuildOptions {
                 resume: options.resume.clone(),
@@ -263,6 +273,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                     unset_env: options.unset_env.clone(),
                     extra_args: options.extra_args.clone(),
                     skip_default_safety_flags: options.skip_default_safety_flags,
+                    launch: options.launch.clone(),
                     ..GeminiBuildOptions::new()
                 };
                 gemini::build_command(&options)
@@ -281,6 +292,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                     unset_env: options.unset_env.clone(),
                     extra_args: options.extra_args.clone(),
                     skip_default_safety_flags: options.skip_default_safety_flags,
+                    launch: options.launch.clone(),
                     ..QwenBuildOptions::new()
                 };
                 qwen::build_command(&options)

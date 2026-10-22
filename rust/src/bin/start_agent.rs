@@ -3,7 +3,7 @@
 
 use agent_commander::{
     agent, parse_start_agent_args, show_start_agent_help, validate_start_agent_options,
-    AgentOptions, AgentStartOptions,
+    AgentOptions, AgentStartOptions, LaunchOptions,
 };
 
 fn parse_tool_env(entries: Vec<String>) -> Result<Vec<(String, String)>, String> {
@@ -73,6 +73,12 @@ async fn main() {
         isolation: options.isolation,
         screen_name: options.screen_name,
         container_name: options.container_name,
+        launch: LaunchOptions {
+            reasoning_effort: options.reasoning_effort,
+            mcp_config: options.mcp_config,
+            strict_mcp_config: options.strict_mcp_config,
+            additional_directories: options.additional_directories,
+        },
         ..Default::default()
     };
 

@@ -105,6 +105,12 @@ pub use tools::{
     ToolRegistry,
 };
 
+pub use tools::launch_options::{
+    check_launch_options_supported, codex_mcp_servers_override, launch_capabilities,
+    normalize_reasoning_effort, to_toml_value, LaunchCapabilities, LaunchOptions,
+    CLAUDE_REASONING_EFFORTS, CODEX_REASONING_EFFORTS,
+};
+
 /// Agent options for creating a controller
 #[derive(Debug, Clone, Default)]
 pub struct AgentOptions {
@@ -159,6 +165,9 @@ pub struct AgentOptions {
     pub unset_env: Vec<String>,
     /// Do not add default autonomous safety bypass flags
     pub skip_default_safety_flags: bool,
+    /// Shared launch options: reasoning effort, MCP servers, strict MCP
+    /// configuration and extra workspace directories
+    pub launch: LaunchOptions,
 }
 
 /// Agent result from stop()
@@ -379,6 +388,9 @@ impl Agent {
     /// # Returns
     /// Result indicating success or error
     pub async fn start(&mut self, start_options: AgentStartOptions) -> Result<(), String> {
+        // Reject launch options the tool cannot honor before any side effects.
+        check_launch_options_supported(&self.options.tool, &self.options.launch)?;
+
         // Create output stream for JSON parsing if in JSON mode
         if self.options.json {
             self.output_stream = Some(create_output_stream());
@@ -430,6 +442,7 @@ impl Agent {
             screen_name: self.options.screen_name.clone(),
             container_name: self.options.container_name.clone(),
             detached: start_options.detached,
+            launch: self.options.launch.clone(),
         };
 
         let command = build_agent_command(&command_options);

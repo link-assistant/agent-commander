@@ -3,6 +3,9 @@
 
 use super::usage::{self, count};
 use crate::streaming::parse_json_records;
+use crate::tools::launch_options::{
+    codex_mcp_servers_override, normalize_reasoning_effort, push_directories, LaunchOptions,
+};
 use crate::tools::shell::{
     build_command_head, escape_arg, escape_single_quotes, lookup_model_alias,
 };
@@ -166,6 +169,8 @@ pub struct CodexBuildOptions {
     pub skip_default_safety_flags: bool,
     pub sandbox_mode: Option<String>,
     pub approval_mode: Option<String>,
+    /// Shared launch options (reasoning effort, MCP servers, extra directories)
+    pub launch: LaunchOptions,
 }
 
 /// Build command line arguments for Codex
@@ -178,9 +183,33 @@ pub struct CodexBuildOptions {
 pub fn build_args(options: &CodexBuildOptions) -> Vec<String> {
     let mut args = vec!["exec".to_string()];
 
+    // `--sandbox` and `--add-dir` are `exec` options; `exec resume` rejects
+    // them, so they go before the subcommand.
+    if options.read_only {
+        args.push("--sandbox".to_string());
+        args.push("read-only".to_string());
+    } else if let Some(ref sandbox_mode) = options.sandbox_mode {
+        args.push("--sandbox".to_string());
+        args.push(sandbox_mode.clone());
+    }
+    let launch = &options.launch;
+    push_directories(&mut args, "--add-dir", &launch.additional_directories);
+
     if let Some(ref resume) = options.resume {
         args.push("resume".to_string());
         args.push(resume.clone());
+    }
+
+    if let Some(ref effort) = launch.reasoning_effort {
+        args.push("-c".to_string());
+        args.push(format!(
+            "model_reasoning_effort={}",
+            normalize_reasoning_effort(effort)
+        ));
+    }
+    if let Some(ref mcp_config) = launch.mcp_config {
+        args.push("-c".to_string());
+        args.push(codex_mcp_servers_override(mcp_config).unwrap_or_else(|error| panic!("{error}")));
     }
 
     if let Some(ref model) = options.model {
@@ -196,13 +225,6 @@ pub fn build_args(options: &CodexBuildOptions) -> Vec<String> {
 
     // Codex-specific flags for autonomous execution
     args.push("--skip-git-repo-check".to_string());
-    if options.read_only {
-        args.push("--sandbox".to_string());
-        args.push("read-only".to_string());
-    } else if let Some(ref sandbox_mode) = options.sandbox_mode {
-        args.push("--sandbox".to_string());
-        args.push(sandbox_mode.clone());
-    }
 
     if !options.read_only
         && options.sandbox_mode.is_none()

@@ -3,6 +3,7 @@
 
 use super::usage::{self, count};
 use crate::streaming::parse_json_records;
+use crate::tools::launch_options::{push_directories, LaunchOptions};
 use crate::tools::shell::{build_command_head, escape_arg, lookup_model_alias};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -80,6 +81,8 @@ pub struct GeminiBuildOptions {
     pub unset_env: Vec<String>,
     pub extra_args: Vec<String>,
     pub skip_default_safety_flags: bool,
+    /// Shared launch options (reasoning effort, MCP servers, extra directories)
+    pub launch: LaunchOptions,
 }
 
 impl GeminiBuildOptions {
@@ -118,6 +121,12 @@ pub fn build_args(options: &GeminiBuildOptions) -> Vec<String> {
         // Enable yolo mode for autonomous execution (auto-approve all tool calls)
         args.push("--yolo".to_string());
     }
+
+    push_directories(
+        &mut args,
+        "--include-directories",
+        &options.launch.additional_directories,
+    );
 
     // Sandbox mode for secure execution
     if options.sandbox {

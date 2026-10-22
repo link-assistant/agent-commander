@@ -2,6 +2,7 @@
 //! Based on hive-mind's opencode.lib.mjs implementation
 
 use crate::streaming::parse_json_records;
+use crate::tools::launch_options::{normalize_reasoning_effort, LaunchOptions};
 use crate::tools::shell::{
     build_command_head, escape_arg, escape_single_quotes, lookup_model_alias,
 };
@@ -67,6 +68,8 @@ pub struct OpencodeBuildOptions {
     /// Variables removed from the inherited environment (`env -u`)
     pub unset_env: Vec<String>,
     pub extra_args: Vec<String>,
+    /// Shared launch options (reasoning effort, MCP servers, extra directories)
+    pub launch: LaunchOptions,
 }
 
 /// Build command line arguments for OpenCode
@@ -94,6 +97,11 @@ pub fn build_args(options: &OpencodeBuildOptions) -> Vec<String> {
     if let Some(ref resume) = options.resume {
         args.push("--session".to_string());
         args.push(resume.clone());
+    }
+
+    if let Some(ref variant) = options.launch.reasoning_effort {
+        args.push("--variant".to_string());
+        args.push(normalize_reasoning_effort(variant));
     }
 
     args.extend(options.extra_args.clone());

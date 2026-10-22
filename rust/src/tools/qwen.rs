@@ -4,6 +4,7 @@
 
 use super::usage::{self, count};
 use crate::streaming::parse_json_records;
+use crate::tools::launch_options::{push_directories, LaunchOptions};
 use crate::tools::shell::{build_command_head, escape_arg, lookup_model_alias};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -79,6 +80,8 @@ pub struct QwenBuildOptions {
     pub unset_env: Vec<String>,
     pub extra_args: Vec<String>,
     pub skip_default_safety_flags: bool,
+    /// Shared launch options (reasoning effort, MCP servers, extra directories)
+    pub launch: LaunchOptions,
 }
 
 impl QwenBuildOptions {
@@ -150,9 +153,19 @@ pub fn build_args(options: &QwenBuildOptions) -> Vec<String> {
         args.push("--all-files".to_string());
     }
 
-    for dir in &options.include_directories {
-        args.push("--include-directories".to_string());
-        args.push(dir.clone());
+    push_directories(
+        &mut args,
+        "--include-directories",
+        &options.include_directories,
+    );
+    push_directories(
+        &mut args,
+        "--include-directories",
+        &options.launch.additional_directories,
+    );
+    if let Some(ref mcp_config) = options.launch.mcp_config {
+        args.push("--mcp-config".to_string());
+        args.push(mcp_config.clone());
     }
 
     args.extend(options.extra_args.clone());
