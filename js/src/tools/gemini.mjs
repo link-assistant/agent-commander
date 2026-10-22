@@ -271,6 +271,7 @@ export const geminiTool = {
   supportsMcpConfig: false, // MCP servers come from settings.json only
   supportsStrictMcpConfig: false,
   supportsAdditionalDirectories: true, // --include-directories <dir>
+  supportsAttachments: false, // No attachment flag (@path in the prompt)
   defaultModel: syncedDefaults.gemini,
   modelMap,
   mapModelToId,

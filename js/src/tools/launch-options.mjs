@@ -1,6 +1,6 @@
 /**
- * Launch options shared by every tool: reasoning effort, MCP servers and
- * extra workspace directories (issue #57). Each tool maps them onto its own
+ * Launch options shared by every tool: reasoning effort, MCP servers, extra
+ * workspace directories and file attachments (issue #57). Each tool maps them onto its own
  * native flag; a tool without a native flag rejects the option instead of
  * silently dropping it.
  */
@@ -24,24 +24,41 @@ export function normalizeReasoningEffort(reasoningEffort) {
 }
 
 /**
+ * Normalize a path list option: one path or an array of non-empty paths.
+ * @param {string|string[]|undefined} value - Path or paths
+ * @param {string} name - Option name for error messages
+ * @returns {string[]} Paths
+ */
+function normalizePathList(value, name) {
+  if (value === undefined || value === null) {
+    return [];
+  }
+  return (Array.isArray(value) ? value : [value]).map((item) => {
+    const path = String(item);
+    if (!path) {
+      throw new Error(`${name} entries must not be empty`);
+    }
+    return path;
+  });
+}
+
+/**
  * Normalize the extra workspace directories.
  * @param {string|string[]|undefined} additionalDirectories - Directories
  * @returns {string[]} Directories
  */
 export function normalizeAdditionalDirectories(additionalDirectories) {
-  if (additionalDirectories === undefined || additionalDirectories === null) {
-    return [];
-  }
-  const list = Array.isArray(additionalDirectories)
-    ? additionalDirectories
-    : [additionalDirectories];
-  return list.map((dir) => {
-    const value = String(dir);
-    if (!value) {
-      throw new Error('additionalDirectories entries must not be empty');
-    }
-    return value;
-  });
+  return normalizePathList(additionalDirectories, 'additionalDirectories');
+}
+
+/**
+ * Normalize the files attached to the prompt (images for Codex, any file for
+ * OpenCode). Relative paths resolve against the working directory.
+ * @param {string|string[]|undefined} attachments - File paths
+ * @returns {string[]} File paths
+ */
+export function normalizeAttachments(attachments) {
+  return normalizePathList(attachments, 'attachments');
 }
 
 /**
@@ -154,7 +171,7 @@ export function codexMcpServersOverride(mcpConfig) {
 /**
  * Describe what a tool natively supports among the launch options.
  * @param {Object} toolConfig - Tool configuration
- * @returns {{reasoningEffort: boolean, reasoningEfforts: string[]|null, mcpConfig: boolean, strictMcpConfig: boolean, additionalDirectories: boolean}}
+ * @returns {{reasoningEffort: boolean, reasoningEfforts: string[]|null, mcpConfig: boolean, strictMcpConfig: boolean, additionalDirectories: boolean, attachments: boolean}}
  */
 export function getLaunchCapabilities(toolConfig) {
   return {
@@ -163,6 +180,7 @@ export function getLaunchCapabilities(toolConfig) {
     mcpConfig: Boolean(toolConfig?.supportsMcpConfig),
     strictMcpConfig: Boolean(toolConfig?.supportsStrictMcpConfig),
     additionalDirectories: Boolean(toolConfig?.supportsAdditionalDirectories),
+    attachments: Boolean(toolConfig?.supportsAttachments),
   };
 }
 
@@ -186,6 +204,13 @@ const LAUNCH_OPTIONS = [
     key: 'additionalDirectories',
     flag: 'supportsAdditionalDirectories',
     label: 'additional directories (--add-dir)',
+    normalize: normalizeAdditionalDirectories,
+  },
+  {
+    key: 'attachments',
+    flag: 'supportsAttachments',
+    label: 'file attachments (--attach)',
+    normalize: normalizeAttachments,
   },
 ];
 
@@ -216,12 +241,11 @@ export function assertLaunchOptionsSupported({
   tools,
   requested,
 }) {
-  for (const { key, flag, label } of LAUNCH_OPTIONS) {
+  for (const { key, flag, label, normalize } of LAUNCH_OPTIONS) {
     const value = requested[key];
-    const isRequested =
-      key === 'additionalDirectories'
-        ? normalizeAdditionalDirectories(value).length > 0
-        : value !== undefined && value !== null && value !== false;
+    const isRequested = normalize
+      ? normalize(value).length > 0
+      : value !== undefined && value !== null && value !== false;
     if (isRequested && !toolConfig?.[flag]) {
       throw new Error(
         `Tool "${tool}" does not support ${label}. Choose one of: ${supportingTools(tools, flag)}; or omit the option.`

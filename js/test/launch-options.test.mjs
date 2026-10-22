@@ -1,6 +1,7 @@
 /**
  * Tests for the shared launch options (issue #57): reasoning effort, MCP
- * servers, strict MCP configuration and extra workspace directories.
+ * servers, strict MCP configuration, extra workspace directories and file
+ * attachments.
  */
 
 import { mock, test } from 'node:test';
@@ -13,6 +14,7 @@ import {
   getTool,
   mcpConfigArg,
   normalizeAdditionalDirectories,
+  normalizeAttachments,
   normalizeReasoningEffort,
   toTomlValue,
 } from '../src/index.mjs';
@@ -95,6 +97,38 @@ test('codex keeps exec-level flags before resume (regression)', () => {
   assert.strictEqual(result[resumeIndex + 1], 'thread-1');
 });
 
+test('codex attaches each image with its own --image flag', () => {
+  // codex 0.163 takes `--image <FILE>` in `exec` and `exec resume`.
+  const result = args('codex', {
+    resume: 'thread-1',
+    attachments: ['shot.png', '/tmp/b.jpg'],
+  });
+  const resumeIndex = result.indexOf('resume');
+  const imageIndex = result.indexOf('--image');
+  assert.ok(imageIndex > resumeIndex);
+  assert.deepStrictEqual(result.slice(imageIndex, imageIndex + 4), [
+    '--image',
+    'shot.png',
+    '--image',
+    '/tmp/b.jpg',
+  ]);
+  // The variadic flag is always followed by another flag.
+  assert.match(result[imageIndex + 4], /^--/);
+});
+
+test('opencode attaches files with --file right after run', () => {
+  const result = args('opencode', {
+    attachments: 'diagram.png',
+    extraArgs: ['positional'],
+  });
+  assert.deepStrictEqual(result.slice(0, 4), [
+    'run',
+    '--file',
+    'diagram.png',
+    '--format',
+  ]);
+});
+
 test('codex rejects an MCP config file path', () => {
   assert.throws(
     () => args('codex', { mcpConfig: './mcp.json' }),
@@ -154,12 +188,17 @@ test('buildAgentCommand rejects options a tool cannot honor', () => {
       }),
     /does not support additional directories/
   );
+  assert.throws(
+    () => buildAgentCommand({ ...base, tool: 'claude', attachments: 'a.png' }),
+    /Tool "claude" does not support file attachments.*Choose one of: codex, opencode;/
+  );
   // Empty lists and false flags are not requests.
   assert.doesNotThrow(() =>
     buildAgentCommand({
       ...base,
       tool: 'agent',
       additionalDirectories: [],
+      attachments: [],
       strictMcpConfig: false,
     })
   );
@@ -194,15 +233,19 @@ test('getLaunchCapabilities reports each tool', () => {
     mcpConfig: true,
     strictMcpConfig: true,
     additionalDirectories: true,
+    attachments: false,
   });
   assert.strictEqual(capabilities.codex.strictMcpConfig, false);
   assert.strictEqual(capabilities.opencode.reasoningEfforts, null);
+  assert.strictEqual(capabilities.codex.attachments, true);
+  assert.strictEqual(capabilities.opencode.attachments, true);
   assert.deepStrictEqual(capabilities.agent, {
     reasoningEffort: false,
     reasoningEfforts: null,
     mcpConfig: false,
     strictMcpConfig: false,
     additionalDirectories: false,
+    attachments: false,
   });
 });
 
@@ -210,6 +253,8 @@ test('helpers validate their input', () => {
   assert.throws(() => normalizeReasoningEffort('high; rm'), /Invalid/);
   assert.throws(() => normalizeAdditionalDirectories(['']), /empty/);
   assert.deepStrictEqual(normalizeAdditionalDirectories('/a'), ['/a']);
+  assert.throws(() => normalizeAttachments(['']), /attachments.*empty/);
+  assert.deepStrictEqual(normalizeAttachments(undefined), []);
   assert.throws(() => mcpConfigArg(''), /empty/);
   assert.throws(() => mcpConfigArg(42), TypeError);
   assert.strictEqual(toTomlValue('a"b\n'), '"a\\"b\\n"');
@@ -238,9 +283,28 @@ test('start-agent parses the launch option flags', () => {
     '/a',
     '--add-dir',
     '/b',
+    '--attach',
+    'shot.png',
   ]);
   assert.strictEqual(parsed.reasoningEffort, 'high');
   assert.strictEqual(parsed.mcpConfig, './mcp.json');
   assert.strictEqual(parsed.strictMcpConfig, true);
   assert.deepStrictEqual(parsed.additionalDirectories, ['/a', '/b']);
+  assert.deepStrictEqual(parsed.attachments, ['shot.png']);
+});
+
+test('agent() forwards attachments to codex', async () => {
+  const controller = agent({
+    tool: 'codex',
+    workingDirectory: '/tmp',
+    prompt: 'describe',
+    attachments: ['shot.png'],
+  });
+  const log = mock.method(console, 'log', () => {});
+  try {
+    await controller.start({ dryRun: true });
+  } finally {
+    log.mock.restore();
+  }
+  assert.match(log.mock.calls.at(-1).arguments[0], /--image shot\.png/);
 });

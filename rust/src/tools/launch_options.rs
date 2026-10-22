@@ -1,7 +1,7 @@
 //! Launch options shared by every tool (issue #57).
 //!
-//! Reasoning effort, MCP servers and extra workspace directories. Each tool maps them onto its own
-//! native flag; a tool without a native flag rejects the option instead of
+//! Reasoning effort, MCP servers, extra workspace directories and file
+//! attachments. Each tool maps them onto its own native flag; a tool without a native flag rejects the option instead of
 //! silently dropping it.
 
 use serde_json::Value;
@@ -17,6 +17,9 @@ pub struct LaunchOptions {
     pub strict_mcp_config: bool,
     /// Extra directories the agent may access (`--add-dir`)
     pub additional_directories: Vec<String>,
+    /// Files attached to the prompt (`--attach`): Codex `--image`, OpenCode
+    /// `--file`. Relative paths resolve against the working directory.
+    pub attachments: Vec<String>,
 }
 
 /// What a tool natively supports among the launch options
@@ -28,6 +31,7 @@ pub struct LaunchCapabilities {
     pub mcp_config: bool,
     pub strict_mcp_config: bool,
     pub additional_directories: bool,
+    pub attachments: bool,
 }
 
 /// Claude Code `--effort` levels
@@ -40,14 +44,21 @@ const TOOLS: &[&str] = &["claude", "codex", "opencode", "agent", "gemini", "qwen
 
 /// Describe what a tool natively supports among the launch options.
 pub fn launch_capabilities(tool: &str) -> LaunchCapabilities {
-    let (effort, efforts, mcp, strict, dirs) = match tool {
-        "claude" => (true, Some(CLAUDE_REASONING_EFFORTS), true, true, true),
-        "codex" => (true, Some(CODEX_REASONING_EFFORTS), true, false, true),
+    let (effort, efforts, mcp, strict, dirs, attachments) = match tool {
+        "claude" => (
+            true,
+            Some(CLAUDE_REASONING_EFFORTS),
+            true,
+            true,
+            true,
+            false,
+        ),
+        "codex" => (true, Some(CODEX_REASONING_EFFORTS), true, false, true, true),
         // `--variant` names are defined by the model provider.
-        "opencode" => (true, None, false, false, false),
-        "gemini" => (false, None, false, false, true),
-        "qwen" => (false, None, true, false, true),
-        _ => (false, None, false, false, false),
+        "opencode" => (true, None, false, false, false, true),
+        "gemini" => (false, None, false, false, true, false),
+        "qwen" => (false, None, true, false, true, false),
+        _ => (false, None, false, false, false, false),
     };
     LaunchCapabilities {
         reasoning_effort: effort,
@@ -55,6 +66,7 @@ pub fn launch_capabilities(tool: &str) -> LaunchCapabilities {
         mcp_config: mcp,
         strict_mcp_config: strict,
         additional_directories: dirs,
+        attachments,
     }
 }
 
@@ -64,7 +76,7 @@ pub fn launch_capabilities(tool: &str) -> LaunchCapabilities {
 /// Returns the message naming the tools that do support the option.
 pub fn check_launch_options_supported(tool: &str, launch: &LaunchOptions) -> Result<(), String> {
     type Pick = fn(&LaunchCapabilities) -> bool;
-    let checks: [(bool, Pick, &str); 4] = [
+    let checks: [(bool, Pick, &str); 5] = [
         (
             launch.reasoning_effort.is_some(),
             |c| c.reasoning_effort,
@@ -84,6 +96,11 @@ pub fn check_launch_options_supported(tool: &str, launch: &LaunchOptions) -> Res
             !launch.additional_directories.is_empty(),
             |c| c.additional_directories,
             "additional directories (--add-dir)",
+        ),
+        (
+            !launch.attachments.is_empty(),
+            |c| c.attachments,
+            "file attachments (--attach)",
         ),
     ];
     let capabilities = launch_capabilities(tool);
@@ -121,13 +138,23 @@ pub fn normalize_reasoning_effort(reasoning_effort: &str) -> String {
     reasoning_effort.to_string()
 }
 
+fn push_paths(args: &mut Vec<String>, flag: &str, paths: &[String], name: &str) {
+    for path in paths {
+        assert!(!path.is_empty(), "{name} must not be empty");
+        args.push(flag.to_string());
+        args.push(path.clone());
+    }
+}
+
 /// Push `flag value` for each extra directory.
 pub fn push_directories(args: &mut Vec<String>, flag: &str, directories: &[String]) {
-    for dir in directories {
-        assert!(!dir.is_empty(), "additional directories must not be empty");
-        args.push(flag.to_string());
-        args.push(dir.clone());
-    }
+    push_paths(args, flag, directories, "additional directories");
+}
+
+/// Push `flag file` for each attachment; a repeated flag keeps variadic
+/// flags (Codex `--image`, OpenCode `--file`) from swallowing other values.
+pub fn push_attachments(args: &mut Vec<String>, flag: &str, attachments: &[String]) {
+    push_paths(args, flag, attachments, "attachments");
 }
 
 /// Encode a TOML key segment (bare when possible, quoted otherwise).

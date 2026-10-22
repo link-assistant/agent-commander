@@ -90,6 +90,8 @@ pub struct StartAgentOptions {
     pub strict_mcp_config: bool,
     /// Extra directories the agent may access (`--add-dir`, repeatable)
     pub additional_directories: Vec<String>,
+    /// Files attached to the prompt (`--attach`, repeatable)
+    pub attachments: Vec<String>,
     pub verbose: bool,
     pub replay_user_messages: bool,
     pub read_only: bool,
@@ -151,6 +153,7 @@ pub fn parse_start_agent_args(args: &[String]) -> StartAgentOptions {
         mcp_config: parsed.get("mcp-config").cloned(),
         strict_mcp_config: parsed.get_bool("strict-mcp-config"),
         additional_directories: parsed.get_all("add-dir"),
+        attachments: parsed.get_all("attach"),
         verbose: parsed.get_bool("verbose"),
         replay_user_messages: parsed.get_bool("replay-user-messages"),
         read_only: parsed.get_bool("read-only") || parsed.get_bool("plan-only"),
@@ -217,6 +220,8 @@ Options:
   --strict-mcp-config              Use only the --mcp-config servers (claude)
   --add-dir <dir>                  Extra directory the agent may access (repeatable;
                                    claude, codex, gemini, qwen)
+  --attach <file>                  Attach a file to the prompt (repeatable;
+                                   codex --image, opencode --file)
   --verbose                        Enable verbose mode
   --read-only                      Enforce native read-only mode (agent: --permission-mode readonly)
   --plan-only                      Enforce native planning mode (agent: --permission-mode plan)

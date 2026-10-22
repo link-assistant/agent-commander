@@ -16,6 +16,7 @@ import {
 import {
   codexMcpServersOverride,
   normalizeAdditionalDirectories,
+  normalizeAttachments,
   normalizeReasoningEffort,
 } from './launch-options.mjs';
 
@@ -69,6 +70,7 @@ export const mapModelToId = createModelMapper(modelMap);
  * @param {string} [options.reasoningEffort] - `-c model_reasoning_effort=<level>`
  * @param {string|Object} [options.mcpConfig] - `{mcpServers}` object or inline JSON, sent as `-c mcp_servers={...}`
  * @param {string[]} [options.additionalDirectories] - Extra writable directories (`--add-dir`)
+ * @param {string[]} [options.attachments] - Images attached to the prompt (`--image`)
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
@@ -84,6 +86,7 @@ export function buildArgs(options) {
     reasoningEffort,
     mcpConfig,
     additionalDirectories,
+    attachments,
   } = options;
 
   const args = ['exec'];
@@ -102,6 +105,12 @@ export function buildArgs(options) {
 
   if (resume) {
     args.push('resume', resume);
+  }
+
+  // `exec` and `exec resume` both take `--image <FILE>`; the flag is
+  // variadic, so each path gets its own flag and a flag always follows.
+  for (const file of normalizeAttachments(attachments)) {
+    args.push('--image', file);
   }
 
   if (reasoningEffort) {
@@ -252,6 +261,7 @@ export const codexTool = {
   supportsMcpConfig: true, // -c mcp_servers={...}
   supportsStrictMcpConfig: false, // -c overrides merge into the user's servers
   supportsAdditionalDirectories: true, // codex exec --add-dir <dir>
+  supportsAttachments: true, // --image <file> (exec and exec resume)
   defaultModel: syncedDefaults.codex,
   modelMap,
   mapModelToId,

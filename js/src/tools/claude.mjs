@@ -364,6 +364,7 @@ export const claudeTool = {
   supportsMcpConfig: true, // --mcp-config <path|json>
   supportsStrictMcpConfig: true, // --strict-mcp-config
   supportsAdditionalDirectories: true, // --add-dir <dir>
+  supportsAttachments: false, // Images go through liveInput content blocks
   defaultModel: syncedDefaults.claude,
   modelMap,
   mapModelToId,

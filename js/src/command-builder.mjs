@@ -30,6 +30,7 @@ import { askUnsupportedError } from './permissions/index.mjs';
  * @param {string|Object} [options.mcpConfig] - MCP servers (`{mcpServers}`, inline JSON or path)
  * @param {boolean} [options.strictMcpConfig] - Use only the `mcpConfig` servers
  * @param {string[]} [options.additionalDirectories] - Extra workspace directories
+ * @param {string[]} [options.attachments] - Files attached to the prompt
  * @returns {string} The command string
  */
 export function buildAgentCommand(options) {

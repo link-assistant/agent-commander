@@ -290,6 +290,7 @@ export const qwenTool = {
   supportsMcpConfig: true, // --mcp-config <path|json>
   supportsStrictMcpConfig: false, // No flag that drops settings.json servers
   supportsAdditionalDirectories: true, // --include-directories <dir>
+  supportsAttachments: false, // Images go through liveInput content blocks
   defaultModel: syncedDefaults.qwen,
   modelMap,
   mapModelToId,

@@ -132,8 +132,8 @@ pub use tool_version::{
 
 pub use tools::launch_options::{
     check_launch_options_supported, codex_mcp_servers_override, launch_capabilities,
-    normalize_reasoning_effort, to_toml_value, LaunchCapabilities, LaunchOptions,
-    CLAUDE_REASONING_EFFORTS, CODEX_REASONING_EFFORTS,
+    normalize_reasoning_effort, push_attachments, push_directories, to_toml_value,
+    LaunchCapabilities, LaunchOptions, CLAUDE_REASONING_EFFORTS, CODEX_REASONING_EFFORTS,
 };
 
 /// Agent options for creating a controller

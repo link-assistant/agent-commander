@@ -91,6 +91,7 @@ export function parseStartAgentArgs(args) {
     mcpConfig: parsed['mcp-config'],
     strictMcpConfig: parsed['strict-mcp-config'] || false,
     additionalDirectories: getOptionValues(parsed, 'add-dir'),
+    attachments: getOptionValues(parsed, 'attach'),
     verbose: parsed.verbose || false,
     replayUserMessages: parsed['replay-user-messages'] || false,
     readOnly: parsed['read-only'] || parsed['plan-only'] || false,
@@ -153,6 +154,8 @@ Options:
   --strict-mcp-config              Use only the --mcp-config servers (claude)
   --add-dir <dir>                  Extra directory the agent may access (repeatable;
                                    claude, codex, gemini, qwen)
+  --attach <file>                  Attach a file to the prompt (repeatable;
+                                   codex --image, opencode --file)
   --verbose                        Enable verbose mode
   --read-only                      Enforce native read-only mode (agent: --permission-mode readonly)
   --plan-only                      Enforce native planning mode (agent: --permission-mode plan)

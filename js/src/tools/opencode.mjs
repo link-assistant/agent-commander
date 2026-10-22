@@ -13,7 +13,10 @@ import {
   normalizeExtraArgs,
   normalizeExtraEnv,
 } from './shell.mjs';
-import { normalizeReasoningEffort } from './launch-options.mjs';
+import {
+  normalizeAttachments,
+  normalizeReasoningEffort,
+} from './launch-options.mjs';
 
 const READ_ONLY_PERMISSION = '{"edit":"deny","bash":"deny","task":"deny"}';
 
@@ -43,6 +46,7 @@ export const mapModelToId = createModelMapper(modelMap);
  * @param {string} [options.resume] - Resume session ID
  * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
  * @param {string} [options.reasoningEffort] - Provider-specific variant (`--variant`)
+ * @param {string[]} [options.attachments] - Files attached to the message (`--file`)
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
@@ -52,9 +56,16 @@ export function buildArgs(options) {
     resume,
     extraArgs = [],
     reasoningEffort,
+    attachments,
   } = options;
 
   const args = ['run'];
+
+  // `--file` is a yargs array that would swallow a following positional, so
+  // each path gets its own flag right after the subcommand.
+  for (const file of normalizeAttachments(attachments)) {
+    args.push('--file', file);
+  }
 
   if (model) {
     const mappedModel = mapModelToId({ model });
@@ -187,6 +198,7 @@ export const opencodeTool = {
   supportsMcpConfig: false, // MCP servers come from opencode.json only
   supportsStrictMcpConfig: false,
   supportsAdditionalDirectories: false, // No extra workspace directory flag
+  supportsAttachments: true, // run --file <file>
   defaultModel: syncedDefaults.opencode,
   modelMap,
   mapModelToId,

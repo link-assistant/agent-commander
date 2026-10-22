@@ -1,11 +1,13 @@
 //! Tests for the shared launch options (issue #57): reasoning effort, MCP
-//! servers, strict MCP configuration and extra workspace directories.
+//! servers, strict MCP configuration, extra workspace directories and file
+//! attachments.
 
 use agent_commander::tools::{claude, codex, gemini, opencode, qwen};
 use agent_commander::{
     agent, build_agent_command, check_launch_options_supported, codex_mcp_servers_override,
-    launch_capabilities, normalize_reasoning_effort, parse_start_agent_args, to_toml_value,
-    AgentCommandOptions, AgentOptions, AgentStartOptions, LaunchOptions, CLAUDE_REASONING_EFFORTS,
+    launch_capabilities, normalize_reasoning_effort, parse_start_agent_args, push_attachments,
+    to_toml_value, AgentCommandOptions, AgentOptions, AgentStartOptions, LaunchOptions,
+    CLAUDE_REASONING_EFFORTS,
 };
 use serde_json::json;
 
@@ -17,7 +19,61 @@ fn launch() -> LaunchOptions {
         mcp_config: Some(MCP.to_string()),
         strict_mcp_config: true,
         additional_directories: vec!["/a".to_string(), "/b".to_string()],
+        attachments: Vec::new(),
     }
+}
+
+fn attachments(files: &[&str]) -> LaunchOptions {
+    LaunchOptions {
+        attachments: files.iter().map(|file| (*file).to_string()).collect(),
+        ..Default::default()
+    }
+}
+
+#[test]
+fn codex_attaches_each_image_with_its_own_image_flag() {
+    // codex 0.163 takes `--image <FILE>` in `exec` and `exec resume`.
+    let args = codex::build_args(&codex::CodexBuildOptions {
+        resume: Some("thread-1".to_string()),
+        launch: attachments(&["shot.png", "/tmp/b.jpg"]),
+        ..Default::default()
+    });
+    let resume = args.iter().position(|a| a == "resume").unwrap();
+    let image = args.iter().position(|a| a == "--image").unwrap();
+    assert!(image > resume);
+    assert_eq!(
+        args[image..image + 4],
+        ["--image", "shot.png", "--image", "/tmp/b.jpg"]
+    );
+    // The variadic flag is always followed by another flag.
+    assert!(args[image + 4].starts_with("--"));
+}
+
+#[test]
+fn opencode_attaches_files_right_after_run() {
+    let args = opencode::build_args(&opencode::OpencodeBuildOptions {
+        json: true,
+        launch: attachments(&["diagram.png"]),
+        extra_args: vec!["positional".to_string()],
+        ..Default::default()
+    });
+    assert_eq!(args[..4], ["run", "--file", "diagram.png", "--format"]);
+}
+
+#[test]
+fn attachments_are_rejected_by_tools_without_a_flag() {
+    let error = check_launch_options_supported("claude", &attachments(&["a.png"])).unwrap_err();
+    assert!(error.contains("Tool \"claude\" does not support file attachments"));
+    assert!(error.contains("Choose one of: codex, opencode;"));
+    assert!(check_launch_options_supported("claude", &attachments(&[])).is_ok());
+    assert!(
+        launch_capabilities("codex").attachments && launch_capabilities("opencode").attachments
+    );
+    assert!(std::panic::catch_unwind(|| {
+        let mut args = Vec::new();
+        push_attachments(&mut args, "--image", &[String::new()]);
+    })
+    .is_err());
 }
 
 #[test]
@@ -253,6 +309,8 @@ fn start_agent_parses_launch_option_flags() {
         "/a",
         "--add-dir",
         "/b",
+        "--attach",
+        "shot.png",
     ]
     .iter()
     .map(|s| s.to_string())
@@ -262,4 +320,5 @@ fn start_agent_parses_launch_option_flags() {
     assert_eq!(parsed.mcp_config.as_deref(), Some("./mcp.json"));
     assert!(parsed.strict_mcp_config);
     assert_eq!(parsed.additional_directories, ["/a", "/b"]);
+    assert_eq!(parsed.attachments, ["shot.png"]);
 }

@@ -2,7 +2,7 @@
 //! Based on hive-mind's opencode.lib.mjs implementation
 
 use crate::streaming::parse_json_records;
-use crate::tools::launch_options::{normalize_reasoning_effort, LaunchOptions};
+use crate::tools::launch_options::{normalize_reasoning_effort, push_attachments, LaunchOptions};
 use crate::tools::shell::{
     build_command_head, escape_arg, escape_single_quotes, lookup_model_alias,
 };
@@ -81,6 +81,9 @@ pub struct OpencodeBuildOptions {
 /// Vector of CLI arguments
 pub fn build_args(options: &OpencodeBuildOptions) -> Vec<String> {
     let mut args = vec!["run".to_string()];
+    // `--file` is a yargs array that would swallow a following positional,
+    // so the attachments go right after the subcommand.
+    push_attachments(&mut args, "--file", &options.launch.attachments);
 
     if let Some(ref model) = options.model {
         let mapped_model = map_model_to_id(model);

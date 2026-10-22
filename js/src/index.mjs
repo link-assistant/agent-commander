@@ -161,6 +161,7 @@ function parseJsonMessages(options) {
  * @param {string|Object} [options.mcpConfig] - MCP servers: config path, inline JSON or `{mcpServers}` object
  * @param {boolean} [options.strictMcpConfig=false] - Use only the servers from `mcpConfig`
  * @param {string|string[]} [options.additionalDirectories] - Extra directories the agent may access
+ * @param {string|string[]} [options.attachments] - Files attached to the prompt (codex images, opencode files)
  * @param {boolean} [options.liveInput=false] - Keep stdin open as a stream-json channel so
  *   `sendMessage()` / `interrupt()` can reach the running session (claude, agent)
  * @param {Object} [options.toolOptions] - Additional tool-specific options
@@ -187,6 +188,7 @@ export function agent(options) {
     mcpConfig,
     strictMcpConfig = false,
     additionalDirectories,
+    attachments,
     liveInput = false,
     toolOptions = {},
   } = options;
@@ -358,6 +360,7 @@ export function agent(options) {
             mcpConfig,
             strictMcpConfig,
             additionalDirectories,
+            attachments,
           }),
           toolOptions
         );
@@ -884,6 +887,7 @@ export {
   mcpConfigArg,
   mcpServersFromConfig,
   normalizeAdditionalDirectories,
+  normalizeAttachments,
   normalizeReasoningEffort,
   toTomlValue,
 } from './tools/launch-options.mjs';

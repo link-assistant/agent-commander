@@ -4,7 +4,8 @@
 use super::usage::{self, count};
 use crate::streaming::parse_json_records;
 use crate::tools::launch_options::{
-    codex_mcp_servers_override, normalize_reasoning_effort, push_directories, LaunchOptions,
+    codex_mcp_servers_override, normalize_reasoning_effort, push_attachments, push_directories,
+    LaunchOptions,
 };
 use crate::tools::shell::{
     build_command_head, escape_arg, escape_single_quotes, lookup_model_alias,
@@ -199,6 +200,8 @@ pub fn build_args(options: &CodexBuildOptions) -> Vec<String> {
         args.push("resume".to_string());
         args.push(resume.clone());
     }
+    // `exec` and `exec resume` both take `--image <FILE>` (codex 0.163).
+    push_attachments(&mut args, "--image", &launch.attachments);
 
     if let Some(ref effort) = launch.reasoning_effort {
         args.push("-c".to_string());

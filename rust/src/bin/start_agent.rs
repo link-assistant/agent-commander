@@ -78,6 +78,7 @@ async fn main() {
             mcp_config: options.mcp_config,
             strict_mcp_config: options.strict_mcp_config,
             additional_directories: options.additional_directories,
+            attachments: options.attachments,
         },
         ..Default::default()
     };

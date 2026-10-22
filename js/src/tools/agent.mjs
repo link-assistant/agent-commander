@@ -368,6 +368,7 @@ export const agentTool = {
   supportsMcpConfig: false, // No MCP config flag
   supportsStrictMcpConfig: false,
   supportsAdditionalDirectories: false, // No extra workspace directory flag
+  supportsAttachments: false, // No attachment flag
   defaultModel: syncedDefaults.agent,
   modelMap,
   mapModelToId,

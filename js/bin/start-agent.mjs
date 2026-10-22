@@ -109,6 +109,7 @@ async function main() {
       mcpConfig: options.mcpConfig,
       strictMcpConfig: options.strictMcpConfig,
       additionalDirectories: options.additionalDirectories,
+      attachments: options.attachments,
       toolOptions: {
         appendSystemPrompt: options.appendSystemPrompt,
         fallbackModel: options.fallbackModel,
