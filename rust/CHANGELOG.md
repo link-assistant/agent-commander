@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- changelog-insert-here -->
+## [0.4.0] - 2026-10-22
+
+### Added
+
+- Hive Mind v2.39.5 usage-limit and agent error classification: `limit_resets_at`, `limit_window`, the `rate_limited` error type for server throttles, and recoverable agent tool errors.
+- Usage-limit cross-check of failed runs from the Codex rollout (`apply_codex_rollout_usage_limit`, `can_resume_codex_session`) and the Claude transcript (`apply_claude_transcript_usage_limit`), reported in `limit_source`.
+- Background tasks, post-result close (`close_timeout`, `background_wait`), signals and observed models in result metadata.
+- `unset_env` removes inherited environment variables (`env -u`).
+- `AgentTuiOptions::frames_on_write` and `recording` forward command-stream 1.9.0's terminal capture modes.
+
+### Changed
+
+- Update command-stream to 1.9.0 and refresh the minimum versions of the other crates.
+- Use command-stream's `quote` helpers for `bash -c` and printf quoting.
+- Sync the bundled model catalogue with Hive Mind v2.39.5; keep rolling Claude aliases and match model aliases case-insensitively; drop the withdrawn openai/formal-ai Codex aliases.
+
+### Fixed
+
+- Parse pretty-printed and concatenated JSON records.
+- Explain a failed exit with a JSON error record on stderr when stdout has none (Agent prints its fatal errors there).
+- Signal-aware exits, process-group termination and bounded pipe drain.
+- Quote generic tool prompts like `escapeArg`.
+- `execute_detached` starts the command in its own process group, like the JavaScript detached spawn, so Ctrl+C to the caller does not stop it.
+- Prompt temp directories get a per-process sequence number, so controllers started in the same clock tick no longer fail with "File exists" (seen on macOS).
+
 ## [0.3.2] - 2026-10-16
 
 ### Added
