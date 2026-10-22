@@ -45,8 +45,19 @@ Both packages map the same launch options onto each tool's native flag. A tool w
 | `strictMcpConfig` / `launch.strict_mcp_config` / `--strict-mcp-config`  | `--strict-mcp-config`  | ❌ (overrides merge with `config.toml`) | ❌           | ❌                      | ❌                      | ❌      |
 | `additionalDirectories` / `launch.additional_directories` / `--add-dir` | `--add-dir`            | `exec --add-dir`                        | ❌           | `--include-directories` | `--include-directories` | ❌      |
 | `attachments` / `launch.attachments` / `--attach`                       | ❌ (live-input images) | `--image` (`exec` and `exec resume`)    | `run --file` | ❌ (live-input images)  | ❌                      | ❌      |
+| `jsonSchema` / `launch.json_schema` / `--json-schema`                   | `--json-schema`        | `--output-schema <(printf ...)`         | ❌           | `--json-schema`         | ❌                      | ❌      |
 
 `mcpConfig` takes a file path, inline JSON or (JavaScript) a `{mcpServers}` object. Codex receives the servers as one TOML `-c mcp_servers={...}` override: `headers` becomes `http_headers` and the transport `type` is implied by `command` or `url`. The TOML encoder in Rust writes keys in sorted order. Attachment paths that are relative resolve against the working directory; each path gets its own flag, because both native flags take several values.
+
+### Structured output
+
+`jsonSchema` (a JSON Schema object or its JSON text; JSON text in Rust and on the CLI) asks the tool to shape its final answer to the schema. The answer is reported as `metadata.structuredOutput` / `metadata.structured_output`:
+
+- Claude Code reads the schema from `--json-schema` and reports the answer as `structured_output` on the `result` message.
+- Qwen Code takes the same flag and reports `structured_result`. A value starting with `@` would be read as a file path, so the schema is always passed as a JSON literal.
+- Codex `--output-schema` takes a file. The schema is passed as a bash process substitution, `--output-schema <(printf '%s' '<schema>')`, so no temporary file is left behind; codex 0.163 reads `/dev/fd/N` in `exec` and `exec resume`. Codex has no structured field: when a schema was requested, the final `agent_message` (or, without `--json`, the printed final message) is parsed as JSON.
+
+The value is `null` / `None` when no structured answer was found or the Codex answer is not JSON. Gemini 0.64, OpenCode 1.19 and agent 0.26 have no schema flag, so they reject the option. `extractStructuredOutput` / `extract_structured_output` are exported for callers that read the streams themselves. Rust compacts the schema with `serde_json`, which writes object keys in sorted order.
 
 ## Tool version probe
 

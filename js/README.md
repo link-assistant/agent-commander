@@ -62,6 +62,7 @@ Common options:
 - `--mcp-config <path|json>` and `--strict-mcp-config`: MCP servers (claude, codex, qwen; strict for claude)
 - `--add-dir <dir>`: extra directory the agent may access, repeatable (claude, codex, gemini, qwen)
 - `--attach <file>`: attach a file to the prompt, repeatable (codex `--image`, opencode `--file`)
+- `--json-schema <json>`: JSON Schema the final answer must match (claude and qwen `--json-schema`, codex `--output-schema`)
 - `--isolation <mode>`: `none`, `screen`, or `docker`
 - `--dry-run`: print the command without executing it
 
@@ -134,7 +135,7 @@ const result = await controller.stop();
 console.log(result.metadata.usageWindows, result.metadata.contextUsage);
 ```
 
-A tool without a native flag for a launch option throws before it starts; `getLaunchCapabilities(tools.codex)` reports what a tool supports. `attachments` works for Codex (`--image`) and OpenCode (`--file`). `interrupt()` ends the running turn for Claude and Qwen; `endInput()` closes stdin. `metadata.usageWindows` comes from Claude `rate_limit_event` messages and Codex `rate_limits`; `metadata.contextUsage` reports the last and peak context fill against the model's window. For Codex, `stop()` reads both from the thread's rollout file. See [launch options](../docs/common-concepts.md#launch-options) and the [upcomputer case study](../docs/case-studies/issue-57/README.md).
+A tool without a native flag for a launch option throws before it starts; `getLaunchCapabilities(tools.codex)` reports what a tool supports. `attachments` works for Codex (`--image`) and OpenCode (`--file`). `jsonSchema` (an object or JSON text) asks Claude, Codex or Qwen for an answer that matches the schema and reports it as `metadata.structuredOutput`. `interrupt()` ends the running turn for Claude and Qwen; `endInput()` closes stdin. `metadata.usageWindows` comes from Claude `rate_limit_event` messages and Codex `rate_limits`; `metadata.contextUsage` reports the last and peak context fill against the model's window. For Codex, `stop()` reads both from the thread's rollout file. See [launch options](../docs/common-concepts.md#launch-options) and the [upcomputer case study](../docs/case-studies/issue-57/README.md).
 
 ### Tool overrides
 

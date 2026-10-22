@@ -40,7 +40,7 @@ Language-specific package documentation:
 - **Attached/Detached Modes**: Monitor output in real-time or run in background
 - **Read-only Planning Mode**: Enforce native no-shell/no-write restrictions for supported tools
 - **Prompt File Input**: Pipe large prompts through files for stdin-based tools instead of embedding them in shell commands
-- **Launch Options**: Reasoning effort, MCP servers, strict MCP config, extra directories and file attachments mapped onto each tool's native flag
+- **Launch Options**: Reasoning effort, MCP servers, strict MCP config, extra directories, file attachments and a JSON Schema for structured output mapped onto each tool's native flag
 - **Usage and Context Reporting**: Normalized subscription usage windows and context-window fill in the result metadata
 - **Live Input**: Send follow-up messages to, and interrupt, a running Claude, Qwen or Agent session
 - **Version Probe**: Check the installed CLI version against a minimum
@@ -175,6 +175,7 @@ start-agent --tool claude --working-directory "/tmp/dir" --prompt "Solve the iss
 - `--strict-mcp-config` - Use only the `--mcp-config` servers (claude)
 - `--add-dir <dir>` - Extra directory the agent may access (repeatable; claude, codex, gemini, qwen)
 - `--attach <file>` - Attach a file to the prompt (repeatable; codex `--image`, opencode `--file`)
+- `--json-schema <json>` - JSON Schema the final answer must match (claude and qwen `--json-schema`, codex `--output-schema`)
 - `--verbose` - Enable verbose mode (Claude only)
 - `--read-only` - Enforce native read-only/planning mode for supported tools
 - `--plan-only` - Alias for `--read-only` for most tools; the `agent` tool maps it to its softer `--permission-mode plan`
@@ -369,6 +370,7 @@ console.log("Metadata:", result.metadata); // Normalized cross-tool summary
 - `runningBackgroundTasks`, `backgroundTasksStopped`, `stoppedBackgroundTasks`, and `printWaitCeilingSeconds`
 - `usageWindows`: subscription windows (`{ id, kind, label, usedPercent, resetsAt, windowDurationMins }`) from Claude `rate_limit_event` messages and Codex `rate_limits`
 - `contextUsage`: context-window fill (`{ usedTokens, peakTokens, maxTokens, usedPercent, model, compactions }`)
+- `structuredOutput`: the final answer shaped by `jsonSchema` (Claude `structured_output`, Qwen `structured_result`, the Codex final message parsed as JSON), or `null`
 
 See [usage windows and context usage](docs/common-concepts.md#usage-windows-and-context-usage) for the sources of each field.
 
@@ -397,7 +399,25 @@ const controller = agent({
 });
 ```
 
-A tool without a native flag for an option throws before it starts. See the [launch option matrix](docs/common-concepts.md#launch-options).
+Ask for an answer that matches a JSON Schema with `jsonSchema` (claude, codex, qwen) and read it from `result.metadata.structuredOutput`:
+
+```javascript
+const controller = agent({
+  tool: "claude",
+  workingDirectory: "/tmp/project",
+  prompt: "Name this change",
+  jsonSchema: {
+    type: "object",
+    properties: { title: { type: "string" } },
+    required: ["title"],
+  },
+});
+await controller.start({ attached: false });
+const { metadata } = await controller.stop();
+console.log(metadata.structuredOutput.title);
+```
+
+A tool without a native flag for an option throws before it starts. See the [launch option matrix](docs/common-concepts.md#launch-options) and [structured output](docs/common-concepts.md#structured-output).
 
 ### Live Input
 
@@ -687,6 +707,7 @@ Creates an agent controller.
 - `options.strictMcpConfig` (boolean, optional) - Use only the servers from `mcpConfig`
 - `options.additionalDirectories` (string or string array, optional) - Extra directories the agent may access
 - `options.attachments` (string or string array, optional) - Files attached to the prompt (codex images, opencode files)
+- `options.jsonSchema` (object or JSON string, optional) - JSON Schema the final answer must match; the answer is `result.metadata.structuredOutput` (claude, codex, qwen)
 - `options.liveInput` (boolean, optional) - Keep stdin open as a stream-json channel for `sendMessage()`, `interrupt()` and `endInput()` (claude, qwen, agent)
 - `options.toolOverrides` (object, optional) - Replace parts of the tool configuration for this run: `buildCommand`, `parseOutput`, `extractSessionId`, `extractUsage`, `detectErrors` or the `supports*` capability flags. A `buildCommand` also drives an unregistered tool. See [tool overrides](docs/common-concepts.md#tool-overrides)
 - `options.isolation` (string, optional) - 'none', 'screen', or 'docker' (default: 'none')
