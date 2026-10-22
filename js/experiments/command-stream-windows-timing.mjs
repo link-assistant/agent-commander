@@ -15,6 +15,7 @@
 import cp from 'node:child_process';
 import { $ } from 'command-stream';
 import fs from 'node:fs';
+import { performance } from 'node:perf_hooks';
 
 const iterations = Number(process.argv[2] || globalThis.Deno?.args?.[0] || 6);
 const runtime = globalThis.Deno ? 'deno' : globalThis.Bun ? 'bun' : 'node';
@@ -89,7 +90,12 @@ for (let i = 0; i < iterations; i++) {
   ]);
   const dollar = await timeDollar();
   console.log(
-    JSON.stringify({ i, rawNode: rawNode.marks, rawShell: rawShell.marks, dollar })
+    JSON.stringify({
+      i,
+      rawNode: rawNode.marks,
+      rawShell: rawShell.marks,
+      dollar,
+    })
   );
 }
 // command-stream may keep handles open; do not let that hold the job.
