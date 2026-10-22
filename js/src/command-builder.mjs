@@ -3,7 +3,7 @@
  */
 
 import { quoteForContext } from 'command-stream';
-import { isToolSupported, getTool, tools } from './tools/index.mjs';
+import { resolveToolConfig, tools } from './tools/index.mjs';
 import { assertLaunchOptionsSupported } from './tools/launch-options.mjs';
 import { escapeArg } from './tools/shell.mjs';
 import { askUnsupportedError } from './permissions/index.mjs';
@@ -31,6 +31,8 @@ import { askUnsupportedError } from './permissions/index.mjs';
  * @param {boolean} [options.strictMcpConfig] - Use only the `mcpConfig` servers
  * @param {string[]} [options.additionalDirectories] - Extra workspace directories
  * @param {string[]} [options.attachments] - Files attached to the prompt
+ * @param {Object} [options.toolOverrides] - Tool configuration fields that
+ *   replace the registered ones (see `resolveToolConfig`)
  * @returns {string} The command string
  */
 export function buildAgentCommand(options) {
@@ -50,6 +52,7 @@ export function buildAgentCommand(options) {
     readOnly = false,
     planOnly = false,
     approveEach = false,
+    toolOverrides,
     ...toolOptions
   } = options;
 
@@ -59,9 +62,7 @@ export function buildAgentCommand(options) {
 
   // Build base command using tool-specific builder if available
   let baseCommand;
-  const toolConfig = isToolSupported({ toolName: tool })
-    ? getTool({ toolName: tool })
-    : undefined;
+  const toolConfig = resolveToolConfig({ toolName: tool, toolOverrides });
   assertLaunchOptionsSupported({
     tool,
     toolConfig,

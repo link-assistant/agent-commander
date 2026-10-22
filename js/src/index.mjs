@@ -25,7 +25,7 @@ import {
   setupSignalHandler,
   startCommand,
 } from './executor.mjs';
-import { getTool, isToolSupported } from './tools/index.mjs';
+import { isToolSupported, resolveToolConfig } from './tools/index.mjs';
 import { normalizeExtraEnv } from './tools/shell.mjs';
 import { definedLaunchOptions } from './tools/launch-options.mjs';
 import { createOutputStream, createInputStream } from './streaming/index.mjs';
@@ -116,18 +116,15 @@ function shouldCreatePromptFile(options) {
  * Parse JSON messages from output if the tool supports it
  * @param {Object} options - Options
  * @param {string} options.output - Raw output to parse
- * @param {string} [options.toolName] - Tool name for tool-specific parsing
+ * @param {Object} [options.toolConfig] - Tool configuration with an optional parser
  * @returns {Array|null} Array of parsed JSON messages or null if parsing fails
  */
 function parseJsonMessages(options) {
-  const { output, toolName } = options;
+  const { output, toolConfig } = options;
 
   // If we have a tool-specific parser, use it
-  if (toolName && isToolSupported({ toolName })) {
-    const tool = getTool({ toolName });
-    if (tool.parseOutput) {
-      return tool.parseOutput({ output });
-    }
+  if (toolConfig?.parseOutput) {
+    return toolConfig.parseOutput({ output });
   }
 
   // Default parsing logic: NDJSON, pretty-printed, or concatenated records
@@ -163,8 +160,11 @@ function parseJsonMessages(options) {
  * @param {string|string[]} [options.additionalDirectories] - Extra directories the agent may access
  * @param {string|string[]} [options.attachments] - Files attached to the prompt (codex images, opencode files)
  * @param {boolean} [options.liveInput=false] - Keep stdin open as a stream-json channel so
- *   `sendMessage()` / `interrupt()` can reach the running session (claude, agent)
+ *   `sendMessage()` / `interrupt()` can reach the running session (claude, qwen, agent)
  * @param {Object} [options.toolOptions] - Additional tool-specific options
+ * @param {Object} [options.toolOverrides] - Replace parts of the tool configuration for this run:
+ *   `buildCommand`, `parseOutput`, `extractSessionId`, `extractUsage`, `detectErrors`, `executable`
+ *   or any `supports*` capability flag. A `buildCommand` also drives a tool that is not registered.
  * @returns {Object} Agent controller with start, stop, and utility methods
  */
 export function agent(options) {
@@ -191,6 +191,7 @@ export function agent(options) {
     attachments,
     liveInput = false,
     toolOptions = {},
+    toolOverrides,
   } = options;
 
   // Validate required options
@@ -208,9 +209,8 @@ export function agent(options) {
   }
 
   // Get tool configuration if available
-  const toolConfig = isToolSupported({ toolName: tool })
-    ? getTool({ toolName: tool })
-    : null;
+  const toolConfig =
+    resolveToolConfig({ toolName: tool, toolOverrides }) ?? null;
 
   // Live per-command approval relay is active only when ask mode is requested,
   // a decision callback is supplied, and the tool exposes a relayable protocol.
@@ -346,6 +346,7 @@ export function agent(options) {
         readOnly,
         planOnly,
         approveEach,
+        toolOverrides,
       };
 
       // Add tool-specific options if tool is known
@@ -612,14 +613,14 @@ export function agent(options) {
         }
 
         // Try to parse JSON messages (use output stream messages if available, otherwise parse)
+        // A caller's parser replaces the streamed messages too.
         let parsedOutput;
-        if (outputStream && outputStream.getMessages().length > 0) {
+        if (toolOverrides?.parseOutput) {
+          parsedOutput = toolOverrides.parseOutput({ output: stdout });
+        } else if (outputStream && outputStream.getMessages().length > 0) {
           parsedOutput = outputStream.getMessages();
         } else {
-          parsedOutput = parseJsonMessages({
-            output: stdout,
-            toolName: tool,
-          });
+          parsedOutput = parseJsonMessages({ output: stdout, toolConfig });
         }
 
         // Extract session ID if tool supports it
@@ -658,7 +659,7 @@ export function agent(options) {
         await applyCodexRolloutUsageLimit(metadata, rolloutOptions);
         await applyCodexRolloutUsageWindows(metadata, rolloutOptions);
         await applyCodexRolloutContextUsage(metadata, rolloutOptions);
-        if ((json || tool === 'agent') && toolConfig) {
+        if ((json || tool === 'agent') && isToolSupported({ toolName: tool })) {
           requireCompletedResult(metadata, tool, parsedOutput || []);
         }
         const claudeConfigDir = runEnv.findLast(
@@ -832,7 +833,13 @@ export {
   hasFinalResult,
   waitForExitAfterResult,
 } from './result-close.mjs';
-export { tools, getTool, listTools, isToolSupported } from './tools/index.mjs';
+export {
+  tools,
+  getTool,
+  listTools,
+  isToolSupported,
+  resolveToolConfig,
+} from './tools/index.mjs';
 export { JsonOutputStream, JsonInputStream } from './streaming/index.mjs';
 export { parseNdjsonLine, stringifyNdjsonLine } from './streaming/ndjson.mjs';
 export {
