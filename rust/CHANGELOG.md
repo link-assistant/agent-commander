@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- changelog-insert-here -->
+## [0.5.0] - 2026-10-22
+
+### Added
+
+- Launch options for upcomputer and Hive Mind (issue #57), mapped to native flags and rejected by tools without them:
+  - `reasoning_effort`
+  - `mcp_config` and `strict_mcp_config`
+  - `additional_directories`
+  - `attachments`
+  - `json_schema`
+
+  `launch_capabilities` and `check_launch_options_supported` report and enforce support.
+
+- `usage_windows`, `context_usage` and `structured_output` in result metadata, with Codex rollout helpers (`apply_codex_rollout_usage_windows`, `codex_rollout_context_usage`).
+- Live input for claude, qwen and agent: `send_message`, `interrupt`, `end_input`, and the frame builders.
+- CLI version probe: `get_tool_version`, `parse_tool_version`, `compare_versions`, `build_version_command`.
+- `ToolOverrides` replaces a tool's command builder, parser, session-id or usage extractor, executable or launch capabilities for one run, or drives an unregistered tool. `escape_arg` and `build_base_command` are exported for override builders.
+
+### Fixed
+
+- Prompt files over 2 MiB are now fully written before the agent starts. tokio writes a file at most 2 MiB at a time, and `write_all` returned before the last write finished, so a tool could read a cut-off prompt.
+
 ## [0.4.0] - 2026-10-22
 
 ### Added
