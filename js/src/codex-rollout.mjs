@@ -19,6 +19,7 @@ import path from 'node:path';
 
 import { formatEpochResetTimeUtc, isUsageLimitText } from './usage-limit.mjs';
 import { readFileTail } from './utils/file-tail.mjs';
+import { codexRateLimitWindows } from './usage-windows.mjs';
 import { userHomeDir } from './utils/home-dir.mjs';
 
 /** Directory under `CODEX_HOME` that holds the rollouts. */
@@ -336,6 +337,32 @@ export async function applyCodexRolloutUsageLimit(metadata, options = {}) {
       limitWindow: verdict.window,
       limitSource: 'codex-rollout',
     });
+  }
+  return metadata;
+}
+
+/**
+ * Fill a Codex run's `usageWindows` from the newest `rate_limits` snapshot
+ * in its rollout: `codex exec --json` does not stream the windows (issue #57)
+ * @param {Object} metadata - Normalized result metadata
+ * @param {Object} [options] - Options passed to readCodexRolloutLimitFacts
+ * @returns {Promise<Object>} The same metadata
+ */
+export async function applyCodexRolloutUsageWindows(metadata, options = {}) {
+  if (
+    metadata?.tool !== 'codex' ||
+    !metadata.sessionId ||
+    metadata.usageWindows?.length
+  ) {
+    return metadata;
+  }
+  const facts = await readCodexRolloutLimitFacts({
+    ...options,
+    threadId: metadata.sessionId,
+  }).catch(() => ({ found: false }));
+  const windows = facts.found ? codexRateLimitWindows(facts.rateLimits) : [];
+  if (windows.length) {
+    metadata.usageWindows = windows;
   }
   return metadata;
 }

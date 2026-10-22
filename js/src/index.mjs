@@ -32,7 +32,10 @@ import { createOutputStream, createInputStream } from './streaming/index.mjs';
 import { stringifyNdjsonLine } from './streaming/ndjson.mjs';
 import { parseJsonRecords } from './streaming/json-records.mjs';
 import { buildNormalizedResultMetadata } from './result-metadata.mjs';
-import { applyCodexRolloutUsageLimit } from './codex-rollout.mjs';
+import {
+  applyCodexRolloutUsageLimit,
+  applyCodexRolloutUsageWindows,
+} from './codex-rollout.mjs';
 import { applyClaudeTranscriptUsageLimit } from './claude-transcript.mjs';
 import { requireCompletedResult } from './completion.mjs';
 import {
@@ -600,10 +603,9 @@ export function agent(options) {
         // files (hive-mind#3570)
         const runEnv = normalizeExtraEnv(toolOptions.extraEnv);
         const codexHome = runEnv.findLast(([name]) => name === 'CODEX_HOME');
-        await applyCodexRolloutUsageLimit(
-          metadata,
-          codexHome ? { codexHome: codexHome[1] } : {}
-        );
+        const rolloutOptions = codexHome ? { codexHome: codexHome[1] } : {};
+        await applyCodexRolloutUsageLimit(metadata, rolloutOptions);
+        await applyCodexRolloutUsageWindows(metadata, rolloutOptions);
         if ((json || tool === 'agent') && toolConfig) {
           requireCompletedResult(metadata, tool, parsedOutput || []);
         }
@@ -748,6 +750,7 @@ export {
   CODEX_SESSIONS_DIRNAME,
   ROLLOUT_TAIL_BYTES,
   applyCodexRolloutUsageLimit,
+  applyCodexRolloutUsageWindows,
   canResumeCodexSession,
   classifyCodexRateLimitSnapshot,
   codexRolloutLimitFacts,
@@ -779,6 +782,14 @@ export {
   parseJsonRecords,
 } from './streaming/json-records.mjs';
 export { buildNormalizedResultMetadata } from './result-metadata.mjs';
+export {
+  USAGE_WINDOW_KINDS,
+  claudeRateLimitWindows,
+  codexRateLimitWindows,
+  extractUsageWindows,
+  mergeUsageWindows,
+  usageWindowsFromMessage,
+} from './usage-windows.mjs';
 export {
   USAGE_LIMIT_PATTERNS,
   classifyDebugLines,

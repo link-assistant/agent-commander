@@ -11,6 +11,7 @@ use crate::usage_limit::{
     classify_debug_lines, detect_usage_limit_sources, is_recoverable_tool_error, split_output,
     UsageLimitVerdict,
 };
+use crate::usage_windows::{extract_usage_windows, UsageWindow};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -46,6 +47,10 @@ pub struct ResultMetadata {
     /// Where a limit found outside the output came from (`codex-rollout`)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit_source: Option<String>,
+    /// Usage windows the run reported (Claude `rate_limit_event`, Codex
+    /// `rate_limits`), newest value per window
+    #[serde(default)]
+    pub usage_windows: Vec<UsageWindow>,
     pub anthropic_total_cost_usd: Option<f64>,
     pub public_pricing_estimate: Option<f64>,
     pub pricing_info: Option<PricingInfo>,
@@ -673,6 +678,7 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
         limit_timezone: usage_limit.timezone,
         limit_resets_at: usage_limit.resets_at,
         limit_window: usage_limit.window,
+        usage_windows: extract_usage_windows(&messages),
         limit_source: None,
         anthropic_total_cost_usd: first_number(
             &messages,

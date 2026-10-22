@@ -3,6 +3,7 @@ import { assessBackgroundTasks } from './background-tasks.mjs';
 import { firstErrorText } from './error-text.mjs';
 import { signalFromExitCode } from './executor.mjs';
 import { extractObservedModels, isRealModelId } from './observed-models.mjs';
+import { extractUsageWindows } from './usage-windows.mjs';
 import { parseJsonRecords } from './streaming/json-records.mjs';
 import {
   classifyDebugLines,
@@ -528,6 +529,7 @@ export function buildNormalizedResultMetadata(options) {
     limitTimezone: usageLimit.timezone,
     limitResetsAt: usageLimit.resetsAt,
     limitWindow: usageLimit.window,
+    usageWindows: extractUsageWindows(messages),
     anthropicTotalCostUSD,
     publicPricingEstimate: estimate,
     pricingInfo:

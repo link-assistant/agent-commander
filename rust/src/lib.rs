@@ -26,6 +26,7 @@ pub mod tool_version;
 pub mod tools;
 pub mod tui;
 pub mod usage_limit;
+pub mod usage_windows;
 
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -68,11 +69,11 @@ pub use result_close::{
 };
 
 pub use codex_rollout::{
-    apply_codex_rollout_usage_limit, can_resume_codex_session, classify_codex_rate_limit_snapshot,
-    codex_rollout_limit_facts, codex_sessions_dir, detect_codex_rollout_usage_limit,
-    find_codex_rollout_file, is_codex_rollout_file_name, read_codex_rollout_limit_facts,
-    CodexLimitVerdict, CodexRolloutLimitFacts, CodexRolloutOptions, CODEX_ROLLOUT_LIMIT_SOURCE,
-    CODEX_SESSIONS_DIRNAME, ROLLOUT_TAIL_BYTES,
+    apply_codex_rollout_usage_limit, apply_codex_rollout_usage_windows, can_resume_codex_session,
+    classify_codex_rate_limit_snapshot, codex_rollout_limit_facts, codex_sessions_dir,
+    detect_codex_rollout_usage_limit, find_codex_rollout_file, is_codex_rollout_file_name,
+    read_codex_rollout_limit_facts, CodexLimitVerdict, CodexRolloutLimitFacts, CodexRolloutOptions,
+    CODEX_ROLLOUT_LIMIT_SOURCE, CODEX_SESSIONS_DIRNAME, ROLLOUT_TAIL_BYTES,
 };
 
 pub use claude_transcript::{
@@ -104,6 +105,11 @@ pub use streaming::{
 pub use tools::{
     get_tool, is_tool_supported, list_tools, AgentTool, ClaudeTool, CodexTool, OpencodeTool, Tool,
     ToolRegistry,
+};
+
+pub use usage_windows::{
+    claude_rate_limit_windows, codex_rate_limit_windows, extract_usage_windows,
+    merge_usage_windows, usage_windows_from_message, UsageWindow, USAGE_WINDOW_KINDS,
 };
 
 pub use tool_version::{
@@ -660,10 +666,10 @@ impl Agent {
             });
             // Codex and Claude can leave a usage limit only in their session
             // files (hive-mind#3570)
-            codex_rollout::apply_codex_rollout_usage_limit(
-                &mut metadata,
-                &CodexRolloutOptions::for_run_env(&self.options.extra_env, &self.options.unset_env),
-            );
+            let rollout_options =
+                CodexRolloutOptions::for_run_env(&self.options.extra_env, &self.options.unset_env);
+            codex_rollout::apply_codex_rollout_usage_limit(&mut metadata, &rollout_options);
+            codex_rollout::apply_codex_rollout_usage_windows(&mut metadata, &rollout_options);
             if (self.options.json || self.options.tool == "agent")
                 && is_tool_supported(&self.options.tool)
             {

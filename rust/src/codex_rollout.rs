@@ -21,6 +21,7 @@ use std::sync::LazyLock;
 use crate::file_tail::{default_home_dir, read_file_tail};
 use crate::result_metadata::ResultMetadata;
 use crate::usage_limit::{format_epoch_reset_time_utc, is_usage_limit_text};
+use crate::usage_windows::codex_rate_limit_windows;
 
 /// Directory under `CODEX_HOME` that holds the rollouts
 pub const CODEX_SESSIONS_DIRNAME: &str = "sessions";
@@ -431,4 +432,25 @@ pub fn apply_codex_rollout_usage_limit(
     metadata.limit_window = verdict.window;
     metadata.limit_source = Some(CODEX_ROLLOUT_LIMIT_SOURCE.to_string());
     true
+}
+
+/// Fill a Codex run's `usage_windows` from the newest `rate_limits` snapshot
+/// in its rollout: `codex exec --json` does not stream the windows (issue #57).
+///
+/// Returns whether the metadata changed.
+pub fn apply_codex_rollout_usage_windows(
+    metadata: &mut ResultMetadata,
+    options: &CodexRolloutOptions,
+) -> bool {
+    let Some(thread_id) = metadata.session_id.clone().filter(|id| !id.is_empty()) else {
+        return false;
+    };
+    if metadata.tool != "codex" || !metadata.usage_windows.is_empty() {
+        return false;
+    }
+    let Ok((_, facts)) = read_codex_rollout_limit_facts(&thread_id, options) else {
+        return false;
+    };
+    metadata.usage_windows = codex_rate_limit_windows(facts.rate_limits.as_ref());
+    !metadata.usage_windows.is_empty()
 }
