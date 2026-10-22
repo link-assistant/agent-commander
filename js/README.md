@@ -58,6 +58,10 @@ Common options:
 - `--tool-env <KEY=VALUE>`: add an environment variable to the native tool process, repeatable
 - `--tool-arg <arg>`: append a raw native tool argument, repeatable
 - `--skip-default-safety-flags`: suppress default autonomous safety bypass flags, including Qwen/Gemini `--yolo`
+- `--reasoning-effort <level>`: native reasoning effort (claude `--effort`, codex `model_reasoning_effort`, opencode `--variant`)
+- `--mcp-config <path|json>` and `--strict-mcp-config`: MCP servers (claude, codex, qwen; strict for claude)
+- `--add-dir <dir>`: extra directory the agent may access, repeatable (claude, codex, gemini, qwen)
+- `--attach <file>`: attach a file to the prompt, repeatable (codex `--image`, opencode `--file`)
 - `--isolation <mode>`: `none`, `screen`, or `docker`
 - `--dry-run`: print the command without executing it
 
@@ -101,6 +105,36 @@ Usage preserves native final totals without adding repeated assistant snapshots.
 Bundled aliases track a recorded Hive Mind catalogue (v2.39.5: `sonnet` is `claude-sonnet-5-5`, `opus` is `claude-opus-5-5`); exact model IDs pass through for caller-managed live discovery. Omitting `model` leaves selection to the native CLI. Claude's `opus` execution alias stays rolling. Common `resume` works for all six tools; Agent adds `--no-fork`, and OpenCode uses `--session`.
 
 See the [parity audit](../docs/case-studies/issue-50/README.md) and [dependency example](../examples/hive-mind-dependency.mjs), which can run against a credential-free fixture for any tool.
+
+### Launch options, live input and run telemetry
+
+```javascript
+import { agent, getToolVersion } from 'agent-commander';
+
+const { meetsMinimum } = await getToolVersion({
+  tool: 'claude',
+  minimumVersion: '2.0.0',
+});
+
+const controller = agent({
+  tool: 'claude',
+  workingDirectory: '/tmp/project',
+  prompt: 'Refactor the parser',
+  reasoningEffort: 'high',
+  mcpConfig: {
+    mcpServers: { docs: { type: 'http', url: 'http://127.0.0.1:4100/mcp' } },
+  },
+  strictMcpConfig: true,
+  additionalDirectories: ['../shared'],
+  liveInput: true,
+});
+await controller.start();
+controller.sendMessage('Keep the public API unchanged');
+const result = await controller.stop();
+console.log(result.metadata.usageWindows, result.metadata.contextUsage);
+```
+
+A tool without a native flag for a launch option throws before it starts; `getLaunchCapabilities(tools.codex)` reports what a tool supports. `attachments` works for Codex (`--image`) and OpenCode (`--file`). `interrupt()` ends the running turn for Claude and Qwen; `endInput()` closes stdin. `metadata.usageWindows` comes from Claude `rate_limit_event` messages and Codex `rate_limits`; `metadata.contextUsage` reports the last and peak context fill against the model's window. For Codex, `stop()` reads both from the thread's rollout file. See [launch options](../docs/common-concepts.md#launch-options) and the [upcomputer case study](../docs/case-studies/issue-57/README.md).
 
 ### Real TUI capture
 
@@ -212,6 +246,7 @@ JavaScript and Rust expose the same core concepts:
 - JSON/NDJSON output parsing for tools that support it
 - Read-only planning mode for tools with enforceable native restrictions
 - Per-command approval (ask mode) with a normalized `permission_request`/`permission_response` relay for tools with a drivable native handshake
+- Launch options, live input, usage windows, context usage and the tool version probe
 
 See [shared concepts](../docs/common-concepts.md) for behavior that should stay aligned across both packages, including the [per-command approval parity table](../docs/common-concepts.md#per-command-approval-ask-mode).
 

@@ -34,6 +34,46 @@ Both packages support a uniform `--approve-each` flag (alias: `--permission-mode
 
 Only `agent` and `claude` can drive the handshake (`relay = ✅`). For every other tool, `--approve-each` is rejected up front with a clear error — the same pattern `--read-only` uses for tools without an enforceable native restriction.
 
+## Launch options
+
+Both packages map the same launch options onto each tool's native flag. A tool without a native flag rejects the option up front, naming the tools that support it, instead of dropping it silently. `getLaunchCapabilities(toolConfig)` / `launch_capabilities(tool)` report the matrix below.
+
+| Option (JS / Rust / CLI)                                                | `claude`               | `codex`                                 | `opencode`   | `qwen`                  | `gemini`                | `agent` |
+| ----------------------------------------------------------------------- | ---------------------- | --------------------------------------- | ------------ | ----------------------- | ----------------------- | ------- |
+| `reasoningEffort` / `launch.reasoning_effort` / `--reasoning-effort`    | `--effort`             | `-c model_reasoning_effort=`            | `--variant`  | ❌                      | ❌                      | ❌      |
+| `mcpConfig` / `launch.mcp_config` / `--mcp-config`                      | `--mcp-config`         | `-c mcp_servers={...}` (inline JSON)    | ❌           | `--mcp-config`          | ❌                      | ❌      |
+| `strictMcpConfig` / `launch.strict_mcp_config` / `--strict-mcp-config`  | `--strict-mcp-config`  | ❌ (overrides merge with `config.toml`) | ❌           | ❌                      | ❌                      | ❌      |
+| `additionalDirectories` / `launch.additional_directories` / `--add-dir` | `--add-dir`            | `exec --add-dir`                        | ❌           | `--include-directories` | `--include-directories` | ❌      |
+| `attachments` / `launch.attachments` / `--attach`                       | ❌ (live-input images) | `--image` (`exec` and `exec resume`)    | `run --file` | ❌ (live-input images)  | ❌                      | ❌      |
+
+`mcpConfig` takes a file path, inline JSON or (JavaScript) a `{mcpServers}` object. Codex receives the servers as one TOML `-c mcp_servers={...}` override: `headers` becomes `http_headers` and the transport `type` is implied by `command` or `url`. The TOML encoder in Rust writes keys in sorted order. Attachment paths that are relative resolve against the working directory; each path gets its own flag, because both native flags take several values.
+
+## Tool version probe
+
+`getToolVersion({ tool, executable, minimumVersion })` / `get_tool_version(tool, executable, minimum_version)` run `<tool> --version` (`buildVersionCommand` / `build_version_command`) and return `{ tool, installed, version, raw, meetsMinimum }`. `installed` is false when the shell cannot find or run the executable (exit 126 or 127). `version` is the first `x.y.z` in the output without a leading `v`. `meetsMinimum` is `null` / `None` when no minimum was asked for. `compareVersions` / `compare_versions` order versions, with a pre-release lower than its release.
+
+## Usage windows and context usage
+
+Result metadata carries two normalized views next to the token totals:
+
+- `usageWindows` / `usage_windows`: subscription windows as `{ id, kind, label, usedPercent, resetsAt, windowDurationMins }`, where `kind` is `session`, `weekly`, `monthly` or `other`, `usedPercent` is 0-100 and `resetsAt` is in epoch seconds. Claude streams them as `rate_limit_event` messages (`five_hour` is the session window, every `seven_day*` type is weekly). Codex writes `rate_limits.primary` / `secondary` to its rollout `token_count` events, which `stop()` reads after the run because `codex exec --json` does not print them. App-server `account/rateLimits/*` notifications are recognized too.
+- `contextUsage` / `context_usage`: how full the context window is, as `{ usedTokens, peakTokens, maxTokens, usedPercent, model, compactions }`. For Claude and Qwen a request fills input + cache writes + cache reads + output tokens. Sub-agent messages (`parent_tool_use_id`) are skipped, and `maxTokens` comes from the result's `modelUsage[model].contextWindow`. For Codex, `stop()` reads `last_token_usage.total_tokens` and `model_context_window` from the rollout. `compactions` counts `compact_boundary` messages. The value is `null` / `None` when the run reported no token usage.
+
+The extractors are public for callers that read the streams themselves: `extractUsageWindows`, `usageWindowsFromMessage`, `mergeUsageWindows`, `extractContextUsage` and `contextReadingFromMessage` (snake_case in Rust).
+
+## Live input
+
+`liveInput: true` / `live_input: true` keeps the tool's stdin open as a stream-json channel for an attached run without isolation. The prompt becomes the first frame and JSON output is forced.
+
+| Tool     | `sendMessage` / `send_message`       | `interrupt`                   | Notes                                                                        |
+| -------- | ------------------------------------ | ----------------------------- | ---------------------------------------------------------------------------- |
+| `claude` | text or content blocks (text, image) | `control_request` `interrupt` | Claude can read a queued message during the running turn.                    |
+| `qwen`   | text or content blocks               | `control_request` `interrupt` | Qwen turns non-text blocks into JSON text.                                   |
+| `agent`  | text                                 | ❌ (stop the agent instead)   | The message runs after the current turn.                                     |
+| others   | ❌                                   | ❌                            | `codex`, `opencode` and `gemini` read a plain prompt, so `liveInput` throws. |
+
+`endInput()` / `end_input()` closes stdin so the tool finishes the queued input and exits; `stop()` and `cancel()` also close it. In JavaScript, a run that also relays permission requests keeps stdin open until the last turn reports its result.
+
 ## Isolation
 
 The shared isolation modes are:
@@ -97,4 +137,4 @@ Common resume maps to `--resume` for Claude, Qwen and Gemini; `codex exec resume
 
 Claude and Qwen final result usage supersedes assistant snapshots. Codex fresh input excludes cached reads, exposed separately; output may include reasoning, so do not add reasoning tokens again. Agent and OpenCode sum step-finish usage. Gemini uses native result statistics. Native model usage and cost remain available without inventing provider prices.
 
-The [issue #50 audit](case-studies/issue-50/README.md) records the source revision, complete feature inventory, alternatives and consumer migration plan.
+The [issue #57 case study](case-studies/issue-57/README.md) covers the launch options, version probe, usage windows, context usage and live input added for hive-mind and upcomputer. The [issue #50 audit](case-studies/issue-50/README.md) records the source revision, complete feature inventory, alternatives and consumer migration plan.

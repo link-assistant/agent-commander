@@ -15,6 +15,7 @@ Language-specific package documentation:
 - [Rust crate README](rust/README.md)
 - [Shared concepts](docs/common-concepts.md)
 - [Hive Mind parity audit and evidence](docs/case-studies/issue-50/README.md)
+- [upcomputer and Hive Mind case study (launch options, usage windows, context usage, live input)](docs/case-studies/issue-57/README.md)
 - [Dependency integration example](examples/hive-mind-dependency.mjs)
 
 ## Features
@@ -39,6 +40,10 @@ Language-specific package documentation:
 - **Attached/Detached Modes**: Monitor output in real-time or run in background
 - **Read-only Planning Mode**: Enforce native no-shell/no-write restrictions for supported tools
 - **Prompt File Input**: Pipe large prompts through files for stdin-based tools instead of embedding them in shell commands
+- **Launch Options**: Reasoning effort, MCP servers, strict MCP config, extra directories and file attachments mapped onto each tool's native flag
+- **Usage and Context Reporting**: Normalized subscription usage windows and context-window fill in the result metadata
+- **Live Input**: Send follow-up messages to, and interrupt, a running Claude, Qwen or Agent session
+- **Version Probe**: Check the installed CLI version against a minimum
 
 ## Installation
 
@@ -164,6 +169,11 @@ start-agent --tool claude --working-directory "/tmp/dir" --prompt "Solve the iss
 - `--append-system-prompt <text>` - Append to the default system prompt (Claude only)
 - `--model <name>` - Model to use (e.g., 'sonnet', 'opus', 'grok')
 - `--fallback-model <name>` - Fallback model when default is overloaded (Claude only)
+- `--reasoning-effort <level>` - Native reasoning effort (claude `--effort`, codex `model_reasoning_effort`, opencode `--variant`)
+- `--mcp-config <path|json>` - MCP servers config (claude, codex, qwen)
+- `--strict-mcp-config` - Use only the `--mcp-config` servers (claude)
+- `--add-dir <dir>` - Extra directory the agent may access (repeatable; claude, codex, gemini, qwen)
+- `--attach <file>` - Attach a file to the prompt (repeatable; codex `--image`, opencode `--file`)
 - `--verbose` - Enable verbose mode (Claude only)
 - `--read-only` - Enforce native read-only/planning mode for supported tools
 - `--plan-only` - Alias for `--read-only` for most tools; the `agent` tool maps it to its softer `--permission-mode plan`
@@ -356,6 +366,10 @@ console.log("Metadata:", result.metadata); // Normalized cross-tool summary
 - `anthropicTotalCostUSD`, `publicPricingEstimate`, and `pricingInfo`
 - `resultModelUsage`, `streamTokenUsage`, `subAgentCalls`, `observedModels`, and `observedModel` (the models that actually answered)
 - `runningBackgroundTasks`, `backgroundTasksStopped`, `stoppedBackgroundTasks`, and `printWaitCeilingSeconds`
+- `usageWindows`: subscription windows (`{ id, kind, label, usedPercent, resetsAt, windowDurationMins }`) from Claude `rate_limit_event` messages and Codex `rate_limits`
+- `contextUsage`: context-window fill (`{ usedTokens, peakTokens, maxTokens, usedPercent, model, compactions }`)
+
+See [usage windows and context usage](docs/common-concepts.md#usage-windows-and-context-usage) for the sources of each field.
 
 #### Usage limits that only the session files report
 
@@ -365,6 +379,51 @@ console.log("Metadata:", result.metadata); // Normalized cross-tool summary
 - **Claude**: `${CLAUDE_CONFIG_DIR:-~/.claude}/projects/<working-directory slug>/<session id>.jsonl`, when its last conversation entry is an `isApiErrorMessage` usage-limit message.
 
 A `CODEX_HOME` or `CLAUDE_CONFIG_DIR` passed in `toolOptions.extraEnv` is honoured. Only the last turn or entry is read, so a limit the session recovered from is not reported. The same checks are exported for callers that run the CLIs themselves: `applyCodexRolloutUsageLimit`, `detectCodexRolloutUsageLimit`, `canResumeCodexSession` (a missing rollout means `codex exec resume` cannot work, so start a new session), `applyClaudeTranscriptUsageLimit` and `readClaudeTranscriptApiError`. Hive Mind's text classifiers are exported too: `detectUsageLimitSources`, `isUsageLimitText`, `extractResetTime` and `isRecoverableToolError`.
+
+### Launch Options
+
+```javascript
+const controller = agent({
+  tool: "codex",
+  workingDirectory: "/tmp/project",
+  prompt: "Compare the screenshot with the design",
+  reasoningEffort: "high",
+  mcpConfig: {
+    mcpServers: { docs: { type: "http", url: "http://127.0.0.1:4100/mcp" } },
+  },
+  additionalDirectories: ["../shared"],
+  attachments: ["screenshot.png"],
+});
+```
+
+A tool without a native flag for an option throws before it starts. See the [launch option matrix](docs/common-concepts.md#launch-options).
+
+### Live Input
+
+```javascript
+const controller = agent({
+  tool: "claude",
+  workingDirectory: "/tmp/project",
+  prompt: "Refactor the parser",
+  liveInput: true,
+});
+await controller.start();
+controller.sendMessage("Also keep the public API unchanged");
+controller.interrupt(); // end the running turn (claude, qwen)
+// stop() closes stdin after the last turn; endInput() closes it right away.
+const result = await controller.stop();
+```
+
+### Tool Version Probe
+
+```javascript
+import { getToolVersion } from "agent-commander";
+
+const { installed, version, meetsMinimum } = await getToolVersion({
+  tool: "codex",
+  minimumVersion: "0.163.0",
+});
+```
 
 ### Using Different Tools
 
@@ -571,6 +630,12 @@ Creates an agent controller.
 - `options.resume` (string, optional) - Resume session ID (tool-specific)
 - `options.readOnly` (boolean, optional) - Enforce native read-only/planning mode
 - `options.planOnly` (boolean, optional) - Enforce native planning mode; the `agent` tool maps it to `--permission-mode plan` while other tools treat it like `readOnly`
+- `options.reasoningEffort` (string, optional) - Native reasoning effort / variant level
+- `options.mcpConfig` (string or object, optional) - MCP servers: config path, inline JSON or `{mcpServers}` object
+- `options.strictMcpConfig` (boolean, optional) - Use only the servers from `mcpConfig`
+- `options.additionalDirectories` (string or string array, optional) - Extra directories the agent may access
+- `options.attachments` (string or string array, optional) - Files attached to the prompt (codex images, opencode files)
+- `options.liveInput` (boolean, optional) - Keep stdin open as a stream-json channel for `sendMessage()`, `interrupt()` and `endInput()` (claude, qwen, agent)
 - `options.isolation` (string, optional) - 'none', 'screen', or 'docker' (default: 'none')
 - `options.screenName` (string, optional) - Screen session name (required for screen isolation)
 - `options.containerName` (string, optional) - Container name (required for docker isolation)
@@ -584,7 +649,7 @@ Creates an agent controller.
   - `sandboxMode` (string, optional) - Explicit Codex sandbox mode
   - `approvalMode` (string, optional) - Explicit Codex approval mode
 
-**Returns:** Agent controller object with `start()`, `stop()`, `cancel()`, `getSessionId()`, `getMessages()`, and `getToolConfig()` methods
+**Returns:** Agent controller object with `start()`, `stop()`, `cancel()`, `sendMessage()`, `interrupt()`, `endInput()`, `getSessionId()`, `getMessages()`, and `getToolConfig()` methods
 
 ### `controller.start(startOptions)`
 
