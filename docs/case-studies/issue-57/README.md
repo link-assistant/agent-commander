@@ -186,8 +186,12 @@ node experiments/issue-57-structured-output.mjs
 
 Results on 2026-10-22:
 
-- **JavaScript.** ESLint: 0 errors, and the same 30 warnings as `main`. Prettier and the duplication check pass. 407 tests pass, 0 fail.
+- **JavaScript.** ESLint: 0 errors, and the same 30 warnings as `main`. Prettier and the duplication check pass. 417 tests pass, 0 fail.
 - **Rust.** `fmt`, pedantic `clippy -D warnings`, the 1000-line file limit and `cargo doc` pass. 403 tests pass, 0 fail.
 - **Launch-options experiment.** It prints the native command for each tool, and the unsupported combinations fail with the error naming the supporting tools.
 - **Structured-output experiment.** A fake `codex` receives the `--output-schema` process substitution and reads the schema back intact, including quotes, `$HOME` and backticks (`OK: schema intact`).
 - **Release fragments.** `get-bump-type.mjs` reports `bump_type=minor` with both Rust fragments.
+
+### Deno on Windows CI
+
+`JS Test (deno on windows-latest)` failed on `main` (run 39782822431) and on this PR: `test/command-stream.test.mjs` timed out after 10 s. Most runs passed it in 2-3 s. To find out why, `js/experiments/command-stream-windows-timing.mjs` timed the same probe on the runner three ways: plain `node`, Git Bash `-c`, and command-stream's `$` (runs 39812119048 and 39812129854). The first `node.exe` launch printed after 4.5 s on one runner and 9.4 s on the other. Every later launch took 55-116 ms, and nothing hung. The test now launches `node --version` once before the quoting check, and its budget is 60 s so that cold start fits.

@@ -12,6 +12,11 @@
 // and records when 'spawn', 'exit' and 'close' fire, so a slow start can be
 // told apart from a child whose pipes never close. Every run is bounded by a
 // 60 s watchdog so a hang cannot stall the job.
+//
+// Result on windows-latest under Deno (CI runs 39812119048 and 39812129854):
+// the very first raw-node launch printed after 4.5 s and 9.4 s, every later
+// launch of any kind finished in 55-116 ms, and nothing hung. The test's 10 s
+// timeout was being spent on node.exe's cold start, not on command-stream.
 import cp from 'node:child_process';
 import { $ } from 'command-stream';
 import fs from 'node:fs';

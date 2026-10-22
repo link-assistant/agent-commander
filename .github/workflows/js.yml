@@ -189,16 +189,6 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Diagnose command-stream timing (temporary)
-        if: matrix.runtime == 'deno' && matrix.os == 'windows-latest'
-        working-directory: js
-        continue-on-error: true
-        timeout-minutes: 10
-        shell: bash
-        run: |
-          deno run --minimum-dependency-age=0 -A experiments/command-stream-windows-timing.mjs 6
-          COMMAND_STREAM_TRACE=true deno run --minimum-dependency-age=0 -A experiments/command-stream-windows-timing.mjs 2 2>&1 | tail -n 200
-
       - name: Run tests (Deno)
         if: matrix.runtime == 'deno'
         working-directory: js
