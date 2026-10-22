@@ -101,17 +101,19 @@ test('buildAgentTuiLaunch maps interactive safety and resume options', () => {
   ]);
 });
 
-// One test per agent client: each native PTY launch gets its own budget, so
-// an occasional slow Windows ConPTY start fails (or passes) one client
-// instead of the six captures sharing a single 30 s budget.
-for (const tool of tools) {
+// One test per agent client, so each native PTY launch gets its own budget.
+// The first capture in this file also starts the node PTY host and loads
+// node-pty's ConPTY binding for the first time. On Windows runners that took
+// 5.9-36.5 s, and every later capture took about 1.4 s. So the first capture
+// gets a cold-start allowance; it runs first because tests run in order.
+for (const [index, tool] of tools.entries()) {
   test(
     `captureAgentTui drives and normalizes the ${tool} client`,
     {
       skip: isDeno,
       // Windows startup can exceed Bun's five-second default even when the
       // capture finishes normally.
-      timeout: 30_000,
+      timeout: index === 0 ? 120_000 : 30_000,
     },
     async (t) => {
       const artifactDirectory = await mkdtemp(
