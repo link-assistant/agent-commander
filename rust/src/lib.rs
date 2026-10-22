@@ -127,6 +127,9 @@ pub use usage_windows::{
     merge_usage_windows, usage_windows_from_message, UsageWindow, USAGE_WINDOW_KINDS,
 };
 
+/// Shell quoting for `ToolOverrides::build_command` implementations
+pub use tools::shell::escape_arg;
+
 pub use tool_overrides::{
     BuildCommandFn, ExtractSessionIdFn, ExtractUsageFn, ParseOutputFn, ToolOverrides,
 };

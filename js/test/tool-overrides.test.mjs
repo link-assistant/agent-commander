@@ -9,6 +9,7 @@ import assert from 'node:assert';
 import {
   agent,
   buildAgentCommand,
+  escapeArg,
   resolveToolConfig,
   tools,
 } from '../src/index.mjs';
@@ -55,14 +56,15 @@ test('an override builder can add a flag the built-in lacks', async () => {
     tool: 'claude',
     workingDirectory: '/tmp',
     prompt: 'hi',
-    attachments: ['shot.png'],
+    attachments: ['shot.png', 'my shot.png'],
     toolOverrides: {
       supportsAttachments: true,
       buildCommand: ({ attachments, ...rest }) =>
-        `${tools.claude.buildCommand(rest)} --image ${attachments.join(' ')}`,
+        `${tools.claude.buildCommand(rest)} --image ${attachments.map(escapeArg).join(' ')}`,
     },
   });
-  assert.match(command, /claude .*--image shot\.png/);
+  // The image list is escaped, then the whole command for `bash -c "..."`.
+  assert.match(command, /claude .*--image shot\.png \\"my shot\.png\\"/);
   // Without the override the built-in still refuses the option.
   assert.throws(
     () =>

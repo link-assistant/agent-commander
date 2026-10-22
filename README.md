@@ -44,6 +44,7 @@ Language-specific package documentation:
 - **Usage and Context Reporting**: Normalized subscription usage windows and context-window fill in the result metadata
 - **Live Input**: Send follow-up messages to, and interrupt, a running Claude, Qwen or Agent session
 - **Version Probe**: Check the installed CLI version against a minimum
+- **Tool Overrides**: Replace a tool's command builder, output parser, session-ID or usage extractor, or capability flags for one run, or drive an unregistered CLI
 
 ## Installation
 
@@ -425,6 +426,46 @@ const { installed, version, meetsMinimum } = await getToolVersion({
 });
 ```
 
+### Tool Overrides
+
+Replace a failing or missing part of a tool for one run, or drive a CLI that agent-commander does not know:
+
+```javascript
+import { agent, escapeArg, tools } from "agent-commander";
+
+// Add a flag the built-in Claude builder lacks.
+const claude = agent({
+  tool: "claude",
+  workingDirectory: "/tmp/project",
+  prompt: "Describe the screenshot",
+  attachments: ["shot.png"],
+  toolOverrides: {
+    supportsAttachments: true,
+    buildCommand: ({ attachments, ...options }) =>
+      `${tools.claude.buildCommand(options)} --image ${attachments.map(escapeArg).join(" ")}`,
+  },
+});
+
+// Drive an unregistered CLI with your own parser and extractors.
+const custom = agent({
+  tool: "my-agent",
+  workingDirectory: "/tmp/project",
+  prompt: "Fix the tests",
+  toolOverrides: {
+    buildCommand: ({ prompt }) => `my-agent --json ${escapeArg(prompt)}`,
+    parseOutput: ({ output }) =>
+      output
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line)),
+    extractSessionId: ({ output }) => /"session":"([^"]+)"/.exec(output)?.[1],
+    extractUsage: ({ output }) => null,
+  },
+});
+```
+
+See [tool overrides](docs/common-concepts.md#tool-overrides).
+
 ### Using Different Tools
 
 ```javascript
@@ -595,7 +636,12 @@ await myAgent.start({ dryRun: true });
 ### Tool Configuration API
 
 ```javascript
-import { getTool, listTools, isToolSupported } from "agent-commander";
+import {
+  getTool,
+  listTools,
+  isToolSupported,
+  resolveToolConfig,
+} from "agent-commander";
 
 // List all available tools
 console.log(listTools()); // ['claude', 'codex', 'opencode', 'agent', 'gemini', 'qwen']
@@ -610,6 +656,12 @@ console.log(claudeTool.modelMap); // { sonnet: 'claude-sonnet-5-5', opus: 'claud
 // Map model alias to full ID
 const fullId = claudeTool.mapModelToId({ model: "opus" });
 console.log(fullId); // 'claude-opus-5-5'
+
+// The configuration a run with overrides uses (the registry is unchanged)
+const patched = resolveToolConfig({
+  toolName: "claude",
+  toolOverrides: { supportsAttachments: true },
+});
 ```
 
 ## API Reference
@@ -636,6 +688,7 @@ Creates an agent controller.
 - `options.additionalDirectories` (string or string array, optional) - Extra directories the agent may access
 - `options.attachments` (string or string array, optional) - Files attached to the prompt (codex images, opencode files)
 - `options.liveInput` (boolean, optional) - Keep stdin open as a stream-json channel for `sendMessage()`, `interrupt()` and `endInput()` (claude, qwen, agent)
+- `options.toolOverrides` (object, optional) - Replace parts of the tool configuration for this run: `buildCommand`, `parseOutput`, `extractSessionId`, `extractUsage`, `detectErrors` or the `supports*` capability flags. A `buildCommand` also drives an unregistered tool. See [tool overrides](docs/common-concepts.md#tool-overrides)
 - `options.isolation` (string, optional) - 'none', 'screen', or 'docker' (default: 'none')
 - `options.screenName` (string, optional) - Screen session name (required for screen isolation)
 - `options.containerName` (string, optional) - Container name (required for docker isolation)

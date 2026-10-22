@@ -105,6 +105,28 @@ Passthrough environment variables are attached to the native tool side of prompt
 
 Claude and Codex builders also expose typed `permissionMode` / `permission_mode`, `sandboxMode` / `sandbox_mode`, and `approvalMode` / `approval_mode` fields for callers that build commands directly. The `agent` builder exposes typed `permissionMode` / `permission_mode` (`auto` | `plan` | `readonly` | `ask`) and an OpenCode-compatible `permission` / `permission` JSON policy. `--read-only` maps to `readonly` and `--plan-only` maps to `plan` for `agent`.
 
+## Tool overrides
+
+When a built-in part of a tool breaks or is missing, a caller can replace it for one run without waiting for a release (issue #57). JavaScript takes `toolOverrides` and Rust takes `AgentOptions.tool_overrides` / `AgentCommandOptions.overrides` (`ToolOverrides`).
+
+| Part                 | JavaScript (`toolOverrides`)                                                                                                                          | Rust (`ToolOverrides`)                                       |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Command builder      | `buildCommand(options)`                                                                                                                               | `build_command: Arc<dyn Fn(&AgentCommandOptions) -> String>` |
+| Output parser        | `parseOutput({ output })`                                                                                                                             | `parse_output: Arc<dyn Fn(&str) -> Vec<Value>>`              |
+| Session ID extractor | `extractSessionId({ output })`                                                                                                                        | `extract_session_id: Arc<dyn Fn(&str) -> Option<String>>`    |
+| Usage extractor      | `extractUsage({ output })`                                                                                                                            | `extract_usage: Arc<dyn Fn(&str) -> Option<Value>>`          |
+| Launch capabilities  | `supportsReasoningEffort`, `supportsMcpConfig`, `supportsStrictMcpConfig`, `supportsAdditionalDirectories`, `supportsAttachments`, `reasoningEfforts` | `launch_capabilities: Option<LaunchCapabilities>`            |
+| Anything else        | any other tool configuration field, such as `detectErrors`                                                                                            | -                                                            |
+
+- A builder returns the native command. The `cd` into the working directory and the isolation wrapper still apply. To extend a built-in, call it first: `tools.claude.buildCommand(options)` in JavaScript, or `build_base_command(&options)` in Rust.
+- `escapeArg` / `escape_arg` quote values for the shell command a builder returns.
+- A parser override also replaces the messages streamed during the run.
+- With a builder, the override drives a tool that is not registered. The result metadata still uses the generic rules for such a tool.
+- `resolveToolConfig({ toolName, toolOverrides })` returns the merged JavaScript configuration. The registered `tools` stay unchanged.
+- Overrides do not relax read-only, plan-only or per-command approval. Those modes stay limited to tools with a native, enforceable switch.
+
+The overrides complement the [native tool passthrough](#native-tool-passthrough) controls.
+
 ## Claude Options
 
 Both packages expose Claude-specific options for model fallback, session management, prompt appending, verbose mode, and replaying user messages:

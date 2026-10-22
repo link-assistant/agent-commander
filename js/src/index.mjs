@@ -886,6 +886,8 @@ export {
   parseToolVersion,
   toolVersionFromOutput,
 } from './tool-version.mjs';
+// Shell quoting for `toolOverrides.buildCommand` implementations.
+export { escapeArg } from './tools/shell.mjs';
 export {
   assertLaunchOptionsSupported,
   codexMcpServersOverride,

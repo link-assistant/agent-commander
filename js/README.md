@@ -136,6 +136,28 @@ console.log(result.metadata.usageWindows, result.metadata.contextUsage);
 
 A tool without a native flag for a launch option throws before it starts; `getLaunchCapabilities(tools.codex)` reports what a tool supports. `attachments` works for Codex (`--image`) and OpenCode (`--file`). `interrupt()` ends the running turn for Claude and Qwen; `endInput()` closes stdin. `metadata.usageWindows` comes from Claude `rate_limit_event` messages and Codex `rate_limits`; `metadata.contextUsage` reports the last and peak context fill against the model's window. For Codex, `stop()` reads both from the thread's rollout file. See [launch options](../docs/common-concepts.md#launch-options) and the [upcomputer case study](../docs/case-studies/issue-57/README.md).
 
+### Tool overrides
+
+`toolOverrides` replaces a failing or missing part of a tool for one run: `buildCommand`, `parseOutput`, `extractSessionId`, `extractUsage`, `detectErrors` or a `supports*` capability flag. With a `buildCommand` it also drives a CLI that is not registered. `resolveToolConfig({ toolName, toolOverrides })` returns the merged configuration.
+
+```javascript
+import { agent, escapeArg, tools } from 'agent-commander';
+
+const controller = agent({
+  tool: 'claude',
+  workingDirectory: '/tmp/project',
+  prompt: 'Describe the screenshot',
+  attachments: ['shot.png'],
+  toolOverrides: {
+    supportsAttachments: true,
+    buildCommand: ({ attachments, ...options }) =>
+      `${tools.claude.buildCommand(options)} --image ${attachments.map(escapeArg).join(' ')}`,
+  },
+});
+```
+
+See [tool overrides](../docs/common-concepts.md#tool-overrides).
+
 ### Real TUI capture
 
 Use `captureAgentTui()` when a test must exercise the same interactive terminal
@@ -247,6 +269,7 @@ JavaScript and Rust expose the same core concepts:
 - Read-only planning mode for tools with enforceable native restrictions
 - Per-command approval (ask mode) with a normalized `permission_request`/`permission_response` relay for tools with a drivable native handshake
 - Launch options, live input, usage windows, context usage and the tool version probe
+- Per-run tool overrides for the command builder, output parser, session ID and usage extractors, and capability flags
 
 See [shared concepts](../docs/common-concepts.md) for behavior that should stay aligned across both packages, including the [per-command approval parity table](../docs/common-concepts.md#per-command-approval-ask-mode).
 

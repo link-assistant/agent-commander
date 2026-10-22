@@ -3,7 +3,7 @@
 //! waiting for an agent-commander release.
 
 use agent_commander::{
-    agent, build_agent_command, build_base_command, check_launch_options_against,
+    agent, build_agent_command, build_base_command, check_launch_options_against, escape_arg,
     launch_capabilities, AgentCommandOptions, AgentOptions, AgentStartOptions, AgentStopOptions,
     LaunchCapabilities, LaunchOptions, ToolOverrides,
 };
@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 fn attachments() -> LaunchOptions {
     LaunchOptions {
-        attachments: vec!["shot.png".to_string()],
+        attachments: vec!["shot.png".to_string(), "my shot.png".to_string()],
         ..Default::default()
     }
 }
@@ -26,7 +26,13 @@ fn claude_with_images() -> ToolOverrides {
             format!(
                 "{} --image {}",
                 build_base_command(&inner),
-                options.launch.attachments.join(" ")
+                options
+                    .launch
+                    .attachments
+                    .iter()
+                    .map(|file| escape_arg(file))
+                    .collect::<Vec<_>>()
+                    .join(" ")
             )
         })),
         launch_capabilities: Some(LaunchCapabilities {
@@ -50,7 +56,11 @@ fn an_override_builder_can_add_a_flag_the_built_in_lacks() {
     let command = build_agent_command(&options);
     assert!(command.starts_with("bash -c \"cd /tmp && "), "{command}");
     assert!(command.contains("claude "), "{command}");
-    assert!(command.contains("--image shot.png"), "{command}");
+    // The image list is escaped, then the whole command for `bash -c "..."`.
+    assert!(
+        command.contains(r#"--image shot.png \"my shot.png\""#),
+        "{command}"
+    );
 
     // Without the override the built-in still refuses the option.
     assert!(check_launch_options_against(
