@@ -99,6 +99,8 @@ pub struct AgentBuildOptions {
     /// Caller owns the child's stdin and streams the prompt + permission
     /// responses as NDJSON frames, so no prompt is piped in `build_command`.
     pub stream_input: bool,
+    /// Read stream-json user frames from stdin (live input)
+    pub json_input: bool,
     pub executable: Option<String>,
     pub extra_env: Vec<(String, String)>,
     /// Variables removed from the inherited environment (`env -u`)
@@ -143,7 +145,8 @@ pub fn build_args(options: &AgentBuildOptions) -> Vec<String> {
 
     // Ask mode emits requests mid-turn and blocks until answered, so it requires
     // a streaming input mode (single-shot prompt over stdin would deadlock).
-    if is_ask {
+    // Live input reads follow-up user frames on the same channel.
+    if is_ask || options.json_input {
         args.push("--input-format".to_string());
         args.push("stream-json".to_string());
     }

@@ -35,6 +35,9 @@ pub struct AgentCommandOptions {
     pub plan_only: bool,
     /// Approve each mutating command (`--permission-mode ask` / `--approve-each`)
     pub approve_each: bool,
+    /// Prompt and follow-ups arrive as stream-json stdin frames (live input;
+    /// claude, qwen and agent)
+    pub stream_input: bool,
     pub executable: Option<String>,
     pub extra_args: Vec<String>,
     pub extra_env: Vec<(String, String)>,
@@ -191,7 +194,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 model: options.model.clone(),
                 fallback_model: options.fallback_model.clone(),
                 json: options.json,
-                json_input: false,
+                json_input: options.stream_input,
                 verbose: options.verbose,
                 replay_user_messages: options.replay_user_messages,
                 resume: options.resume.clone(),
@@ -206,7 +209,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 extra_args: options.extra_args.clone(),
                 skip_default_safety_flags: options.skip_default_safety_flags,
                 permission_mode: None,
-                stream_input: false,
+                stream_input: options.stream_input,
                 launch: options.launch.clone(),
             }),
             "codex" => codex::build_command(&CodexBuildOptions {
@@ -253,7 +256,8 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 approve_each: options.approve_each,
                 permission_mode: None,
                 permission: None,
-                stream_input: false,
+                stream_input: options.stream_input,
+                json_input: options.stream_input,
                 executable: options.executable.clone(),
                 extra_env: options.extra_env.clone(),
                 unset_env: options.unset_env.clone(),
@@ -293,6 +297,8 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                     extra_args: options.extra_args.clone(),
                     skip_default_safety_flags: options.skip_default_safety_flags,
                     launch: options.launch.clone(),
+                    json_input: options.stream_input,
+                    stream_input: options.stream_input,
                     ..QwenBuildOptions::new()
                 };
                 qwen::build_command(&options)

@@ -462,14 +462,14 @@ export function agent(options) {
   /**
    * Queue a follow-up user message into the running session. The tool reads
    * it after (or, for Claude, alongside) the current turn.
-   * @param {string|Object[]} content - Text, or content blocks for Claude
+   * @param {string|Object[]} content - Text, or content blocks for Claude and Qwen
    * @returns {boolean} True when the frame was written
    */
   const sendMessage = (content) =>
     writeInputFrame(buildUserInputFrame({ tool, content }));
 
   /**
-   * Ask Claude to end the running turn; queued messages still run.
+   * Ask Claude or Qwen to end the running turn; queued messages still run.
    * @returns {boolean} True when the frame was written
    */
   const interrupt = () => writeInputFrame(buildInterruptFrame({ tool }));

@@ -18,6 +18,7 @@ mod completion;
 pub mod error_text;
 pub mod executor;
 pub mod file_tail;
+pub mod live_input;
 pub mod permissions;
 pub mod result_close;
 pub mod result_metadata;
@@ -53,8 +54,9 @@ pub use permissions::{
 
 pub use executor::{
     execute_command, execute_detached, is_process_group_alive, normalize_exit,
-    setup_signal_handler, signal_from_exit_code, signal_name, start_command, ExecutionResult,
-    ProcessHandle, DEFAULT_KILL_AFTER, DEFAULT_PIPE_DRAIN,
+    setup_signal_handler, signal_from_exit_code, signal_name, start_command,
+    start_command_with_stdin, ExecutionResult, ProcessHandle, DEFAULT_KILL_AFTER,
+    DEFAULT_PIPE_DRAIN,
 };
 
 pub use background_tasks::{
@@ -83,6 +85,10 @@ pub use claude_transcript::{
 };
 
 pub use file_tail::read_file_tail;
+pub use live_input::{
+    build_interrupt_frame, build_user_input_frame, live_input_unsupported_error,
+    supports_live_input,
+};
 
 pub use result_metadata::{
     build_normalized_result_metadata, BuildMetadataOptions, PricingInfo, ResultMetadata,
@@ -180,6 +186,10 @@ pub struct AgentOptions {
     /// Shared launch options: reasoning effort, MCP servers, strict MCP
     /// configuration and extra workspace directories
     pub launch: LaunchOptions,
+    /// Keep stdin open for [`Agent::send_message`] and [`Agent::interrupt`]
+    /// (`claude`, `qwen`, `agent`; attached runs without isolation). The
+    /// prompt becomes the first stream-json frame and JSON output is forced.
+    pub live_input: bool,
 }
 
 /// Agent result from stop()
@@ -402,13 +412,28 @@ impl Agent {
     pub async fn start(&mut self, start_options: AgentStartOptions) -> Result<(), String> {
         // Reject launch options the tool cannot honor before any side effects.
         check_launch_options_supported(&self.options.tool, &self.options.launch)?;
+        let live = self.options.live_input;
+        if live && !supports_live_input(&self.options.tool) {
+            return Err(live_input_unsupported_error(&self.options.tool));
+        }
+        let isolated = !(self.options.isolation == "none" || self.options.isolation.is_empty());
+        if live && !start_options.dry_run && (start_options.detached || isolated) {
+            return Err(
+                "live_input needs an attached run without isolation (stdin is piped to the tool)."
+                    .to_string(),
+            );
+        }
 
         // Create output stream for JSON parsing if in JSON mode
-        if self.options.json {
+        if self.options.json || live {
             self.output_stream = Some(create_output_stream());
         }
 
-        let prepared_prompt_file = match self.prepare_prompt_file(start_options.dry_run).await {
+        // Live input writes the prompt as the first stdin frame instead.
+        let prepared_prompt_file = match self
+            .prepare_prompt_file(start_options.dry_run || live)
+            .await
+        {
             Ok(prompt_file) => prompt_file,
             Err(error) => {
                 self.cleanup_prompt_temp_dir().await;
@@ -422,7 +447,7 @@ impl Agent {
         let command_options = AgentCommandOptions {
             tool: self.options.tool.clone(),
             working_directory: self.options.working_directory.clone(),
-            prompt: if prompt_handled_by_temp_file {
+            prompt: if prompt_handled_by_temp_file || live {
                 None
             } else {
                 self.options.prompt.clone()
@@ -436,7 +461,7 @@ impl Agent {
             append_system_prompt: self.options.append_system_prompt.clone(),
             model: self.options.model.clone(),
             fallback_model: self.options.fallback_model.clone(),
-            json: self.options.json,
+            json: self.options.json || live,
             verbose: self.options.verbose,
             replay_user_messages: self.options.replay_user_messages,
             resume: self.options.resume.clone(),
@@ -445,6 +470,7 @@ impl Agent {
             read_only: self.options.read_only,
             plan_only: self.options.plan_only,
             approve_each: self.options.approve_each,
+            stream_input: live,
             executable: self.options.executable.clone(),
             extra_args: self.options.extra_args.clone(),
             extra_env: self.options.extra_env.clone(),
@@ -483,10 +509,12 @@ impl Agent {
             }
         } else {
             // For attached mode, start command without waiting
-            let handle = match start_command(&command, start_options.attached)
-                .await
-                .map_err(|e| e.to_string())
-            {
+            let started = if live {
+                start_command_with_stdin(&command, start_options.attached).await
+            } else {
+                start_command(&command, start_options.attached).await
+            };
+            let handle = match started.map_err(|e| e.to_string()) {
                 Ok(handle) => handle,
                 Err(error) => {
                     self.cleanup_prompt_temp_dir().await;
@@ -494,6 +522,16 @@ impl Agent {
                 }
             };
             self.process_handle = Some(handle);
+            if live {
+                // Kick off the turn by sending the user prompt as the first frame.
+                let prompt = self.options.prompt.clone().map_or(Value::Null, Value::from);
+                let frame = build_user_input_frame(
+                    &self.options.tool,
+                    &prompt,
+                    self.options.system_prompt.as_deref(),
+                )?;
+                self.write_input_frame(&frame).await?;
+            }
         }
 
         Ok(())
@@ -585,6 +623,8 @@ impl Agent {
                 .process_handle
                 .as_mut()
                 .ok_or("Agent not started or already stopped")?;
+            // End live input: the tool finishes the queued input and exits.
+            handle.end_stdin();
 
             // Wait for the process to exit, closing it when it outlives its result
             let close = ResultCloseOptions {

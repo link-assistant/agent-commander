@@ -276,7 +276,9 @@ pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
         args.push("--verbose".to_string());
     }
 
-    if options.prompt.is_none()
+    // Without a prompt argument (stream input frames, prompt file) print mode
+    // still needs `-p`.
+    if (options.prompt.is_none() || options.stream_input)
         && (options.print || options.json || options.json_input || options.prompt_file.is_some())
     {
         args.push("-p".to_string()); // Print mode

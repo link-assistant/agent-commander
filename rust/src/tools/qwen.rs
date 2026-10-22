@@ -82,6 +82,10 @@ pub struct QwenBuildOptions {
     pub skip_default_safety_flags: bool,
     /// Shared launch options (reasoning effort, MCP servers, extra directories)
     pub launch: LaunchOptions,
+    /// Read stream-json user frames and control requests from stdin
+    pub json_input: bool,
+    /// The caller writes the prompt to stdin as a frame (live input)
+    pub stream_input: bool,
 }
 
 impl QwenBuildOptions {
@@ -125,6 +129,13 @@ pub fn build_args(options: &QwenBuildOptions) -> Vec<String> {
     } else if options.json {
         args.push("--output-format".to_string());
         args.push("json".to_string());
+    }
+
+    // Live input: qwen keeps reading Claude-shaped user frames and control
+    // requests from stdin (requires stream-json output).
+    if options.json_input {
+        args.push("--input-format".to_string());
+        args.push("stream-json".to_string());
     }
 
     // Include partial messages for real-time UI updates
@@ -185,7 +196,7 @@ pub fn build_command(options: &QwenBuildOptions) -> String {
     let mut combined_options = options.clone();
 
     // Combine system prompt with user prompt if provided
-    if options.prompt_file.is_some() {
+    if options.prompt_file.is_some() || options.stream_input {
         combined_options.prompt = None;
     } else {
         match (&options.system_prompt, &options.prompt) {
@@ -211,11 +222,12 @@ pub fn build_command(options: &QwenBuildOptions) -> String {
     .trim()
     .to_string();
 
-    if let Some(prompt_file) = &options.prompt_file {
-        return format!("cat {} | {}", escape_arg(prompt_file), command);
+    match &options.prompt_file {
+        Some(prompt_file) if !options.stream_input => {
+            format!("cat {} | {}", escape_arg(prompt_file), command)
+        }
+        _ => command,
     }
-
-    command
 }
 
 /// Parse JSON messages from Qwen Code output
