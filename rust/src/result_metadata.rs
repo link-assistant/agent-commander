@@ -8,6 +8,7 @@ use crate::completion::{completion_state, outcome_messages};
 use crate::context_usage::{extract_context_usage, ContextUsage};
 use crate::error_text::first_error_text;
 use crate::executor::signal_from_exit_code;
+use crate::structured_output::extract_structured_output;
 use crate::usage_limit::{
     classify_debug_lines, detect_usage_limit_sources, is_recoverable_tool_error, split_output,
     UsageLimitVerdict,
@@ -59,6 +60,9 @@ pub struct ResultMetadata {
     pub public_pricing_estimate: Option<f64>,
     pub pricing_info: Option<PricingInfo>,
     pub result_summary: Option<String>,
+    /// Final answer shaped by the `json_schema` launch option (issue #57)
+    #[serde(default)]
+    pub structured_output: Option<Value>,
     pub result_model_usage: Option<Value>,
     /// Real model ids seen in the stream: main thread first, then subagents
     pub observed_models: Vec<String>,
@@ -96,6 +100,9 @@ pub struct BuildMetadataOptions<'a> {
     pub signal: Option<String>,
     /// The caller stopped the process after its final result
     pub terminated_after_result: bool,
+    /// A `json_schema` was passed; enables reading Codex's final message as
+    /// the structured output
+    pub structured_output_requested: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -692,6 +699,12 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
         public_pricing_estimate,
         pricing_info,
         result_summary: extract_result_summary(&messages, options.plain_output),
+        structured_output: extract_structured_output(
+            options.tool,
+            &messages,
+            options.plain_output,
+            options.structured_output_requested,
+        ),
         result_model_usage: extract_result_model_usage(&messages),
         observed_models,
         observed_model,

@@ -3,7 +3,9 @@
 
 use super::usage::{self, count};
 use crate::streaming::parse_json_records;
-use crate::tools::launch_options::{normalize_reasoning_effort, push_directories, LaunchOptions};
+use crate::tools::launch_options::{
+    json_schema_arg, normalize_reasoning_effort, push_directories, LaunchOptions,
+};
 use crate::tools::shell::{build_command_head, escape_arg, lookup_model_alias};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -240,6 +242,11 @@ pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
     if let Some(ref effort) = launch.reasoning_effort {
         args.push("--effort".to_string());
         args.push(normalize_reasoning_effort(effort));
+    }
+    // The answer is reported as `structured_output` on the result message.
+    if let Some(ref json_schema) = launch.json_schema {
+        args.push("--json-schema".to_string());
+        args.push(json_schema_arg(json_schema));
     }
 
     if let Some(ref model) = options.model {

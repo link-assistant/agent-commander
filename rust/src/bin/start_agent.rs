@@ -79,6 +79,7 @@ async fn main() {
             strict_mcp_config: options.strict_mcp_config,
             additional_directories: options.additional_directories,
             attachments: options.attachments,
+            json_schema: options.json_schema,
         },
         ..Default::default()
     };

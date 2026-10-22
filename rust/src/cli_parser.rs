@@ -92,6 +92,8 @@ pub struct StartAgentOptions {
     pub additional_directories: Vec<String>,
     /// Files attached to the prompt (`--attach`, repeatable)
     pub attachments: Vec<String>,
+    /// JSON Schema text for the final answer (`--json-schema`)
+    pub json_schema: Option<String>,
     pub verbose: bool,
     pub replay_user_messages: bool,
     pub read_only: bool,
@@ -154,6 +156,7 @@ pub fn parse_start_agent_args(args: &[String]) -> StartAgentOptions {
         strict_mcp_config: parsed.get_bool("strict-mcp-config"),
         additional_directories: parsed.get_all("add-dir"),
         attachments: parsed.get_all("attach"),
+        json_schema: parsed.get("json-schema").cloned(),
         verbose: parsed.get_bool("verbose"),
         replay_user_messages: parsed.get_bool("replay-user-messages"),
         read_only: parsed.get_bool("read-only") || parsed.get_bool("plan-only"),
@@ -222,6 +225,8 @@ Options:
                                    claude, codex, gemini, qwen)
   --attach <file>                  Attach a file to the prompt (repeatable;
                                    codex --image, opencode --file)
+  --json-schema <json>             JSON Schema for the final answer (claude, qwen
+                                   --json-schema; codex --output-schema)
   --verbose                        Enable verbose mode
   --read-only                      Enforce native read-only mode (agent: --permission-mode readonly)
   --plan-only                      Enforce native planning mode (agent: --permission-mode plan)

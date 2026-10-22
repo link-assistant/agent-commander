@@ -4,7 +4,7 @@
 
 use super::usage::{self, count};
 use crate::streaming::parse_json_records;
-use crate::tools::launch_options::{push_directories, LaunchOptions};
+use crate::tools::launch_options::{json_schema_arg, push_directories, LaunchOptions};
 use crate::tools::shell::{build_command_head, escape_arg, lookup_model_alias};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -177,6 +177,12 @@ pub fn build_args(options: &QwenBuildOptions) -> Vec<String> {
     if let Some(ref mcp_config) = options.launch.mcp_config {
         args.push("--mcp-config".to_string());
         args.push(mcp_config.clone());
+    }
+    // A JSON literal; qwen reads a value starting with `@` as a file path. The
+    // answer is reported as `structured_result` on the result message.
+    if let Some(ref json_schema) = options.launch.json_schema {
+        args.push("--json-schema".to_string());
+        args.push(json_schema_arg(json_schema));
     }
 
     args.extend(options.extra_args.clone());

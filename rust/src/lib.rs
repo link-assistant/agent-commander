@@ -24,6 +24,7 @@ pub mod permissions;
 pub mod result_close;
 pub mod result_metadata;
 pub mod streaming;
+pub mod structured_output;
 pub mod tool_overrides;
 pub mod tool_version;
 pub mod tools;
@@ -111,6 +112,8 @@ pub use usage_limit::{
     is_usage_limit_text, limit_scan_text, DebugLines, UsageLimitVerdict,
 };
 
+pub use structured_output::extract_structured_output;
+
 pub use streaming::{
     create_input_stream, create_output_stream, parse_json_records, parse_ndjson, parse_ndjson_line,
     stringify_ndjson, stringify_ndjson_line, JsonInputStream, JsonOutputStream, JsonRecordEvent,
@@ -141,8 +144,8 @@ pub use tool_version::{
 
 pub use tools::launch_options::{
     check_launch_options_against, check_launch_options_supported, codex_mcp_servers_override,
-    launch_capabilities, normalize_reasoning_effort, push_attachments, push_directories,
-    to_toml_value, LaunchCapabilities, LaunchOptions, CLAUDE_REASONING_EFFORTS,
+    json_schema_arg, launch_capabilities, normalize_reasoning_effort, push_attachments,
+    push_directories, to_toml_value, LaunchCapabilities, LaunchOptions, CLAUDE_REASONING_EFFORTS,
     CODEX_REASONING_EFFORTS,
 };
 
@@ -201,7 +204,8 @@ pub struct AgentOptions {
     /// Do not add default autonomous safety bypass flags
     pub skip_default_safety_flags: bool,
     /// Shared launch options: reasoning effort, MCP servers, strict MCP
-    /// configuration and extra workspace directories
+    /// configuration, extra workspace directories, attachments and a JSON
+    /// Schema for structured output
     pub launch: LaunchOptions,
     /// Keep stdin open for [`Agent::send_message`] and [`Agent::interrupt`]
     /// (`claude`, `qwen`, `agent`; attached runs without isolation). The
@@ -736,6 +740,7 @@ impl Agent {
                 usage: usage.clone(),
                 signal: handle.signal().map(String::from),
                 terminated_after_result,
+                structured_output_requested: self.options.launch.json_schema.is_some(),
             });
             // Codex and Claude can leave a usage limit only in their session
             // files (hive-mind#3570)

@@ -1,7 +1,7 @@
 //! Launch options shared by every tool (issue #57).
 //!
-//! Reasoning effort, MCP servers, extra workspace directories and file
-//! attachments. Each tool maps them onto its own native flag; a tool without a native flag rejects the option instead of
+//! Reasoning effort, MCP servers, extra workspace directories, file
+//! attachments and a JSON Schema for structured output. Each tool maps them onto its own native flag; a tool without a native flag rejects the option instead of
 //! silently dropping it.
 
 use serde_json::Value;
@@ -20,6 +20,10 @@ pub struct LaunchOptions {
     /// Files attached to the prompt (`--attach`): Codex `--image`, OpenCode
     /// `--file`. Relative paths resolve against the working directory.
     pub attachments: Vec<String>,
+    /// JSON Schema text the final answer must match (`--json-schema`):
+    /// Claude and Qwen `--json-schema`, Codex `--output-schema`. The result
+    /// is reported as `metadata.structured_output`.
+    pub json_schema: Option<String>,
 }
 
 /// What a tool natively supports among the launch options
@@ -32,6 +36,7 @@ pub struct LaunchCapabilities {
     pub strict_mcp_config: bool,
     pub additional_directories: bool,
     pub attachments: bool,
+    pub json_schema: bool,
 }
 
 /// Claude Code `--effort` levels
@@ -44,7 +49,8 @@ const TOOLS: &[&str] = &["claude", "codex", "opencode", "agent", "gemini", "qwen
 
 /// Describe what a tool natively supports among the launch options.
 pub fn launch_capabilities(tool: &str) -> LaunchCapabilities {
-    let (effort, efforts, mcp, strict, dirs, attachments) = match tool {
+    // gemini 0.64, opencode 1.19 and agent 0.26 have no schema flag.
+    let (effort, efforts, mcp, strict, dirs, attachments, json_schema) = match tool {
         "claude" => (
             true,
             Some(CLAUDE_REASONING_EFFORTS),
@@ -52,13 +58,22 @@ pub fn launch_capabilities(tool: &str) -> LaunchCapabilities {
             true,
             true,
             false,
+            true,
         ),
-        "codex" => (true, Some(CODEX_REASONING_EFFORTS), true, false, true, true),
+        "codex" => (
+            true,
+            Some(CODEX_REASONING_EFFORTS),
+            true,
+            false,
+            true,
+            true,
+            true,
+        ),
         // `--variant` names are defined by the model provider.
-        "opencode" => (true, None, false, false, false, true),
-        "gemini" => (false, None, false, false, true, false),
-        "qwen" => (false, None, true, false, true, false),
-        _ => (false, None, false, false, false, false),
+        "opencode" => (true, None, false, false, false, true, false),
+        "gemini" => (false, None, false, false, true, false, false),
+        "qwen" => (false, None, true, false, true, false, true),
+        _ => (false, None, false, false, false, false, false),
     };
     LaunchCapabilities {
         reasoning_effort: effort,
@@ -67,6 +82,7 @@ pub fn launch_capabilities(tool: &str) -> LaunchCapabilities {
         strict_mcp_config: strict,
         additional_directories: dirs,
         attachments,
+        json_schema,
     }
 }
 
@@ -89,7 +105,7 @@ pub fn check_launch_options_against(
     capabilities: &LaunchCapabilities,
 ) -> Result<(), String> {
     type Pick = fn(&LaunchCapabilities) -> bool;
-    let checks: [(bool, Pick, &str); 5] = [
+    let checks: [(bool, Pick, &str); 6] = [
         (
             launch.reasoning_effort.is_some(),
             |c| c.reasoning_effort,
@@ -114,6 +130,11 @@ pub fn check_launch_options_against(
             !launch.attachments.is_empty(),
             |c| c.attachments,
             "file attachments (--attach)",
+        ),
+        (
+            launch.json_schema.is_some(),
+            |c| c.json_schema,
+            "structured output (--json-schema)",
         ),
     ];
     for (requested, pick, label) in checks {
@@ -148,6 +169,21 @@ pub fn normalize_reasoning_effort(reasoning_effort: &str) -> String {
         reasoning_effort
     );
     reasoning_effort.to_string()
+}
+
+/// Validate the JSON Schema the final answer must match and return it as
+/// compact JSON text.
+///
+/// # Panics
+/// Panics when the text is not JSON or not a JSON object.
+pub fn json_schema_arg(json_schema: &str) -> String {
+    let schema: Value = serde_json::from_str(json_schema)
+        .unwrap_or_else(|error| panic!("jsonSchema is not valid JSON: {error}"));
+    assert!(
+        schema.is_object(),
+        "jsonSchema must be a JSON Schema object or its JSON text"
+    );
+    schema.to_string()
 }
 
 fn push_paths(args: &mut Vec<String>, flag: &str, paths: &[String], name: &str) {
