@@ -323,6 +323,23 @@ async fn create_prompt_temp_dir(parent: &Path, nanos: u128) -> Result<PathBuf, S
     ))
 }
 
+/// Write a new, owner-only prompt file and return once all of it is on disk.
+async fn write_prompt_file(path: &Path, content: &str) -> Result<(), String> {
+    let mut open_options = tokio::fs::OpenOptions::new();
+    open_options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        open_options.mode(0o600);
+    }
+    let mut file = open_options.open(path).await.map_err(|e| e.to_string())?;
+    file.write_all(content.as_bytes())
+        .await
+        .map_err(|e| e.to_string())?;
+    // tokio writes at most 2 MiB per background operation and `write_all`
+    // returns once the last one is queued; `flush` waits for it to finish.
+    file.flush().await.map_err(|e| e.to_string())
+}
+
 fn should_create_prompt_file(options: &AgentOptions, dry_run: bool) -> bool {
     if dry_run || options.prompt_file.is_some() || !supports_prompt_file_input(&options.tool) {
         return false;
@@ -409,19 +426,7 @@ impl Agent {
             self.options.system_prompt.as_deref(),
         );
 
-        let mut open_options = tokio::fs::OpenOptions::new();
-        open_options.write(true).create_new(true);
-        #[cfg(unix)]
-        {
-            open_options.mode(0o600);
-        }
-        let mut file = open_options
-            .open(&prompt_file)
-            .await
-            .map_err(|e| e.to_string())?;
-        file.write_all(content.as_bytes())
-            .await
-            .map_err(|e| e.to_string())?;
+        write_prompt_file(&prompt_file, &content).await?;
 
         Ok(Some(prompt_file.to_string_lossy().into_owned()))
     }
@@ -838,7 +843,7 @@ pub fn agent(options: AgentOptions) -> Result<Agent, String> {
 
 #[cfg(test)]
 mod prompt_dir_tests {
-    use super::{create_prompt_temp_dir, PROMPT_DIR_SEQUENCE};
+    use super::{create_prompt_temp_dir, write_prompt_file, PROMPT_DIR_SEQUENCE};
     use std::sync::atomic::Ordering;
 
     #[tokio::test]
@@ -864,5 +869,22 @@ mod prompt_dir_tests {
         let dir = create_prompt_temp_dir(parent.path(), 9).await.unwrap();
         assert!(dir.is_dir());
         assert_eq!(std::fs::read_dir(parent.path()).unwrap().count(), 4);
+    }
+
+    /// A tokio `File` writes at most 2 MiB per background operation, so a
+    /// larger prompt must be complete before the agent is spawned to read it.
+    #[tokio::test]
+    async fn large_prompt_files_are_complete_when_written() {
+        let parent = tempfile::tempdir().expect("parent directory");
+        let content = "x".repeat(3 * 1024 * 1024 + 37);
+        for attempt in 0..20 {
+            let path = parent.path().join(format!("prompt-{attempt}.txt"));
+            write_prompt_file(&path, &content).await.unwrap();
+            assert_eq!(
+                std::fs::metadata(&path).unwrap().len(),
+                content.len() as u64,
+                "attempt {attempt}"
+            );
+        }
     }
 }
