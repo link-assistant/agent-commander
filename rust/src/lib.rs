@@ -15,6 +15,7 @@ pub mod cli_parser;
 pub mod codex_rollout;
 pub mod command_builder;
 mod completion;
+pub mod context_usage;
 pub mod error_text;
 pub mod executor;
 pub mod file_tail;
@@ -71,11 +72,13 @@ pub use result_close::{
 };
 
 pub use codex_rollout::{
-    apply_codex_rollout_usage_limit, apply_codex_rollout_usage_windows, can_resume_codex_session,
-    classify_codex_rate_limit_snapshot, codex_rollout_limit_facts, codex_sessions_dir,
-    detect_codex_rollout_usage_limit, find_codex_rollout_file, is_codex_rollout_file_name,
-    read_codex_rollout_limit_facts, CodexLimitVerdict, CodexRolloutLimitFacts, CodexRolloutOptions,
-    CODEX_ROLLOUT_LIMIT_SOURCE, CODEX_SESSIONS_DIRNAME, ROLLOUT_TAIL_BYTES,
+    apply_codex_rollout_context_usage, apply_codex_rollout_usage_limit,
+    apply_codex_rollout_usage_windows, can_resume_codex_session,
+    classify_codex_rate_limit_snapshot, codex_rollout_context_usage, codex_rollout_limit_facts,
+    codex_sessions_dir, detect_codex_rollout_usage_limit, find_codex_rollout_file,
+    is_codex_rollout_file_name, read_codex_rollout_limit_facts, CodexLimitVerdict,
+    CodexRolloutLimitFacts, CodexRolloutOptions, CODEX_ROLLOUT_LIMIT_SOURCE,
+    CODEX_SESSIONS_DIRNAME, ROLLOUT_TAIL_BYTES,
 };
 
 pub use claude_transcript::{
@@ -84,6 +87,10 @@ pub use claude_transcript::{
     ClaudeTranscriptOptions, CLAUDE_TRANSCRIPT_LIMIT_SOURCE, TRANSCRIPT_TAIL_BYTES,
 };
 
+pub use context_usage::{
+    claude_request_context_tokens, context_reading_from_message, extract_context_usage,
+    ContextReading, ContextUsage,
+};
 pub use file_tail::read_file_tail;
 pub use live_input::{
     build_interrupt_frame, build_user_input_frame, live_input_unsupported_error,
@@ -710,6 +717,7 @@ impl Agent {
                 CodexRolloutOptions::for_run_env(&self.options.extra_env, &self.options.unset_env);
             codex_rollout::apply_codex_rollout_usage_limit(&mut metadata, &rollout_options);
             codex_rollout::apply_codex_rollout_usage_windows(&mut metadata, &rollout_options);
+            codex_rollout::apply_codex_rollout_context_usage(&mut metadata, &rollout_options);
             if (self.options.json || self.options.tool == "agent")
                 && is_tool_supported(&self.options.tool)
             {

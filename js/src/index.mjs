@@ -34,6 +34,7 @@ import { parseJsonRecords } from './streaming/json-records.mjs';
 import { buildNormalizedResultMetadata } from './result-metadata.mjs';
 import {
   applyCodexRolloutUsageLimit,
+  applyCodexRolloutContextUsage,
   applyCodexRolloutUsageWindows,
 } from './codex-rollout.mjs';
 import { applyClaudeTranscriptUsageLimit } from './claude-transcript.mjs';
@@ -653,6 +654,7 @@ export function agent(options) {
         const rolloutOptions = codexHome ? { codexHome: codexHome[1] } : {};
         await applyCodexRolloutUsageLimit(metadata, rolloutOptions);
         await applyCodexRolloutUsageWindows(metadata, rolloutOptions);
+        await applyCodexRolloutContextUsage(metadata, rolloutOptions);
         if ((json || tool === 'agent') && toolConfig) {
           requireCompletedResult(metadata, tool, parsedOutput || []);
         }
@@ -801,9 +803,11 @@ export {
   CODEX_SESSIONS_DIRNAME,
   ROLLOUT_TAIL_BYTES,
   applyCodexRolloutUsageLimit,
+  applyCodexRolloutContextUsage,
   applyCodexRolloutUsageWindows,
   canResumeCodexSession,
   classifyCodexRateLimitSnapshot,
+  codexRolloutContextUsage,
   codexRolloutLimitFacts,
   codexSessionsDir,
   detectCodexRolloutUsageLimit,
@@ -841,6 +845,11 @@ export {
   mergeUsageWindows,
   usageWindowsFromMessage,
 } from './usage-windows.mjs';
+export {
+  claudeRequestContextTokens,
+  contextReadingFromMessage,
+  extractContextUsage,
+} from './context-usage.mjs';
 export {
   buildInterruptFrame,
   buildUserInputFrame,

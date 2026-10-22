@@ -5,6 +5,7 @@ use crate::background_tasks::{
     StoppedBackgroundTask,
 };
 use crate::completion::{completion_state, outcome_messages};
+use crate::context_usage::{extract_context_usage, ContextUsage};
 use crate::error_text::first_error_text;
 use crate::executor::signal_from_exit_code;
 use crate::usage_limit::{
@@ -51,6 +52,9 @@ pub struct ResultMetadata {
     /// `rate_limits`), newest value per window
     #[serde(default)]
     pub usage_windows: Vec<UsageWindow>,
+    /// Context-window fill of the main thread (issue #57)
+    #[serde(default)]
+    pub context_usage: Option<ContextUsage>,
     pub anthropic_total_cost_usd: Option<f64>,
     pub public_pricing_estimate: Option<f64>,
     pub pricing_info: Option<PricingInfo>,
@@ -679,6 +683,7 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
         limit_resets_at: usage_limit.resets_at,
         limit_window: usage_limit.window,
         usage_windows: extract_usage_windows(&messages),
+        context_usage: extract_context_usage(&all_messages),
         limit_source: None,
         anthropic_total_cost_usd: first_number(
             &messages,

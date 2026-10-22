@@ -4,6 +4,7 @@ import { firstErrorText } from './error-text.mjs';
 import { signalFromExitCode } from './executor.mjs';
 import { extractObservedModels, isRealModelId } from './observed-models.mjs';
 import { extractUsageWindows } from './usage-windows.mjs';
+import { extractContextUsage } from './context-usage.mjs';
 import { parseJsonRecords } from './streaming/json-records.mjs';
 import {
   classifyDebugLines,
@@ -530,6 +531,7 @@ export function buildNormalizedResultMetadata(options) {
     limitResetsAt: usageLimit.resetsAt,
     limitWindow: usageLimit.window,
     usageWindows: extractUsageWindows(messages),
+    contextUsage: extractContextUsage(allMessages),
     anthropicTotalCostUSD,
     publicPricingEstimate: estimate,
     pricingInfo:
