@@ -2,11 +2,14 @@
 //! missing part of a tool, or drives a tool that is not registered, without
 //! waiting for an agent-commander release.
 
+#[cfg(unix)]
+use agent_commander::AgentStopOptions;
 use agent_commander::{
     agent, build_agent_command, build_base_command, check_launch_options_against, escape_arg,
-    launch_capabilities, AgentCommandOptions, AgentOptions, AgentStartOptions, AgentStopOptions,
-    LaunchCapabilities, LaunchOptions, ToolOverrides,
+    launch_capabilities, AgentCommandOptions, AgentOptions, AgentStartOptions, LaunchCapabilities,
+    LaunchOptions, ToolOverrides,
 };
+#[cfg(unix)]
 use serde_json::{json, Value};
 use std::sync::Arc;
 
@@ -114,11 +117,13 @@ async fn agent_start_accepts_options_the_override_capabilities_allow() {
     );
 }
 
+#[cfg(unix)]
 fn printf_lines(lines: &[Value]) -> String {
     let quoted: Vec<String> = lines.iter().map(|line| format!("'{line}'")).collect();
     format!("printf '%s\\n' {}", quoted.join(" "))
 }
 
+#[cfg(unix)]
 async fn run(tool: &str, json: bool, overrides: ToolOverrides) -> agent_commander::AgentResult {
     let mut controller = agent(AgentOptions {
         tool: tool.to_string(),
@@ -141,6 +146,7 @@ async fn run(tool: &str, json: bool, overrides: ToolOverrides) -> agent_commande
     controller.stop(AgentStopOptions::default()).await.unwrap()
 }
 
+#[cfg(unix)]
 #[tokio::test]
 async fn an_unregistered_tool_runs_through_override_builder_parser_and_extractors() {
     let lines = [
@@ -194,6 +200,7 @@ async fn an_unregistered_tool_runs_through_override_builder_parser_and_extractor
     assert_eq!(result.metadata.session_id.as_deref(), Some("sess-1"));
 }
 
+#[cfg(unix)]
 #[tokio::test]
 async fn an_override_parser_replaces_the_streamed_messages_of_a_registered_tool() {
     let result = run(

@@ -2,9 +2,9 @@
 
 use agent_commander::{
     agent, build_agent_command, build_interrupt_frame, build_user_input_frame, supports_live_input,
-    AgentCommandOptions, AgentOptions, AgentStartOptions, AgentStopOptions,
+    AgentCommandOptions, AgentOptions, AgentStartOptions,
 };
-use serde_json::{json, Value};
+use serde_json::json;
 
 // Echoes every stdin frame, answers each user frame with a result and
 // reports end of input, like `claude -p --input-format stream-json`.
@@ -128,6 +128,8 @@ async fn live_input_is_rejected_for_tools_and_modes_without_a_stdin_channel() {
 #[cfg(unix)]
 #[tokio::test]
 async fn live_input_queues_follow_up_messages_and_interrupts_into_one_session() {
+    use agent_commander::AgentStopOptions;
+    use serde_json::Value;
     use std::os::unix::fs::PermissionsExt;
 
     let bin_dir = tempfile::tempdir().unwrap();

@@ -2,13 +2,15 @@
 //! and the `structured_output` metadata field.
 
 use agent_commander::tools::{claude, codex, qwen};
+#[cfg(unix)]
+use agent_commander::{agent, AgentOptions, AgentStartOptions, AgentStopOptions, ToolOverrides};
 use agent_commander::{
-    agent, build_agent_command, build_normalized_result_metadata, check_launch_options_supported,
+    build_agent_command, build_normalized_result_metadata, check_launch_options_supported,
     extract_structured_output, json_schema_arg, launch_capabilities, parse_start_agent_args,
-    AgentCommandOptions, AgentOptions, AgentStartOptions, AgentStopOptions, BuildMetadataOptions,
-    LaunchOptions, ToolOverrides,
+    AgentCommandOptions, BuildMetadataOptions, LaunchOptions,
 };
 use serde_json::{json, Value};
+#[cfg(unix)]
 use std::sync::Arc;
 
 const SCHEMA: &str = r#"{ "type": "object", "properties": { "title": { "type": "string" } }, "required": ["title"], "additionalProperties": false }"#;
@@ -174,6 +176,7 @@ fn codex_structured_output_is_its_final_agent_message_only_on_request() {
     assert_eq!(metadata("codex", &not_json, true), None);
 }
 
+#[cfg(unix)]
 #[tokio::test]
 async fn an_agent_run_reports_the_structured_output_in_its_metadata() {
     let lines = [

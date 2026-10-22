@@ -1,8 +1,10 @@
 //! Tests for the tool version probe (issue #57).
 
+#[cfg(unix)]
+use agent_commander::get_tool_version;
 use agent_commander::{
-    build_version_command, compare_versions, get_tool_version, parse_tool_version,
-    tool_version_from_output, ToolVersion,
+    build_version_command, compare_versions, parse_tool_version, tool_version_from_output,
+    ToolVersion,
 };
 use std::cmp::Ordering;
 
@@ -94,6 +96,9 @@ fn separates_missing_broken_and_outdated_tools() {
     );
 }
 
+// The probe runs through `bash`, which on Windows runners is the WSL
+// launcher without a distribution, like the other process tests.
+#[cfg(unix)]
 #[tokio::test]
 async fn reports_a_missing_executable() {
     let result = get_tool_version("codex", Some("/nonexistent/agent-commander-codex"), None)
@@ -103,6 +108,7 @@ async fn reports_a_missing_executable() {
     assert_eq!(result.version, None);
 }
 
+#[cfg(unix)]
 #[tokio::test]
 async fn probes_a_real_executable() {
     // `bash --version` stands in for a CLI: the probe only needs `--version`.
