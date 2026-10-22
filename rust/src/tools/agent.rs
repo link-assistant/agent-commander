@@ -6,8 +6,11 @@
 //! (auto | plan | readonly | ask) and an OpenCode-compatible `--permission`
 //! JSON policy.
 
-use crate::streaming::parse_ndjson;
-use crate::tools::shell::{build_command_head, escape_arg, escape_single_quotes};
+use crate::error_text::{first_error_text, stringify_error_value, MAX_ERROR_TEXT_LENGTH};
+use crate::streaming::parse_json_records;
+use crate::tools::shell::{
+    build_command_head, escape_arg, escape_single_quotes, lookup_model_alias,
+};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -24,7 +27,16 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("big-pickle", "opencode/big-pickle");
     map.insert("gpt-5-nano", "opencode/gpt-5-nano");
     map.insert("minimax-m2.5-free", "opencode/minimax-m2.5-free");
-    map.insert("nemotron-3-super-free", "opencode/nemotron-3-super-free");
+    map.insert("nemotron-3-super-free", "kilo/nemotron-3-super-free");
+    map.insert("nemotron-3-ultra-free", "opencode/nemotron-3-ultra-free");
+    map.insert(
+        "nemotron-3.5-lightning-free",
+        "opencode/nemotron-3.5-lightning-free",
+    );
+    map.insert("ling-3.1-flash-free", "opencode/ling-3.1-flash-free");
+    map.insert("mimo-v2.6-flash-free", "opencode/mimo-v2.6-flash-free");
+    map.insert("step-5-preview-free", "opencode/step-5-preview-free");
+    map.insert("exo-free", "opencode/exo-free");
     map.insert("glm-5-free", "kilo/glm-5-free");
     map.insert("glm-4.5-air-free", "kilo/glm-4.5-air-free");
     map.insert("deepseek-r1-free", "kilo/deepseek-r1-free");
@@ -36,6 +48,7 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("kilo/deepseek-r1-free", "kilo/deepseek-r1-free");
     map.insert("kilo/giga-potato-free", "kilo/giga-potato-free");
     map.insert("kilo/trinity-large-preview", "kilo/trinity-large-preview");
+    map.insert("kilo/nemotron-3-super-free", "kilo/nemotron-3-super-free");
     map.insert("qwen3.6-plus-free", "opencode/qwen3.6-plus-free");
     map.insert("kimi-k2.5-free", "opencode/kimi-k2.5-free");
     map.insert("glm-4.7-free", "opencode/glm-4.7-free");
@@ -43,10 +56,12 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("kilo/glm-4.7-free", "kilo/glm-4.7-free");
     map.insert("kilo/kimi-k2.5-free", "kilo/kimi-k2.5-free");
     map.insert("kilo/minimax-m2.1-free", "kilo/minimax-m2.1-free");
-    map.insert("sonnet", "anthropic/claude-3-5-sonnet");
-    map.insert("haiku", "anthropic/claude-3-5-haiku");
-    map.insert("opus", "anthropic/claude-3-opus");
-    map.insert("gemini-3-pro", "google/gemini-3-pro");
+    map.insert("opus", "anthropic/claude-opus-5-5");
+    map.insert("sonnet", "anthropic/claude-sonnet-5-5");
+    map.insert("haiku", "anthropic/claude-haiku-5-5");
+    map.insert("fable", "anthropic/claude-fable-5-1");
+    map.insert("gemini-pro", "google/gemini-3.1-pro-preview");
+    map.insert("gemini-3-pro", "google/gemini-3.1-pro-preview");
     map
 }
 
@@ -58,11 +73,7 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
 /// # Returns
 /// Full model ID
 pub fn map_model_to_id(model: &str) -> String {
-    let model_map = get_model_map();
-    model_map
-        .get(model)
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| model.to_string())
+    lookup_model_alias(&get_model_map(), model).unwrap_or_else(|| model.to_string())
 }
 
 /// Agent command build options
@@ -90,6 +101,8 @@ pub struct AgentBuildOptions {
     pub stream_input: bool,
     pub executable: Option<String>,
     pub extra_env: Vec<(String, String)>,
+    /// Variables removed from the inherited environment (`env -u`)
+    pub unset_env: Vec<String>,
     pub extra_args: Vec<String>,
 }
 
@@ -173,7 +186,7 @@ pub fn build_command(options: &AgentBuildOptions) -> String {
     let executable = options.executable.as_deref().unwrap_or("agent");
     let command_head = format!(
         "{} {}",
-        build_command_head(executable, &options.extra_env, &[]),
+        build_command_head(executable, &options.unset_env, &options.extra_env, &[]),
         args_str.join(" ")
     )
     .trim()
@@ -205,7 +218,8 @@ pub fn build_command(options: &AgentBuildOptions) -> String {
 }
 
 /// Parse JSON messages from Agent output
-/// Agent outputs NDJSON format with specific event types
+/// Agent pretty-prints JSON events by default and emits NDJSON with
+/// `--compact-json`; both shapes are parsed by the record scanner.
 ///
 /// # Arguments
 /// * `output` - Raw output string
@@ -213,7 +227,7 @@ pub fn build_command(options: &AgentBuildOptions) -> String {
 /// # Returns
 /// Vector of parsed JSON messages
 pub fn parse_output(output: &str) -> Vec<Value> {
-    parse_ndjson(output)
+    parse_json_records(output)
 }
 
 /// Extract session ID from Agent output
@@ -311,33 +325,97 @@ pub struct ErrorResult {
     pub message: Option<String>,
 }
 
+const FATAL_AGENT_LOG_PATTERNS: [&str; 4] = [
+    "providermodelnotfounderror",
+    "provideriniterror",
+    "nosuchmodelerror",
+    "modelnotfounderror",
+];
+
+fn is_fatal_log_text(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    FATAL_AGENT_LOG_PATTERNS
+        .iter()
+        .any(|pattern| lower.contains(pattern))
+        || lower
+            .find("failed to initialize ")
+            .is_some_and(|index| lower[index..].contains("model"))
+}
+
+/// Detect a `log` record reporting a fatal startup failure
+///
+/// Agent prints it, then `session.idle`, and exits 0 without an `error`
+/// record (hive-mind#2141). Returns the readable failure text.
+pub fn detect_fatal_agent_log_record(record: &Value) -> Option<String> {
+    if record["type"] != "log" || record["level"] != "error" {
+        return None;
+    }
+    let error = stringify_error_value(&record["error"], MAX_ERROR_TEXT_LENGTH, "");
+    let message = stringify_error_value(&record["message"], MAX_ERROR_TEXT_LENGTH, "");
+    if !is_fatal_log_text(&format!("{error} {message}")) {
+        return None;
+    }
+    let hint = stringify_error_value(&record["hint"], MAX_ERROR_TEXT_LENGTH, "");
+    let hint = if hint.is_empty() {
+        hint
+    } else {
+        format!("hint: {hint}")
+    };
+    Some(
+        [error, message, hint]
+            .into_iter()
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>()
+            .join(" — "),
+    )
+}
+
+/// Whether an error record is a failed tool call the model recovers from
+///
+/// A failed tool call is returned to the model as the tool result; agent
+/// 0.26.13 and earlier also repeated it as a top-level error record (agent#332,
+/// hive-mind#3213). Only the session's own errors decide the run.
+pub fn is_recoverable_agent_tool_error(record: &Value) -> bool {
+    crate::usage_limit::is_recoverable_tool_error(record)
+}
+
 /// Detect errors in Agent output
 ///
-/// # Arguments
-/// * `output` - Raw output string
-///
-/// # Returns
-/// Error detection result
+/// The last fatal error record is the one the session ended on; failed tool
+/// calls are skipped.
 pub fn detect_errors(output: &str) -> ErrorResult {
-    let messages = parse_output(output);
+    let mut detection = ErrorResult::default();
 
-    for msg in messages {
-        // Check for explicit error message types from agent
-        let msg_type = msg.get("type").and_then(|t| t.as_str());
-        if msg_type == Some("error") || msg_type == Some("step_error") {
-            return ErrorResult {
+    for msg in parse_output(output) {
+        if let Some(fatal_log) = detect_fatal_agent_log_record(&msg) {
+            let error_type =
+                stringify_error_value(&msg["error"], MAX_ERROR_TEXT_LENGTH, "fatal_log");
+            detection = ErrorResult {
                 has_error: true,
-                error_type: msg_type.map(|s| s.to_string()),
-                message: msg
-                    .get("message")
-                    .and_then(|m| m.as_str())
-                    .map(|s| s.to_string())
-                    .or_else(|| Some("Unknown error".to_string())),
+                error_type: Some(error_type),
+                message: Some(fatal_log),
+            };
+        } else if matches!(msg["type"].as_str(), Some("error" | "step_error"))
+            && !is_recoverable_agent_tool_error(&msg)
+        {
+            let error_type = msg
+                .pointer("/error/name")
+                .and_then(Value::as_str)
+                .filter(|name| !name.is_empty())
+                .or_else(|| msg["type"].as_str())
+                .map(ToString::to_string);
+            detection = ErrorResult {
+                has_error: true,
+                error_type,
+                message: Some(first_error_text(
+                    &[&msg["message"], &msg["error"], &msg["data"]],
+                    "Agent emitted an error event without any details",
+                )),
             };
         }
     }
 
-    ErrorResult::default()
+    detection
 }
 
 /// Agent tool configuration

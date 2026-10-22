@@ -92,9 +92,13 @@ For direct JSON runs, `metadata.success` requires a native terminal event and a 
 
 `stop()` waits for a direct process to finish. Use `await controller.cancel()` to interrupt it and collect the final result. Unix cancellation signals the process group; Windows cancellation signals the immediate child. A native CLI that ignores SIGTERM needs a caller-managed termination policy.
 
+`stop({ closeTimeoutMs, backgroundWaitMs })` ends a process that stays alive after its final result (the Claude print-mode hang, hive-mind#1280). It allows `backgroundWaitMs` more while the result reports running background tasks. Such a run keeps `success: true` with `terminatedAfterResult: true`. `metadata` also reports `signal`, `limitResetsAt`, `limitWindow`, `apiError`, `apiErrorStatus`, `terminalReason`, `requestId`, `observedModels`, and the background-task fields.
+
+When a failed Codex or Claude run did not print its usage limit, `stop()` reads the last turn of the Codex rollout or the last entry of the Claude transcript and sets `limitSource` to `codex-rollout` or `claude-transcript` (hive-mind#3570). `canResumeCodexSession({ threadId, codexHome })` tells whether `codex exec resume` can find a thread (hive-mind#2888). `detectUsageLimitSources` and `isRecoverableToolError` are Hive Mind's classifiers.
+
 Usage preserves native final totals without adding repeated assistant snapshots. Codex `inputTokens` means fresh input; inclusive input is `inputTokens + cacheReadTokens`. Cache and reasoning fields are reported when supplied. Gemini and Qwen expose token usage and native model usage through the same result contract.
 
-Bundled aliases track a recorded Hive Mind catalogue; exact model IDs pass through for caller-managed live discovery. Omitting `model` leaves selection to the native CLI. Claude's `opus` execution alias stays rolling. Common `resume` works for all six tools; Agent adds `--no-fork`, and OpenCode uses `--session`.
+Bundled aliases track a recorded Hive Mind catalogue (v2.39.5: `sonnet` is `claude-sonnet-5-5`, `opus` is `claude-opus-5-5`); exact model IDs pass through for caller-managed live discovery. Omitting `model` leaves selection to the native CLI. Claude's `opus` execution alias stays rolling. Common `resume` works for all six tools; Agent adds `--no-fork`, and OpenCode uses `--session`.
 
 See the [parity audit](../docs/case-studies/issue-50/README.md) and [dependency example](../examples/hive-mind-dependency.mjs), which can run against a credential-free fixture for any tool.
 
@@ -146,8 +150,11 @@ contains `transcript.txt`, `frames.json`, `session.cast`, `snapshot.svg`, and
 the self-contained animated `recording.svg`, plus `recording.gif` for consumers
 that cannot animate SVG. Use `artifacts` to select bundle formats and
 `artifactOptions` to customize renderer geometry and theme. Explicit `cols` and
-`rows` override the default geometry. Partial artifacts are also written when
-the terminal command times out.
+`rows` override the default geometry. `frameMode: 'writes'` records a frame
+after every PTY write instead of after each settle, and `recording: false`
+keeps only the latest frame and the last 1 MB of output for long sessions
+(command-stream 2.4.0). Partial artifacts are also written when the terminal
+command times out.
 
 For large generated prompts, pass `promptFile` or let the controller create a temporary prompt file automatically for `claude`, `codex`, `opencode`, `agent`, `qwen`, and `gemini`:
 
@@ -185,7 +192,8 @@ const controller = agent({
   promptFile: '/tmp/agent-prompt.txt',
   toolOptions: {
     executable: '/opt/codex/bin/codex',
-    extraEnv: { CODEX_HOME: '/tmp/codex-home' },
+    // `null` unsets an inherited variable
+    extraEnv: { CODEX_HOME: '/tmp/codex-home', OPENAI_API_KEY: null },
     extraArgs: ['--config', 'model_reasoning_effort="high"'],
     skipDefaultSafetyFlags: true,
     sandboxMode: 'workspace-write',

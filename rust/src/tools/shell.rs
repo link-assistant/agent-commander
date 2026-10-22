@@ -18,12 +18,30 @@ pub fn escape_arg(arg: &str) -> String {
     }
 }
 
-/// Escape single quotes for printf.
+/// Escape single quotes for printf (command-stream's
+/// [`escape_for_single_quotes`](command_stream::quote::escape_for_single_quotes)).
 pub fn escape_single_quotes(s: &str) -> String {
-    s.replace('\'', "'\\''")
+    command_stream::quote::escape_for_single_quotes(s)
 }
 
-fn is_valid_env_name(name: &str) -> bool {
+/// Look a model alias up, exactly first and then case-insensitively
+/// (`Opus` is `opus`, as in Hive Mind).
+pub fn lookup_model_alias(
+    model_map: &std::collections::HashMap<&'static str, &'static str>,
+    model: &str,
+) -> Option<String> {
+    model_map
+        .get(model)
+        .or_else(|| {
+            model_map
+                .iter()
+                .find(|(alias, _)| alias.eq_ignore_ascii_case(model))
+                .map(|(_, id)| id)
+        })
+        .map(|id| (*id).to_string())
+}
+
+pub fn is_valid_env_name(name: &str) -> bool {
     let mut chars = name.chars();
     let Some(first) = chars.next() else {
         return false;
@@ -34,16 +52,26 @@ fn is_valid_env_name(name: &str) -> bool {
     chars.all(|c| c == '_' || c.is_ascii_alphanumeric())
 }
 
-/// Build a command head with optional env vars and executable prefix args.
+/// Build a command head with optional env vars and executable prefix args;
+/// `unset_env` is removed from the inherited environment (Hive Mind drops `GH_TOKEN`, `MAX_THINKING_TOKENS`, ... per run).
 pub fn build_command_head(
     executable: &str,
+    unset_env: &[String],
     extra_env: &[(String, String)],
     prefix_args: &[String],
 ) -> String {
     let mut parts = Vec::new();
 
-    if !extra_env.is_empty() {
+    if !extra_env.is_empty() || !unset_env.is_empty() {
         parts.push("env".to_string());
+        for key in unset_env {
+            assert!(
+                is_valid_env_name(key),
+                "invalid environment variable name: {}",
+                key
+            );
+            parts.push(format!("-u {key}"));
+        }
         for (key, value) in extra_env {
             assert!(
                 is_valid_env_name(key),

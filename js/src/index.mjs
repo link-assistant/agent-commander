@@ -26,10 +26,19 @@ import {
   startCommand,
 } from './executor.mjs';
 import { getTool, isToolSupported } from './tools/index.mjs';
+import { normalizeExtraEnv } from './tools/shell.mjs';
 import { createOutputStream, createInputStream } from './streaming/index.mjs';
 import { stringifyNdjsonLine } from './streaming/ndjson.mjs';
+import { parseJsonRecords } from './streaming/json-records.mjs';
 import { buildNormalizedResultMetadata } from './result-metadata.mjs';
+import { applyCodexRolloutUsageLimit } from './codex-rollout.mjs';
+import { applyClaudeTranscriptUsageLimit } from './claude-transcript.mjs';
 import { requireCompletedResult } from './completion.mjs';
+import {
+  createStdoutMessageReader,
+  hasFinalResult,
+  waitForExitAfterResult,
+} from './result-close.mjs';
 import { PermissionRelay, askUnsupportedError } from './permissions/index.mjs';
 
 const PROMPT_FILE_TOOLS = new Set([
@@ -138,32 +147,11 @@ function parseJsonMessages(options) {
     }
   }
 
-  // Default parsing logic
-  try {
-    // Try to parse as JSON array
-    const parsed = JSON.parse(output);
-    if (Array.isArray(parsed)) {
-      return parsed;
-    }
-    // If single object, wrap in array
-    return [parsed];
-  } catch {
-    // Try to extract JSON objects line by line (NDJSON)
-    const lines = output.split('\n');
-    const messages = [];
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-        try {
-          const parsed = JSON.parse(trimmed);
-          messages.push(parsed);
-        } catch {
-          // Skip lines that aren't valid JSON
-        }
-      }
-    }
-    return messages.length > 0 ? messages : null;
-  }
+  // Default parsing logic: NDJSON, pretty-printed, or concatenated records
+  const messages = parseJsonRecords(output).flatMap((value) =>
+    Array.isArray(value) ? value : [value]
+  );
+  return messages.length > 0 ? messages : null;
 }
 
 /**
@@ -450,10 +438,16 @@ export function agent(options) {
    * Stop the agent and collect output
    * @param {Object} [stopOptions] - Stop options
    * @param {boolean} [stopOptions.dryRun] - If true, just show the command
+   * @param {number} [stopOptions.closeTimeoutMs] - Stop a process that stays
+   *   this long after its final result (no isolation only); waits forever
+   *   when omitted
+   * @param {number} [stopOptions.backgroundWaitMs] - Extra time granted while
+   *   Claude background tasks still run; leaves them to Claude's own print
+   *   wait ceiling when omitted
    * @returns {Promise<Object>} Result with exitCode, output, session info, usage, and metadata
    */
   const stop = async (stopOptions = {}) => {
-    const { dryRun = false } = stopOptions;
+    const { dryRun = false, closeTimeoutMs, backgroundWaitMs } = stopOptions;
 
     // For isolation modes, send stop command
     if (isolation === 'screen' || isolation === 'docker') {
@@ -522,9 +516,20 @@ export function agent(options) {
       }
 
       try {
-        // Wait for the process to exit
-        const exitCode = await processHandle.waitForExit();
-        const { stdout, stderr } = processHandle.getOutput();
+        // Wait for the process to exit, closing it when it outlives its result
+        const waited = await waitForExitAfterResult({
+          tool,
+          waitForExit: () => processHandle.waitForExit(),
+          terminate: () => processHandle.terminate(),
+          readMessages: currentMessages,
+          closeTimeoutMs,
+          backgroundWaitMs,
+        });
+        const exitCode = waited.exitCode;
+        const terminatedAfterResult =
+          stopOptions.terminatedAfterResult === true ||
+          waited.terminatedAfterResult;
+        const { stdout, stderr, signal } = processHandle.getOutput();
 
         // Combine stdout and stderr for plain output
         const plainOutput = stdout + (stderr ? `\n${stderr}` : '');
@@ -565,15 +570,32 @@ export function agent(options) {
         const metadata = buildNormalizedResultMetadata({
           tool,
           exitCode,
+          signal,
           plainOutput,
           parsedOutput,
           sessionId,
           usage,
           toolConfig,
+          terminatedAfterResult,
         });
+        // Codex and Claude can leave a usage limit only in their session
+        // files (hive-mind#3570)
+        const runEnv = normalizeExtraEnv(toolOptions.extraEnv);
+        const codexHome = runEnv.findLast(([name]) => name === 'CODEX_HOME');
+        await applyCodexRolloutUsageLimit(
+          metadata,
+          codexHome ? { codexHome: codexHome[1] } : {}
+        );
         if ((json || tool === 'agent') && toolConfig) {
           requireCompletedResult(metadata, tool, parsedOutput || []);
         }
+        const claudeConfigDir = runEnv.findLast(
+          ([name]) => name === 'CLAUDE_CONFIG_DIR'
+        );
+        await applyClaudeTranscriptUsageLimit(metadata, {
+          workingDirectory,
+          ...(claudeConfigDir ? { claudeConfigDir: claudeConfigDir[1] } : {}),
+        });
 
         return {
           exitCode,
@@ -601,6 +623,21 @@ export function agent(options) {
    */
   const getSessionId = () => sessionId;
 
+  let readStdoutMessages = null;
+  // Events seen so far, from the output stream or from the raw stdout
+  const currentMessages = () => {
+    if (outputStream) {
+      return outputStream.getMessages();
+    }
+    if (!processHandle?.getOutput) {
+      return [];
+    }
+    readStdoutMessages ??= createStdoutMessageReader(
+      () => processHandle.getOutput().stdout
+    );
+    return readStdoutMessages();
+  };
+
   /**
    * Get all collected messages from the output stream
    * @returns {Object[]} Array of parsed messages
@@ -618,11 +655,20 @@ export function agent(options) {
    */
   const getToolConfig = () => toolConfig;
 
+  /**
+   * Stop the agent now and collect output. A process stopped after its final
+   * result is still judged by that result.
+   * @returns {Promise<Object>} Same result as stop()
+   */
   const cancel = async () => {
-    if (isolation === 'none') {
-      processHandle?.terminate?.();
+    let terminatedAfterResult = false;
+    if (isolation === 'none' && processHandle) {
+      terminatedAfterResult =
+        processHandle.getOutput?.().hasExited !== true &&
+        hasFinalResult(tool, currentMessages());
+      processHandle.terminate?.();
     }
-    return stop();
+    return stop({ terminatedAfterResult });
   };
 
   return {
@@ -663,14 +709,71 @@ export {
   buildDockerStopCommand,
 } from './command-builder.mjs';
 export {
+  DEFAULT_KILL_AFTER_MS,
+  DEFAULT_PIPE_DRAIN_MS,
   executeCommand,
   executeDetached,
+  isProcessGroupAlive,
+  normalizeExit,
   setupSignalHandler,
+  signalFromExitCode,
+  startCommand,
 } from './executor.mjs';
+export {
+  PRINT_BG_CEILING_PATTERN,
+  assessBackgroundTasks,
+  printWaitCeilingSeconds,
+  trackBackgroundTasks,
+} from './background-tasks.mjs';
+export { extractObservedModels, isRealModelId } from './observed-models.mjs';
+export {
+  CODEX_SESSIONS_DIRNAME,
+  ROLLOUT_TAIL_BYTES,
+  applyCodexRolloutUsageLimit,
+  canResumeCodexSession,
+  classifyCodexRateLimitSnapshot,
+  codexRolloutLimitFacts,
+  codexSessionsDir,
+  detectCodexRolloutUsageLimit,
+  findCodexRolloutFile,
+  isCodexRolloutFileName,
+  readCodexRolloutLimitFacts,
+} from './codex-rollout.mjs';
+export {
+  TRANSCRIPT_TAIL_BYTES,
+  applyClaudeTranscriptUsageLimit,
+  claudeProjectSlugs,
+  claudeTranscriptApiError,
+  claudeTranscriptCandidates,
+  readClaudeTranscriptApiError,
+} from './claude-transcript.mjs';
+export {
+  DEFAULT_RESULT_POLL_MS,
+  createStdoutMessageReader,
+  hasFinalResult,
+  waitForExitAfterResult,
+} from './result-close.mjs';
 export { tools, getTool, listTools, isToolSupported } from './tools/index.mjs';
 export { JsonOutputStream, JsonInputStream } from './streaming/index.mjs';
 export { parseNdjsonLine, stringifyNdjsonLine } from './streaming/ndjson.mjs';
+export {
+  createJsonRecordScanner,
+  parseJsonRecords,
+} from './streaming/json-records.mjs';
 export { buildNormalizedResultMetadata } from './result-metadata.mjs';
+export {
+  USAGE_LIMIT_PATTERNS,
+  classifyDebugLines,
+  classifyRateLimitEvent,
+  detectUsageLimitSources,
+  extractResetTime,
+  extractTimezone,
+  formatEpochResetTimeUtc,
+  isRecoverableToolError,
+  isUsageLimitText,
+  limitScanText,
+} from './usage-limit.mjs';
+export { firstErrorText, stringifyErrorValue } from './error-text.mjs';
 export {
   buildAgentTuiLaunch,
   captureAgentTui,

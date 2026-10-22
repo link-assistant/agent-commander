@@ -2,8 +2,10 @@
 //! Based on hive-mind's codex.lib.mjs implementation
 
 use super::usage::{self, count};
-use crate::streaming::parse_ndjson;
-use crate::tools::shell::{build_command_head, escape_arg, escape_single_quotes};
+use crate::streaming::parse_json_records;
+use crate::tools::shell::{
+    build_command_head, escape_arg, escape_single_quotes, lookup_model_alias,
+};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -53,11 +55,12 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("gpt-4", "gpt-4");
     map.insert("gpt4o", "gpt-4o");
     map.insert("gpt-4o", "gpt-4o");
-    map.insert("sol", "gpt-5.6-sol");
+    map.insert("daybreak-blue", "gpt-daybreak-blue-latest");
+    map.insert("daybreak-red", "gpt-daybreak-red-latest");
+    map.insert("astra", "gpt-6-astra");
+    map.insert("sol", "gpt-6.1-sol");
+    map.insert("luna", "gpt-6-luna");
     map.insert("terra", "gpt-5.6-terra");
-    map.insert("luna", "gpt-5.6-luna");
-    map.insert("openai/formal-ai", "openai/formal-ai");
-    map.insert("openai.formal-ai", "openai.formal-ai");
     map.insert("openai/gpt-6.1-sol", "openai/gpt-6.1-sol");
     map.insert("openai.gpt-6.1-sol", "openai.gpt-6.1-sol");
     map.insert("openai/gpt-6-sol", "openai/gpt-6-sol");
@@ -119,12 +122,18 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("openai.gpt-4", "openai.gpt-4");
     map.insert("openai/gpt-4o", "openai/gpt-4o");
     map.insert("openai.gpt-4o", "openai.gpt-4o");
-    map.insert("openai/sol", "openai/gpt-5.6-sol");
-    map.insert("openai.sol", "openai.gpt-5.6-sol");
+    map.insert("openai/daybreak-blue", "openai/gpt-daybreak-blue-latest");
+    map.insert("openai.daybreak-blue", "openai.gpt-daybreak-blue-latest");
+    map.insert("openai/daybreak-red", "openai/gpt-daybreak-red-latest");
+    map.insert("openai.daybreak-red", "openai.gpt-daybreak-red-latest");
+    map.insert("openai/astra", "openai/gpt-6-astra");
+    map.insert("openai.astra", "openai.gpt-6-astra");
+    map.insert("openai/sol", "openai/gpt-6.1-sol");
+    map.insert("openai.sol", "openai.gpt-6.1-sol");
+    map.insert("openai/luna", "openai/gpt-6-luna");
+    map.insert("openai.luna", "openai.gpt-6-luna");
     map.insert("openai/terra", "openai/gpt-5.6-terra");
     map.insert("openai.terra", "openai.gpt-5.6-terra");
-    map.insert("openai/luna", "openai/gpt-5.6-luna");
-    map.insert("openai.luna", "openai.gpt-5.6-luna");
     map
 }
 
@@ -136,11 +145,7 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
 /// # Returns
 /// Full model ID
 pub fn map_model_to_id(model: &str) -> String {
-    let model_map = get_model_map();
-    model_map
-        .get(model)
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| model.to_string())
+    lookup_model_alias(&get_model_map(), model).unwrap_or_else(|| model.to_string())
 }
 
 /// Codex command build options
@@ -155,6 +160,8 @@ pub struct CodexBuildOptions {
     pub read_only: bool,
     pub executable: Option<String>,
     pub extra_env: Vec<(String, String)>,
+    /// Variables removed from the inherited environment (`env -u`)
+    pub unset_env: Vec<String>,
     pub extra_args: Vec<String>,
     pub skip_default_safety_flags: bool,
     pub sandbox_mode: Option<String>,
@@ -248,7 +255,12 @@ pub fn build_command(options: &CodexBuildOptions) -> String {
     format!(
         "{} | {} {}",
         input_command,
-        build_command_head(executable, &options.extra_env, &prefix_args),
+        build_command_head(
+            executable,
+            &options.unset_env,
+            &options.extra_env,
+            &prefix_args
+        ),
         args_str.join(" ")
     )
     .trim()
@@ -264,7 +276,7 @@ pub fn build_command(options: &CodexBuildOptions) -> String {
 /// # Returns
 /// Vector of parsed JSON messages
 pub fn parse_output(output: &str) -> Vec<Value> {
-    parse_ndjson(output)
+    parse_json_records(output)
 }
 
 /// Extract session/thread ID from Codex output

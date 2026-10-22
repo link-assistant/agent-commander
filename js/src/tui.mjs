@@ -8,8 +8,10 @@ import { normalizeExtraArgs, normalizeExtraEnv } from './tools/shell.mjs';
 const READ_ONLY_OPENCODE_PERMISSION =
   '{"edit":"deny","bash":"deny","task":"deny"}';
 
-const mappedModel = (tool, model) =>
-  model && tool.mapModelToId ? tool.mapModelToId({ model }) : model;
+const mappedModel = (tool, model) => {
+  const mapper = tool.modelArg || tool.mapModelToId;
+  return model && mapper ? mapper({ model }) : model;
+};
 
 const safetyArgs = ({ readOnly, approveEach, skipDefaultSafetyFlags }) => {
   if (readOnly) {
@@ -174,13 +176,20 @@ const launchEnvironment = ({ extraEnv, tool, readOnly }) => {
   if (tool === 'opencode' && readOnly) {
     entries.push(['OPENCODE_PERMISSION', READ_ONLY_OPENCODE_PERMISSION]);
   }
-  return {
+  const env = {
     ...process.env,
     // Interactive clients such as Codex refuse to start their TUI when the
     // parent process inherited TERM=dumb (common in CI).
     TERM: 'xterm-256color',
-    ...Object.fromEntries(entries),
   };
+  for (const [name, value] of entries) {
+    if (value === null) {
+      delete env[name];
+    } else {
+      env[name] = value;
+    }
+  }
+  return env;
 };
 
 /**
@@ -276,6 +285,8 @@ export const captureAgentTui = async (options) => {
     rows,
     aspectRatio = DEFAULT_CAPTURE_GEOMETRY[tool]?.aspectRatio ?? 4 / 3,
     settleMilliseconds,
+    frameMode,
+    recording,
     stopMarker,
     stopMarkerGraceMilliseconds,
     timeoutMilliseconds,
@@ -298,6 +309,8 @@ export const captureAgentTui = async (options) => {
     rows,
     aspectRatio,
     settleMilliseconds,
+    frameMode,
+    recording,
     interactions: [
       ...startupInteractions,
       ...promptInteraction,

@@ -8,8 +8,15 @@
  */
 
 import { syncedModels, syncedDefaults } from './model-catalog.mjs';
+import { createModelMapper, parseJsonLines } from './json-lines.mjs';
 
-import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
+import {
+  buildCommandHead,
+  escapeArg,
+  escapeSingleQuotes,
+  normalizeExtraArgs,
+} from './shell.mjs';
+import { firstErrorText, stringifyErrorValue } from '../error-text.mjs';
 
 /**
  * Available Agent model configurations
@@ -25,10 +32,7 @@ export const modelMap = {
  * @param {string} options.model - Model alias or full ID
  * @returns {string} Full model ID
  */
-export function mapModelToId(options) {
-  const { model } = options;
-  return modelMap[model] || model;
-}
+export const mapModelToId = createModelMapper(modelMap);
 
 /**
  * Build command line arguments for Agent
@@ -164,37 +168,20 @@ export function buildCommand(options) {
   // Build command with stdin piping
   const inputCommand = promptFile
     ? `cat ${escapeArg(promptFile)}`
-    : `printf '%s' '${combinedPrompt.replace(/'/g, "'\\''")}'`;
+    : `printf '%s' '${escapeSingleQuotes(combinedPrompt)}'`;
   return `${inputCommand} | ${commandHead}`.trim();
 }
 
 /**
  * Parse JSON messages from Agent output
- * Agent outputs NDJSON format with specific event types
+ * Agent pretty-prints JSON events by default and emits NDJSON with
+ * `--compact-json`; both shapes are parsed by the record scanner.
  * @param {Object} options - Options
  * @param {string} options.output - Raw output string
  * @returns {Object[]} Array of parsed JSON messages
  */
 export function parseOutput(options) {
-  const { output } = options;
-  const messages = [];
-  const lines = output.split('\n');
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || !trimmed.startsWith('{')) {
-      continue;
-    }
-
-    try {
-      const parsed = JSON.parse(trimmed);
-      messages.push(parsed);
-    } catch {
-      // Skip lines that aren't valid JSON
-    }
-  }
-
-  return messages;
+  return parseJsonLines(options);
 }
 
 /**
@@ -274,28 +261,90 @@ export function extractUsage(options) {
   return usage;
 }
 
+/** Model/provider startup failures that leave the session unable to work (hive-mind#2141). */
+const FATAL_AGENT_LOG_PATTERNS = [
+  /ProviderModelNotFoundError/i,
+  /ProviderInitError/i,
+  /NoSuchModelError/i,
+  /ModelNotFoundError/i,
+  /failed to initialize .*model/i,
+];
+
 /**
- * Detect errors in Agent output
+ * Detect a `log` record reporting a fatal startup failure. Agent prints it,
+ * then `session.idle`, and exits 0 without an `error` record (hive-mind#2141).
+ * @param {Object} record - Agent JSON record
+ * @returns {string|null} Readable failure text, or null when not fatal
+ */
+export function detectFatalAgentLogRecord(record) {
+  if (record?.type !== 'log' || record.level !== 'error') {
+    return null;
+  }
+  const error = stringifyErrorValue(record.error);
+  const message = stringifyErrorValue(record.message);
+  if (
+    !FATAL_AGENT_LOG_PATTERNS.some((pattern) =>
+      pattern.test(`${error} ${message}`)
+    )
+  ) {
+    return null;
+  }
+  const hint = record.hint ? `hint: ${stringifyErrorValue(record.hint)}` : '';
+  return [error, message, hint].filter(Boolean).join(' — ');
+}
+
+/**
+ * A failed tool call is returned to the model as the tool result; agent 0.26.13
+ * and earlier also repeated it as a top-level error record (agent#332,
+ * hive-mind#3213). Only the session's own errors decide the run.
+ * @param {Object} record - Agent JSON record
+ * @returns {boolean}
+ */
+export function isRecoverableAgentToolError(record) {
+  if (record?.type !== 'error' && record?.type !== 'step_error') {
+    return false;
+  }
+  return (
+    record.recoverable === true ||
+    (record.part?.type === 'tool' && record.part.state?.status === 'error')
+  );
+}
+
+/**
+ * Detect errors in Agent output: the last fatal error record is the one the
+ * session ended on; failed tool calls are skipped.
  * @param {Object} options - Options
  * @param {string} options.output - Raw output string
  * @returns {Object} Error detection result
  */
 export function detectErrors(options) {
   const { output } = options;
-  const messages = parseOutput({ output });
+  let detection = { hasError: false };
 
-  for (const msg of messages) {
-    // Check for explicit error message types from agent
-    if (msg.type === 'error' || msg.type === 'step_error') {
-      return {
+  for (const msg of parseOutput({ output })) {
+    const fatalLog = detectFatalAgentLogRecord(msg);
+    if (fatalLog) {
+      detection = {
         hasError: true,
-        errorType: msg.type,
-        message: msg.message || 'Unknown error',
+        errorType: stringifyErrorValue(msg.error) || 'fatal_log',
+        message: fatalLog,
+      };
+    } else if (
+      (msg.type === 'error' || msg.type === 'step_error') &&
+      !isRecoverableAgentToolError(msg)
+    ) {
+      detection = {
+        hasError: true,
+        errorType:
+          (typeof msg.error?.name === 'string' && msg.error.name) || msg.type,
+        message: firstErrorText([msg.message, msg.error, msg.data], {
+          fallback: 'Agent emitted an error event without any details',
+        }),
       };
     }
   }
 
-  return { hasError: false };
+  return detection;
 }
 
 /**

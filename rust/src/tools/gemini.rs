@@ -1,9 +1,9 @@
 //! Gemini CLI tool configuration
-//! Based on Google's official gemini-cli: https://github.com/google-gemini/gemini-cli
+//! Based on Google's official gemini-cli: <https://github.com/google-gemini/gemini-cli>
 
 use super::usage::{self, count};
-use crate::streaming::parse_ndjson;
-use crate::tools::shell::{build_command_head, escape_arg};
+use crate::streaming::parse_json_records;
+use crate::tools::shell::{build_command_head, escape_arg, lookup_model_alias};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -14,23 +14,37 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("formal-ai", "formal-ai");
     map.insert("formalai/formal-ai", "formal-ai");
     map.insert("auto", "auto");
-    map.insert("gemini", "gemini-2.5-flash");
-    map.insert("flash", "gemini-2.5-flash");
-    map.insert("2.5-flash", "gemini-2.5-flash");
-    map.insert("pro", "gemini-2.5-pro");
-    map.insert("2.5-pro", "gemini-2.5-pro");
-    map.insert("lite", "gemini-2.5-flash-lite");
-    map.insert("2.5-lite", "gemini-2.5-flash-lite");
-    map.insert("flash-lite", "gemini-2.5-flash-lite");
-    map.insert("3-flash", "gemini-3-flash-preview");
+    map.insert("pro", "pro");
+    map.insert("flash", "flash");
+    map.insert("flash-lite", "flash-lite");
+    map.insert("gemini", "flash");
+    map.insert("lite", "flash-lite");
+    map.insert("gemini-pro", "pro");
+    map.insert("gemini-flash", "flash");
+    map.insert("gemini-flash-lite", "flash-lite");
+    map.insert("3.1-pro", "gemini-3.1-pro-preview");
     map.insert("3-pro", "gemini-3-pro-preview");
-    map.insert("gemini-flash", "gemini-2.5-flash");
-    map.insert("gemini-pro", "gemini-2.5-pro");
-    map.insert("gemini-2.5-flash", "gemini-2.5-flash");
-    map.insert("gemini-2.5-pro", "gemini-2.5-pro");
-    map.insert("gemini-2.5-flash-lite", "gemini-2.5-flash-lite");
-    map.insert("gemini-3-flash-preview", "gemini-3-flash-preview");
+    map.insert("2.5-pro", "gemini-2.5-pro");
+    map.insert("3.8-flash", "gemini-3.8-flash");
+    map.insert("3.5-flash", "gemini-3.5-flash");
+    map.insert("3-flash", "gemini-3-flash-preview");
+    map.insert("3.5-flash-lite", "gemini-3.5-flash-lite");
+    map.insert("3.1-flash-lite", "gemini-3.1-flash-lite");
+    map.insert("gemini-3.1-pro-preview", "gemini-3.1-pro-preview");
     map.insert("gemini-3-pro-preview", "gemini-3-pro-preview");
+    map.insert("gemini-3.8-flash", "gemini-3.8-flash");
+    map.insert("gemini-3.5-flash", "gemini-3.5-flash");
+    map.insert("gemini-3-flash-preview", "gemini-3-flash-preview");
+    map.insert("gemini-3-flash", "gemini-3-flash");
+    map.insert("gemini-3.5-flash-lite", "gemini-3.5-flash-lite");
+    map.insert("gemini-3.1-flash-lite", "gemini-3.1-flash-lite");
+    map.insert("gemini-2.5-pro", "gemini-2.5-pro");
+    map.insert("gemma-4-31b-it", "gemma-4-31b-it");
+    map.insert("gemma-4-26b-a4b-it", "gemma-4-26b-a4b-it");
+    map.insert("2.5-flash", "gemini-2.5-flash");
+    map.insert("2.5-lite", "gemini-2.5-flash-lite");
+    map.insert("gemini-2.5-flash", "gemini-2.5-flash");
+    map.insert("gemini-2.5-flash-lite", "gemini-2.5-flash-lite");
     map
 }
 
@@ -42,11 +56,7 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
 /// # Returns
 /// Full model ID
 pub fn map_model_to_id(model: &str) -> String {
-    let model_map = get_model_map();
-    model_map
-        .get(model)
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| model.to_string())
+    lookup_model_alias(&get_model_map(), model).unwrap_or_else(|| model.to_string())
 }
 
 /// Gemini command build options
@@ -66,6 +76,8 @@ pub struct GeminiBuildOptions {
     pub interactive: bool,
     pub executable: Option<String>,
     pub extra_env: Vec<(String, String)>,
+    /// Variables removed from the inherited environment (`env -u`)
+    pub unset_env: Vec<String>,
     pub extra_args: Vec<String>,
     pub skip_default_safety_flags: bool,
 }
@@ -175,7 +187,7 @@ pub fn build_command(options: &GeminiBuildOptions) -> String {
     let executable = options.executable.as_deref().unwrap_or("gemini");
     let command = format!(
         "{} {}",
-        build_command_head(executable, &options.extra_env, &[]),
+        build_command_head(executable, &options.unset_env, &options.extra_env, &[]),
         args_str.join(" ")
     )
     .trim()
@@ -197,13 +209,9 @@ pub fn build_command(options: &GeminiBuildOptions) -> String {
 /// # Returns
 /// Vector of parsed JSON messages
 pub fn parse_output(output: &str) -> Vec<Value> {
-    // Native single JSON output can be formatted across multiple lines.
-    if let Ok(message) = serde_json::from_str::<Value>(output) {
-        if message.is_object() {
-            return vec![message];
-        }
-    }
-    parse_ndjson(output)
+    // Native single JSON output can be formatted across multiple lines; the
+    // record scanner handles it together with stream-json NDJSON.
+    parse_json_records(output)
 }
 
 /// Extract session ID from Gemini CLI output

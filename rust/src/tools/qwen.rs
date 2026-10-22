@@ -1,10 +1,10 @@
 //! Qwen Code CLI tool configuration
-//! Based on https://github.com/QwenLM/qwen-code
+//! Based on <https://github.com/QwenLM/qwen-code>
 //! Qwen Code is an open-source AI agent optimized for Qwen3-Coder models
 
 use super::usage::{self, count};
-use crate::streaming::parse_ndjson;
-use crate::tools::shell::{build_command_head, escape_arg};
+use crate::streaming::parse_json_records;
+use crate::tools::shell::{build_command_head, escape_arg, lookup_model_alias};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -24,10 +24,24 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
     map.insert("qwen", "qwen3-coder-plus");
     map.insert("qwen-coder", "qwen3-coder-plus");
     map.insert("qwen3", "qwen3-coder-plus");
-    map.insert("qwen3-coder", "qwen3-coder");
-    map.insert("qwen3-coder-plus", "qwen3-coder-plus");
-    map.insert("qwen3-coder-flash", "qwen3-coder-flash");
+    map.insert("max", "qwen3.8-max");
+    map.insert("qwen-max", "qwen3.8-max");
+    map.insert("plus", "qwen3.7-plus");
+    map.insert("qwen-plus", "qwen3.7-plus");
+    map.insert("flash", "qwen3.8-flash");
+    map.insert("qwen-flash", "qwen3.8-flash");
+    map.insert("coder-model", "coder-model");
+    map.insert("qwen3.8-max", "qwen3.8-max");
+    map.insert("qwen3.7-max", "qwen3.7-max");
+    map.insert("qwen3.7-plus", "qwen3.7-plus");
     map.insert("qwen3.6-plus", "qwen3.6-plus");
+    map.insert("qwen3.5-plus", "qwen3.5-plus");
+    map.insert("qwen3.8-flash", "qwen3.8-flash");
+    map.insert("qwen3.6-flash", "qwen3.6-flash");
+    map.insert("qwen3-coder-plus", "qwen3-coder-plus");
+    map.insert("qwen3-coder-next", "qwen3-coder-next");
+    map.insert("qwen3-coder", "qwen3-coder");
+    map.insert("qwen3-coder-flash", "qwen3-coder-flash");
     map.insert("qwen3.6-coder-plus", "qwen3.6-coder-plus");
     map
 }
@@ -40,11 +54,7 @@ pub fn get_model_map() -> HashMap<&'static str, &'static str> {
 /// # Returns
 /// Full model ID
 pub fn map_model_to_id(model: &str) -> String {
-    let model_map = get_model_map();
-    model_map
-        .get(model)
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| model.to_string())
+    lookup_model_alias(&get_model_map(), model).unwrap_or_else(|| model.to_string())
 }
 
 /// Qwen command build options
@@ -65,6 +75,8 @@ pub struct QwenBuildOptions {
     pub include_directories: Vec<String>,
     pub executable: Option<String>,
     pub extra_env: Vec<(String, String)>,
+    /// Variables removed from the inherited environment (`env -u`)
+    pub unset_env: Vec<String>,
     pub extra_args: Vec<String>,
     pub skip_default_safety_flags: bool,
 }
@@ -180,7 +192,7 @@ pub fn build_command(options: &QwenBuildOptions) -> String {
     let executable = options.executable.as_deref().unwrap_or("qwen");
     let command = format!(
         "{} {}",
-        build_command_head(executable, &options.extra_env, &[]),
+        build_command_head(executable, &options.unset_env, &options.extra_env, &[]),
         args_str.join(" ")
     )
     .trim()
@@ -202,7 +214,7 @@ pub fn build_command(options: &QwenBuildOptions) -> String {
 /// # Returns
 /// Vector of parsed JSON messages
 pub fn parse_output(output: &str) -> Vec<Value> {
-    parse_ndjson(output)
+    parse_json_records(output)
 }
 
 /// Extract session ID from Qwen Code output

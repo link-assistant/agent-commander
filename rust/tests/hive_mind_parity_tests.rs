@@ -20,6 +20,7 @@ fn native_metadata_matches_hive_mind_contract() {
             parsed_output: Some(events),
             session_id: None,
             usage: None,
+            ..Default::default()
         }))
         .unwrap();
         for (key, expected) in case["expected"].as_object().unwrap() {

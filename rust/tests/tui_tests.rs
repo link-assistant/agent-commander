@@ -184,3 +184,62 @@ fn prompt_uses_enter_control_key() {
     };
     assert_eq!(options.prompt_key, TerminalKey::Enter);
 }
+
+#[test]
+fn unset_env_runs_the_launch_through_env() {
+    let launch = build_agent_tui_launch(&AgentTuiOptions {
+        tool: "claude".into(),
+        working_directory: "/workspace".into(),
+        executable: Some("claude-test".into()),
+        extra_env: [("GH_TOKEN".to_string(), "x".to_string())].into(),
+        unset_env: vec!["GH_TOKEN".into()],
+        ..AgentTuiOptions::default()
+    })
+    .expect("interactive launch");
+
+    assert_eq!(launch.file, "env");
+    assert_eq!(launch.args[..3], ["-u", "GH_TOKEN", "claude-test"]);
+    assert!(!launch.env.contains_key("GH_TOKEN"));
+
+    let invalid = build_agent_tui_launch(&AgentTuiOptions {
+        tool: "claude".into(),
+        working_directory: "/workspace".into(),
+        unset_env: vec!["A=B".into()],
+        ..AgentTuiOptions::default()
+    });
+    assert!(invalid.is_err());
+}
+
+#[test]
+fn passes_frame_and_recording_modes_to_command_stream() {
+    let script = r"
+for screen in one two three; do printf '\033[2J\033[H%s\n' $screen; sleep 0.05; done
+";
+    let capture_with = |frames_on_write: bool, recording: bool| {
+        capture_agent_tui(AgentTuiOptions {
+            tool: "claude".into(),
+            working_directory: std::env::current_dir().expect("current directory"),
+            executable: Some("/bin/sh".into()),
+            prefix_args: vec!["-c".into(), script.into(), "claude".into()],
+            cols: 20,
+            rows: 4,
+            settle_duration: Duration::from_millis(10),
+            timeout: Duration::from_secs(3),
+            frames_on_write,
+            recording,
+            ..AgentTuiOptions::default()
+        })
+        .expect("interactive capture")
+        .terminal
+    };
+
+    let full = capture_with(true, true);
+    assert!(full.frames.len() >= 3, "{} frames", full.frames.len());
+    assert_ne!(full.asciicast.events.len(), 0);
+
+    // Without recording only the latest frame and no cast events remain.
+    let latest = capture_with(true, false);
+    assert_eq!(latest.frames.len(), 1);
+    assert_eq!(latest.asciicast.events.len(), 0);
+    assert!(latest.transcript.contains("three"));
+}

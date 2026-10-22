@@ -9,18 +9,26 @@
 //! - qwen: Qwen Code CLI
 //! - gemini: Gemini CLI
 
+pub mod background_tasks;
+pub mod claude_transcript;
 pub mod cli_parser;
+pub mod codex_rollout;
 pub mod command_builder;
 mod completion;
+pub mod error_text;
 pub mod executor;
+pub mod file_tail;
 pub mod permissions;
+pub mod result_close;
 pub mod result_metadata;
 pub mod streaming;
 pub mod tools;
 pub mod tui;
+pub mod usage_limit;
 
 use serde_json::Value;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::AsyncWriteExt;
 
@@ -42,17 +50,54 @@ pub use permissions::{
 };
 
 pub use executor::{
-    execute_command, execute_detached, setup_signal_handler, start_command, ExecutionResult,
-    ProcessHandle,
+    execute_command, execute_detached, is_process_group_alive, normalize_exit,
+    setup_signal_handler, signal_from_exit_code, signal_name, start_command, ExecutionResult,
+    ProcessHandle, DEFAULT_KILL_AFTER, DEFAULT_PIPE_DRAIN,
 };
+
+pub use background_tasks::{
+    assess_background_tasks, extract_observed_models, is_real_model_id, print_wait_ceiling_seconds,
+    track_background_tasks, BackgroundTask, BackgroundTaskAssessment, BackgroundTaskState,
+    StoppedBackgroundTask, PRINT_BG_CEILING_PATTERN,
+};
+
+pub use result_close::{
+    has_final_result, wait_for_exit_after_result, ResultCloseOptions, StdoutMessageReader,
+    DEFAULT_RESULT_POLL,
+};
+
+pub use codex_rollout::{
+    apply_codex_rollout_usage_limit, can_resume_codex_session, classify_codex_rate_limit_snapshot,
+    codex_rollout_limit_facts, codex_sessions_dir, detect_codex_rollout_usage_limit,
+    find_codex_rollout_file, is_codex_rollout_file_name, read_codex_rollout_limit_facts,
+    CodexLimitVerdict, CodexRolloutLimitFacts, CodexRolloutOptions, CODEX_ROLLOUT_LIMIT_SOURCE,
+    CODEX_SESSIONS_DIRNAME, ROLLOUT_TAIL_BYTES,
+};
+
+pub use claude_transcript::{
+    apply_claude_transcript_usage_limit, claude_project_slugs, claude_transcript_api_error,
+    claude_transcript_candidates, read_claude_transcript_api_error, ClaudeTranscriptApiError,
+    ClaudeTranscriptOptions, CLAUDE_TRANSCRIPT_LIMIT_SOURCE, TRANSCRIPT_TAIL_BYTES,
+};
+
+pub use file_tail::read_file_tail;
 
 pub use result_metadata::{
     build_normalized_result_metadata, BuildMetadataOptions, PricingInfo, ResultMetadata,
 };
 
+pub use error_text::{first_error_text, stringify_error_value, MAX_ERROR_TEXT_LENGTH};
+
+pub use usage_limit::{
+    classify_debug_lines, classify_rate_limit_event, detect_usage_limit_sources,
+    extract_reset_time, extract_timezone, format_epoch_reset_time_utc, is_recoverable_tool_error,
+    is_usage_limit_text, limit_scan_text, DebugLines, UsageLimitVerdict,
+};
+
 pub use streaming::{
-    create_input_stream, create_output_stream, parse_ndjson, parse_ndjson_line, stringify_ndjson,
-    stringify_ndjson_line, JsonInputStream, JsonOutputStream, ParseError,
+    create_input_stream, create_output_stream, parse_json_records, parse_ndjson, parse_ndjson_line,
+    stringify_ndjson, stringify_ndjson_line, JsonInputStream, JsonOutputStream, JsonRecordEvent,
+    JsonRecordScanner, ParseError,
 };
 
 pub use tools::{
@@ -110,6 +155,8 @@ pub struct AgentOptions {
     pub extra_args: Vec<String>,
     /// Extra environment variables applied to the tool executable
     pub extra_env: Vec<(String, String)>,
+    /// Variables removed from the inherited environment of the tool
+    pub unset_env: Vec<String>,
     /// Do not add default autonomous safety bypass flags
     pub skip_default_safety_flags: bool,
 }
@@ -147,6 +194,14 @@ pub struct AgentStartOptions {
 pub struct AgentStopOptions {
     /// If true, just show the command
     pub dry_run: bool,
+    /// Stop a process that stays this long after its final result once no
+    /// background task runs (hive-mind#1280); `None` waits for it to exit
+    pub close_timeout: Option<std::time::Duration>,
+    /// Extra time a process may stay after its result while background tasks
+    /// run; `None` leaves them to the tool's own ceiling
+    pub background_wait: Option<std::time::Duration>,
+    /// The caller already stopped the process after its final result
+    pub terminated_after_result: bool,
 }
 
 /// Agent controller
@@ -180,6 +235,37 @@ fn build_prompt_file_content(
         (None, Some(prompt)) => prompt.to_string(),
         (None, None) => String::new(),
     }
+}
+
+/// Names of prompt directories created by this process
+static PROMPT_DIR_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+/// Names tried before a prompt directory is given up
+const PROMPT_DIR_ATTEMPTS: usize = 16;
+
+/// Create a new directory for a prompt file under `parent`.
+///
+/// The name holds the pid, the clock and a per-process sequence, because
+/// controllers started in parallel can read the same clock tick (macOS clocks
+/// are coarse). A name that already exists, such as a leftover from a reused
+/// pid, is skipped.
+async fn create_prompt_temp_dir(parent: &Path, nanos: u128) -> Result<PathBuf, String> {
+    for _ in 0..PROMPT_DIR_ATTEMPTS {
+        let sequence = PROMPT_DIR_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+        let dir = parent.join(format!(
+            "agent-commander-{}-{nanos}-{sequence}",
+            std::process::id()
+        ));
+        match tokio::fs::create_dir(&dir).await {
+            Ok(()) => return Ok(dir),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error.to_string()),
+        }
+    }
+    Err(format!(
+        "could not create a prompt directory in {}",
+        parent.display()
+    ))
 }
 
 fn should_create_prompt_file(options: &AgentOptions, dry_run: bool) -> bool {
@@ -255,18 +341,11 @@ impl Agent {
             return Ok(self.options.prompt_file.clone());
         }
 
-        let unique_id = SystemTime::now()
+        let nanos = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|e| e.to_string())?
             .as_nanos();
-        let temp_dir = std::env::temp_dir().join(format!(
-            "agent-commander-{}-{}",
-            std::process::id(),
-            unique_id
-        ));
-        tokio::fs::create_dir(&temp_dir)
-            .await
-            .map_err(|e| e.to_string())?;
+        let temp_dir = create_prompt_temp_dir(&std::env::temp_dir(), nanos).await?;
         self.prompt_temp_dir = Some(temp_dir.clone());
         let prompt_file = temp_dir.join("prompt.txt");
         let content = build_prompt_file_content(
@@ -345,6 +424,7 @@ impl Agent {
             executable: self.options.executable.clone(),
             extra_args: self.options.extra_args.clone(),
             extra_env: self.options.extra_env.clone(),
+            unset_env: self.options.unset_env.clone(),
             skip_default_safety_flags: self.options.skip_default_safety_flags,
             isolation: self.options.isolation.clone(),
             screen_name: self.options.screen_name.clone(),
@@ -431,6 +511,7 @@ impl Agent {
                         parsed_output: None,
                         session_id: None,
                         usage: None,
+                        ..Default::default()
                     }),
                     ..Default::default()
                 });
@@ -455,6 +536,8 @@ impl Agent {
                 parsed_output: None,
                 session_id: None,
                 usage: None,
+                signal: result.signal.clone(),
+                ..Default::default()
             });
 
             return Ok(AgentResult {
@@ -478,9 +561,18 @@ impl Agent {
                 .as_mut()
                 .ok_or("Agent not started or already stopped")?;
 
-            // Wait for the process to exit
-            let exit_code = match handle.wait_for_exit().await.map_err(|e| e.to_string()) {
-                Ok(exit_code) => exit_code,
+            // Wait for the process to exit, closing it when it outlives its result
+            let close = ResultCloseOptions {
+                close_timeout: stop_options.close_timeout,
+                background_wait: stop_options.background_wait,
+                ..Default::default()
+            };
+            let waited = wait_for_exit_after_result(handle, &self.options.tool, close).await;
+            let (exit_code, terminated_after_result) = match waited.map_err(|e| e.to_string()) {
+                Ok((exit_code, terminated)) => (
+                    exit_code,
+                    terminated || stop_options.terminated_after_result,
+                ),
                 Err(error) => {
                     self.cleanup_prompt_temp_dir().await;
                     return Err(error);
@@ -511,7 +603,7 @@ impl Agent {
                 parsed_output = Some(if self.options.tool == "gemini" {
                     tools::gemini::parse_output(stdout)
                 } else {
-                    streaming::parse_ndjson(stdout)
+                    streaming::parse_json_records(stdout)
                 });
             }
 
@@ -544,7 +636,15 @@ impl Agent {
                 parsed_output: parsed_output.as_deref(),
                 session_id: self.session_id.clone(),
                 usage: usage.clone(),
+                signal: handle.signal().map(String::from),
+                terminated_after_result,
             });
+            // Codex and Claude can leave a usage limit only in their session
+            // files (hive-mind#3570)
+            codex_rollout::apply_codex_rollout_usage_limit(
+                &mut metadata,
+                &CodexRolloutOptions::for_run_env(&self.options.extra_env, &self.options.unset_env),
+            );
             if (self.options.json || self.options.tool == "agent")
                 && is_tool_supported(&self.options.tool)
             {
@@ -554,6 +654,14 @@ impl Agent {
                     parsed_output.as_deref().unwrap_or_default(),
                 );
             }
+            claude_transcript::apply_claude_transcript_usage_limit(
+                &mut metadata,
+                &ClaudeTranscriptOptions::for_run_env(
+                    &self.options.working_directory,
+                    &self.options.extra_env,
+                    &self.options.unset_env,
+                ),
+            );
 
             let result = AgentResult {
                 exit_code,
@@ -574,16 +682,26 @@ impl Agent {
     }
 
     /// Cancel a running process and collect its final output and metadata.
+    ///
+    /// A process cancelled after its final result is judged by that result.
     pub async fn cancel(&mut self) -> Result<AgentResult, String> {
+        let mut terminated_after_result = false;
         if self.options.isolation == "none" || self.options.isolation.is_empty() {
             if let Some(handle) = self.process_handle.as_mut() {
+                let mut reader = StdoutMessageReader::new();
+                terminated_after_result = !handle.try_wait().map_err(|e| e.to_string())?
+                    && has_final_result(&self.options.tool, reader.read(&handle.peek_stdout()));
                 handle
                     .terminate()
                     .await
                     .map_err(|error| error.to_string())?;
             }
         }
-        self.stop(AgentStopOptions::default()).await
+        self.stop(AgentStopOptions {
+            terminated_after_result,
+            ..Default::default()
+        })
+        .await
     }
 
     /// Get the current session ID (if available)
@@ -613,3 +731,34 @@ pub fn agent(options: AgentOptions) -> Result<Agent, String> {
 }
 
 // Tests are in rust/tests/lib_tests.rs
+
+#[cfg(test)]
+mod prompt_dir_tests {
+    use super::{create_prompt_temp_dir, PROMPT_DIR_SEQUENCE};
+    use std::sync::atomic::Ordering;
+
+    #[tokio::test]
+    async fn prompt_dirs_are_unique_within_one_clock_tick() {
+        let parent = tempfile::tempdir().expect("parent directory");
+        let first = create_prompt_temp_dir(parent.path(), 7).await.unwrap();
+        let second = create_prompt_temp_dir(parent.path(), 7).await.unwrap();
+        assert_ne!(first, second);
+        assert!(first.is_dir() && second.is_dir());
+    }
+
+    #[tokio::test]
+    async fn existing_prompt_dir_names_are_skipped() {
+        let parent = tempfile::tempdir().expect("parent directory");
+        let next = PROMPT_DIR_SEQUENCE.load(Ordering::Relaxed);
+        for sequence in next..next + 3 {
+            std::fs::create_dir(parent.path().join(format!(
+                "agent-commander-{}-9-{sequence}",
+                std::process::id()
+            )))
+            .unwrap();
+        }
+        let dir = create_prompt_temp_dir(parent.path(), 9).await.unwrap();
+        assert!(dir.is_dir());
+        assert_eq!(std::fs::read_dir(parent.path()).unwrap().count(), 4);
+    }
+}

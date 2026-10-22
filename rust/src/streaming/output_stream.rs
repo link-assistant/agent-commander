@@ -1,7 +1,7 @@
 //! JSON Output Stream processor
-//! Processes NDJSON output from CLI tools
+//! Processes NDJSON and pretty-printed JSON output from CLI tools
 
-use super::ndjson::parse_ndjson_line;
+use super::json_records::{JsonRecordEvent, JsonRecordScanner};
 use serde_json::Value;
 
 /// Error information for failed JSON parses
@@ -15,6 +15,7 @@ pub struct ParseError {
 /// Processes streaming output and emits parsed JSON messages
 pub struct JsonOutputStream {
     buffer: String,
+    scanner: JsonRecordScanner,
     messages: Vec<Value>,
     errors: Vec<ParseError>,
     line_count: usize,
@@ -45,6 +46,7 @@ impl JsonOutputStream {
     pub fn new() -> Self {
         Self {
             buffer: String::new(),
+            scanner: JsonRecordScanner::new(),
             messages: Vec::new(),
             errors: Vec::new(),
             line_count: 0,
@@ -80,6 +82,9 @@ impl JsonOutputStream {
 
     /// Process a chunk of output data
     ///
+    /// Complete lines are fed to a balanced JSON record scanner, so
+    /// pretty-printed records that span several lines are still emitted.
+    ///
     /// # Arguments
     /// * `chunk` - Data chunk to process
     ///
@@ -88,44 +93,14 @@ impl JsonOutputStream {
     pub fn process(&mut self, chunk: &str) -> Vec<Value> {
         self.buffer.push_str(chunk);
 
-        // Split and collect into owned strings to avoid borrow issues
-        let lines: Vec<String> = self.buffer.split('\n').map(|s| s.to_string()).collect();
-        let (complete_lines, last) = lines.split_at(lines.len().saturating_sub(1));
-
         // Keep the last incomplete line in the buffer
-        self.buffer = last.first().cloned().unwrap_or_default();
+        let Some(last_newline) = self.buffer.rfind('\n') else {
+            return Vec::new();
+        };
+        let rest = self.buffer.split_off(last_newline + 1);
+        let complete = std::mem::replace(&mut self.buffer, rest);
 
-        let mut new_messages = Vec::new();
-
-        for line in complete_lines {
-            self.line_count += 1;
-
-            if let Some(ref callback) = self.on_raw_line {
-                callback(line, self.line_count);
-            }
-
-            if let Some(parsed) = parse_ndjson_line(line) {
-                self.messages.push(parsed.clone());
-                new_messages.push(parsed.clone());
-
-                if let Some(ref callback) = self.on_message {
-                    callback(&parsed, self.line_count);
-                }
-            } else if line.trim().starts_with('{') {
-                // Line looked like JSON but failed to parse
-                let error = ParseError {
-                    line: line.to_string(),
-                    line_number: self.line_count,
-                };
-                self.errors.push(error.clone());
-
-                if let Some(ref callback) = self.on_error {
-                    callback(&error);
-                }
-            }
-        }
-
-        new_messages
+        self.scan(&complete, false)
     }
 
     /// Flush any remaining data in the buffer
@@ -133,38 +108,57 @@ impl JsonOutputStream {
     /// # Returns
     /// Vector of messages from flushed buffer
     pub fn flush(&mut self) -> Vec<Value> {
-        if self.buffer.trim().is_empty() {
-            return Vec::new();
-        }
+        let remaining = std::mem::take(&mut self.buffer);
+        self.scan(&remaining, true)
+    }
 
-        let line = std::mem::take(&mut self.buffer);
-        self.line_count += 1;
-
-        if let Some(ref callback) = self.on_raw_line {
-            callback(&line, self.line_count);
-        }
-
-        if let Some(parsed) = parse_ndjson_line(&line) {
-            self.messages.push(parsed.clone());
-
-            if let Some(ref callback) = self.on_message {
-                callback(&parsed, self.line_count);
+    fn scan(&mut self, text: &str, last: bool) -> Vec<Value> {
+        let lines = if last {
+            text.split('\n').collect::<Vec<_>>()
+        } else {
+            text.split_terminator('\n').collect()
+        };
+        for line in lines {
+            if last && line.trim().is_empty() {
+                continue;
             }
-
-            return vec![parsed];
-        } else if line.trim().starts_with('{') {
-            let error = ParseError {
-                line,
-                line_number: self.line_count,
-            };
-            self.errors.push(error.clone());
-
-            if let Some(ref callback) = self.on_error {
-                callback(&error);
+            self.line_count += 1;
+            if let Some(ref callback) = self.on_raw_line {
+                callback(line, self.line_count);
             }
         }
 
-        Vec::new()
+        let mut events = self.scanner.write(text);
+        if last {
+            events.extend(self.scanner.flush());
+        }
+
+        let mut new_messages = Vec::new();
+        for event in events {
+            match event {
+                JsonRecordEvent::Json { value, .. } => {
+                    self.messages.push(value.clone());
+                    if let Some(ref callback) = self.on_message {
+                        callback(&value, self.line_count);
+                    }
+                    new_messages.push(value);
+                }
+                JsonRecordEvent::Invalid(line) => {
+                    // Text that looked like JSON but failed to parse
+                    let error = ParseError {
+                        line,
+                        line_number: self.line_count,
+                    };
+                    if let Some(ref callback) = self.on_error {
+                        callback(&error);
+                    }
+                    self.errors.push(error);
+                }
+                JsonRecordEvent::Text(_) => {}
+            }
+        }
+
+        new_messages
     }
 
     /// Get all collected messages
@@ -180,6 +174,7 @@ impl JsonOutputStream {
     /// Reset the stream processor
     pub fn reset(&mut self) {
         self.buffer.clear();
+        self.scanner = JsonRecordScanner::new();
         self.messages.clear();
         self.errors.clear();
         self.line_count = 0;

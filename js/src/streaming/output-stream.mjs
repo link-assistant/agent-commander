@@ -3,7 +3,7 @@
  * Processes NDJSON output from CLI tools
  */
 
-import { parseNdjsonLine } from './ndjson.mjs';
+import { createJsonRecordScanner } from './json-records.mjs';
 
 /**
  * JSON Output Stream class
@@ -23,6 +23,7 @@ export class JsonOutputStream {
     this.onRawLine = options.onRawLine || (() => {});
 
     this.buffer = '';
+    this.scanner = createJsonRecordScanner();
     this.messages = [];
     this.errors = [];
     this.lineCount = 0;
@@ -30,6 +31,8 @@ export class JsonOutputStream {
 
   /**
    * Process a chunk of output data
+   * Complete lines are scanned for balanced JSON records, so pretty-printed
+   * records spanning several lines are parsed once their last line arrives.
    * @param {Object} options - Options
    * @param {string|Buffer} options.chunk - Data chunk to process
    * @returns {Object[]} Array of messages parsed from this chunk
@@ -40,31 +43,15 @@ export class JsonOutputStream {
 
     this.buffer += data;
 
-    const lines = this.buffer.split('\n');
-    // Keep the last incomplete line in the buffer
-    this.buffer = lines.pop() || '';
-
-    const newMessages = [];
-
-    for (const line of lines) {
-      this.lineCount++;
-      this.onRawLine({ line, lineNumber: this.lineCount });
-
-      const parsed = parseNdjsonLine({ line });
-
-      if (parsed !== null) {
-        this.messages.push(parsed);
-        newMessages.push(parsed);
-        this.onMessage({ message: parsed, lineNumber: this.lineCount });
-      } else if (line.trim() && line.trim().startsWith('{')) {
-        // Line looked like JSON but failed to parse
-        const error = { line, lineNumber: this.lineCount };
-        this.errors.push(error);
-        this.onError({ error, lineNumber: this.lineCount });
-      }
+    const boundary = this.buffer.lastIndexOf('\n');
+    if (boundary < 0) {
+      return [];
     }
+    const complete = this.buffer.slice(0, boundary + 1);
+    // Keep the last incomplete line in the buffer
+    this.buffer = this.buffer.slice(boundary + 1);
 
-    return newMessages;
+    return this.scan(complete.split('\n').slice(0, -1), false);
   }
 
   /**
@@ -72,29 +59,44 @@ export class JsonOutputStream {
    * @returns {Object[]} Array of messages from flushed buffer
    */
   flush() {
-    if (!this.buffer.trim()) {
-      return [];
-    }
-
-    const line = this.buffer;
+    const lines = this.buffer.trim() ? [this.buffer] : [];
     this.buffer = '';
-    this.lineCount++;
+    return this.scan(lines, true);
+  }
 
-    this.onRawLine({ line, lineNumber: this.lineCount });
-
-    const parsed = parseNdjsonLine({ line });
-
-    if (parsed !== null) {
-      this.messages.push(parsed);
-      this.onMessage({ message: parsed, lineNumber: this.lineCount });
-      return [parsed];
-    } else if (line.trim() && line.trim().startsWith('{')) {
-      const error = { line, lineNumber: this.lineCount };
-      this.errors.push(error);
-      this.onError({ error, lineNumber: this.lineCount });
+  /**
+   * Scan complete lines and record parsed messages and parse errors
+   * @param {string[]} lines - Complete lines
+   * @param {boolean} final - Whether the output has ended
+   * @returns {Object[]} Newly parsed messages
+   */
+  scan(lines, final) {
+    const text = lines.map((line) => `${line}\n`).join('');
+    for (const line of lines) {
+      this.lineCount++;
+      this.onRawLine({ line, lineNumber: this.lineCount });
     }
 
-    return [];
+    const events = this.scanner.write(text);
+    if (final) {
+      events.push(...this.scanner.flush());
+    }
+
+    const newMessages = [];
+    for (const event of events) {
+      if (event.type === 'json') {
+        this.messages.push(event.value);
+        newMessages.push(event.value);
+        this.onMessage({ message: event.value, lineNumber: this.lineCount });
+      } else if (event.type === 'invalid') {
+        // Looked like JSON but failed to parse
+        const error = { line: event.raw, lineNumber: this.lineCount };
+        this.errors.push(error);
+        this.onError({ error, lineNumber: this.lineCount });
+      }
+    }
+
+    return newMessages;
   }
 
   /**
@@ -118,6 +120,7 @@ export class JsonOutputStream {
    */
   reset() {
     this.buffer = '';
+    this.scanner = createJsonRecordScanner();
     this.messages = [];
     this.errors = [];
     this.lineCount = 0;

@@ -1,8 +1,8 @@
 {
-  "threshold": 0,
+  "threshold": 12,
   "minTokens": 30,
   "minLines": 5,
-  "skipComments": true,
+  "mode": "weak",
   "ignore": [
     "**/node_modules/**",
     "**/build/**",
@@ -14,7 +14,7 @@
     "**/pnpm-lock.yaml",
     "**/yarn.lock"
   ],
-  "format": "console",
+  "format": ["javascript"],
   "reporters": ["console", "html"],
   "output": "./reports/jscpd"
 }

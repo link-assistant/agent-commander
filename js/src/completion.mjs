@@ -29,8 +29,13 @@ export function completionState(tool, messages) {
         state = 'incomplete';
       }
       if (type === 'step_finish') {
+        // A step that ended on a provider error is not a completed turn (hive-mind#3570).
         state =
-          event.part?.reason === 'tool-calls' ? 'incomplete' : 'completed';
+          event.part?.reason === 'tool-calls'
+            ? 'incomplete'
+            : event.part?.reason === 'error'
+              ? 'failed'
+              : 'completed';
       }
     } else {
       if (

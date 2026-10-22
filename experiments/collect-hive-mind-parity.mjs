@@ -3,9 +3,10 @@ import { writeFile, copyFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { execFileSync } from "node:child_process";
 const checkout = process.argv[2];
+const dataDirectory = process.argv[3] ?? "docs/case-studies/issue-55/data";
 if (!checkout)
   throw new Error(
-    "Usage: node experiments/collect-hive-mind-parity.mjs CHECKOUT",
+    "Usage: node experiments/collect-hive-mind-parity.mjs CHECKOUT [DATA_DIRECTORY]",
   );
 const catalog = await import(
   pathToFileURL(`${checkout}/src/models/catalog.mjs`)
@@ -25,16 +26,17 @@ const snapshot = {
   defaults: catalog.defaultModels,
 };
 await writeFile(
-  "docs/case-studies/issue-50/data/model-catalog.json",
+  `${dataDirectory}/model-catalog.json`,
   `${JSON.stringify(snapshot, null, 2)}\n`,
 );
 for (const file of [
   "agent-commander.lib.mjs",
   "models/catalog.mjs",
+  "models/aliases.mjs",
   "formal-ai-model.lib.mjs",
 ]) {
   await copyFile(
     `${checkout}/src/${file}`,
-    `docs/case-studies/issue-50/data/${file.replaceAll("/", "-")}.txt`,
+    `${dataDirectory}/${file.replaceAll("/", "-")}.txt`,
   );
 }

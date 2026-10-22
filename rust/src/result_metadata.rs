@@ -1,8 +1,20 @@
 //! Normalized result metadata for tool-specific agent output.
 
+use crate::background_tasks::{
+    assess_background_tasks, extract_observed_models, is_real_model_id, BackgroundTask,
+    StoppedBackgroundTask,
+};
 use crate::completion::{completion_state, outcome_messages};
+use crate::error_text::first_error_text;
+use crate::executor::signal_from_exit_code;
+use crate::usage_limit::{
+    classify_debug_lines, detect_usage_limit_sources, is_recoverable_tool_error, split_output,
+    UsageLimitVerdict,
+};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
+use std::sync::LazyLock;
 
 /// Pricing details derived from a tool's public pricing estimate.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -18,25 +30,52 @@ pub struct PricingInfo {
 pub struct ResultMetadata {
     pub tool: String,
     pub exit_code: i32,
+    /// Signal that ended the process (`SIGTERM`, `SIGKILL`, ...), if any
+    pub signal: Option<String>,
     pub success: bool,
+    /// The caller stopped the process after its final result
+    pub terminated_after_result: bool,
     pub session_id: Option<String>,
     pub limit_reached: bool,
     pub limit_reset_time: Option<String>,
     pub limit_timezone: Option<String>,
+    /// Exact reset epoch (seconds) when a structured source reports one
+    pub limit_resets_at: Option<i64>,
+    /// Limit window from a structured source (`five_hour`, `seven_day`, ...)
+    pub limit_window: Option<String>,
+    /// Where a limit found outside the output came from (`codex-rollout`)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit_source: Option<String>,
     pub anthropic_total_cost_usd: Option<f64>,
     pub public_pricing_estimate: Option<f64>,
     pub pricing_info: Option<PricingInfo>,
     pub result_summary: Option<String>,
     pub result_model_usage: Option<Value>,
+    /// Real model ids seen in the stream: main thread first, then subagents
+    pub observed_models: Vec<String>,
+    /// Main-thread model observed last
+    pub observed_model: Option<String>,
     pub stream_token_usage: Option<Value>,
     pub sub_agent_calls: Option<Vec<Value>>,
     pub error_during_execution: bool,
     pub error_type: Option<String>,
     pub error_message: Option<String>,
+    /// Claude `result.api_error` (or the API error message's `error`)
+    pub api_error: Option<String>,
+    pub api_error_status: Option<i64>,
+    pub terminal_reason: Option<String>,
+    pub request_id: Option<String>,
+    /// Background tasks that never reported an end
+    pub running_background_tasks: Vec<BackgroundTask>,
+    /// Background tasks stopped while the main thread was idle
+    pub background_tasks_stopped: u64,
+    pub stopped_background_tasks: Vec<StoppedBackgroundTask>,
+    /// Claude's print-mode background wait ceiling, when it announced one
+    pub print_wait_ceiling_seconds: Option<u64>,
 }
 
 /// Inputs used to build normalized result metadata.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct BuildMetadataOptions<'a> {
     pub tool: &'a str,
     pub exit_code: i32,
@@ -44,13 +83,10 @@ pub struct BuildMetadataOptions<'a> {
     pub parsed_output: Option<&'a [Value]>,
     pub session_id: Option<String>,
     pub usage: Option<Value>,
-}
-
-#[derive(Debug, Clone, Default)]
-struct UsageLimit {
-    reached: bool,
-    reset_time: Option<String>,
-    timezone: Option<String>,
+    /// Signal that ended the process; inferred from a 128 + N exit code when `None`
+    pub signal: Option<String>,
+    /// The caller stopped the process after its final result
+    pub terminated_after_result: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -61,140 +97,13 @@ struct ExecutionError {
 }
 
 fn parse_json_messages(output: &str) -> Vec<Value> {
-    if output.trim().is_empty() {
-        return Vec::new();
-    }
-
-    if let Ok(parsed) = serde_json::from_str::<Value>(output) {
-        return match parsed {
-            Value::Array(messages) => messages,
-            message => vec![message],
-        };
-    }
-
-    output
-        .lines()
-        .filter_map(|line| {
-            let trimmed = line.trim();
-            if trimmed.is_empty() || (!trimmed.starts_with('{') && !trimmed.starts_with('[')) {
-                return None;
-            }
-
-            serde_json::from_str::<Value>(trimmed).ok()
-        })
+    crate::streaming::parse_json_records(output)
+        .into_iter()
         .flat_map(|value| match value {
             Value::Array(values) => values,
             message => vec![message],
         })
         .collect()
-}
-
-fn limit_reached(output: &str) -> bool {
-    let lower = output.to_ascii_lowercase();
-    [
-        "usage limit reached",
-        "usage limit exceeded",
-        "rate limit",
-        "rate_limit",
-        "limit reached",
-        "billing hard limit",
-        "please try again at",
-        "available again at",
-        "session limit reached",
-        "weekly limit reached",
-        "daily limit reached",
-        "monthly limit reached",
-        "freeusagelimiterror",
-        "resets ",
-    ]
-    .iter()
-    .any(|pattern| lower.contains(pattern))
-}
-
-fn clean_reset_time(value: &str) -> Option<String> {
-    let cleaned = value
-        .trim()
-        .trim_matches(|c: char| c == ')' || c == ',' || c == ';')
-        .trim();
-    if cleaned.is_empty() || cleaned.len() > 120 {
-        return None;
-    }
-
-    Some(cleaned.to_string())
-}
-
-fn extract_reset_time(output: &str) -> Option<String> {
-    let lower = output.to_ascii_lowercase();
-    for marker in [
-        "limit resets at",
-        "reset time:",
-        "resets at",
-        "reset at",
-        "try again at",
-        "available again at",
-        "available at",
-        "resets",
-        "reset",
-    ] {
-        if let Some(index) = lower.find(marker) {
-            let tail = &output[index + marker.len()..];
-            let candidate = tail.split(['\n', '.']).next().unwrap_or_default().trim();
-            if let Some(cleaned) = clean_reset_time(candidate) {
-                return Some(cleaned);
-            }
-        }
-    }
-
-    None
-}
-
-fn looks_like_timezone(value: &str) -> bool {
-    let value = value.trim();
-    if value.starts_with("UTC") {
-        return true;
-    }
-    if value.contains('/') {
-        return value
-            .chars()
-            .all(|c| c.is_ascii_alphabetic() || c == '/' || c == '_' || c == '-');
-    }
-    value.len() >= 2 && value.len() <= 5 && value.chars().all(|c| c.is_ascii_uppercase())
-}
-
-fn extract_timezone(output: &str, reset_time: Option<&str>) -> Option<String> {
-    for part in output.split('(').skip(1) {
-        if let Some(candidate) = part.split(')').next() {
-            if looks_like_timezone(candidate) {
-                return Some(candidate.trim().to_string());
-            }
-        }
-    }
-
-    if let Some(reset_time) = reset_time {
-        for token in reset_time.split_whitespace() {
-            let candidate = token.trim_matches(|c: char| c == '(' || c == ')' || c == ',');
-            if looks_like_timezone(candidate) {
-                return Some(candidate.to_string());
-            }
-        }
-    }
-
-    None
-}
-
-fn detect_usage_limit(output: &str) -> UsageLimit {
-    if !limit_reached(output) {
-        return UsageLimit::default();
-    }
-
-    let reset_time = extract_reset_time(output);
-    let timezone = extract_timezone(output, reset_time.as_deref());
-
-    UsageLimit {
-        reached: true,
-        reset_time,
-        timezone,
-    }
 }
 
 fn text_from_value(value: Option<&Value>) -> Option<String> {
@@ -321,7 +230,8 @@ fn extract_result_model_usage(messages: &[Value]) -> Option<Value> {
             .get("model")
             .or_else(|| message.pointer("/message/model"))
             .or_else(|| message.pointer("/part/model"))
-            .and_then(Value::as_str);
+            .and_then(Value::as_str)
+            .filter(|model| is_real_model_id(model));
         let usage = message
             .get("usage")
             .or_else(|| message.pointer("/message/usage"))
@@ -423,17 +333,40 @@ fn extract_sub_agent_calls(messages: &[Value]) -> Option<Vec<Value>> {
     }
 }
 
+/// Claude's synthetic API error message carries the error code as a string
+/// (`"error":"rate_limit"`) and the readable text in its content.
+fn api_error_code(messages: &[Value]) -> Option<&str> {
+    messages
+        .iter()
+        .rev()
+        .find(|event| {
+            event["type"] == "assistant"
+                && event["is_api_error_message"] == true
+                && event["error"].is_string()
+        })
+        .and_then(|event| event["error"].as_str())
+}
+
+fn non_empty_str(value: Option<&Value>) -> Option<&str> {
+    value
+        .and_then(Value::as_str)
+        .filter(|text| !text.is_empty())
+}
+
 fn extract_error_from_messages(messages: &[Value]) -> ExecutionError {
+    let code = api_error_code(messages);
     for message in messages.iter().rev() {
-        let message_type = message
-            .get("type")
-            .or_else(|| message.get("subtype"))
-            .or_else(|| message.pointer("/item/type"))
-            .and_then(Value::as_str);
+        if !message.is_object() || is_recoverable_tool_error(message) {
+            // A failed tool call is returned to the model; it does not decide the run.
+            continue;
+        }
+        let message_type = non_empty_str(message.get("type"))
+            .or_else(|| non_empty_str(message.get("subtype")))
+            .or_else(|| non_empty_str(message.pointer("/item/type")));
         let is_error = message.get("is_error").and_then(Value::as_bool) == Some(true)
             || message
                 .get("error")
-                .is_some_and(|e| !e.is_null() && e != &Value::Bool(false))
+                .is_some_and(|e| !e.is_null() && e != &Value::Bool(false) && e != "")
             || matches!(message_type, Some("error" | "step_error" | "turn.failed"))
             || message["status"] == "error"
             || message["subtype"]
@@ -445,25 +378,31 @@ fn extract_error_from_messages(messages: &[Value]) -> ExecutionError {
         }
 
         let error = message.get("error");
-        let error_type = error
-            .and_then(|value| value.get("type").or_else(|| value.get("code")))
-            .and_then(Value::as_str)
-            .or_else(|| message.get("errorType").and_then(Value::as_str))
-            .or_else(|| message.get("error_type").and_then(Value::as_str))
+        let object_error = error.filter(|value| value.is_object());
+        let string_error = non_empty_str(error);
+        let error_type = object_error
+            .and_then(|value| {
+                ["type", "code", "name"]
+                    .iter()
+                    .find_map(|key| non_empty_str(value.get(*key)))
+            })
+            .or(string_error)
+            .or_else(|| non_empty_str(message.get("errorType")))
+            .or_else(|| non_empty_str(message.get("error_type")))
+            .or_else(|| {
+                (message_type == Some("result"))
+                    .then(|| non_empty_str(message.get("api_error")).or(code))
+                    .flatten()
+            })
             .or(message_type)
             .unwrap_or("execution_error")
             .to_string();
-        let error_message = error
-            .and_then(Value::as_str)
-            .map(ToString::to_string)
-            .or_else(|| {
-                error
-                    .and_then(|value| value.get("message").or_else(|| value.get("details")))
-                    .and_then(Value::as_str)
-                    .map(ToString::to_string)
-            })
+        let error_message = object_error
+            .map(|value| first_error_text(&[value], ""))
+            .filter(|text| !text.is_empty())
             .or_else(|| text_from_value(message.get("message")))
             .or_else(|| text_from_value(message.get("result")))
+            .or_else(|| string_error.map(ToString::to_string))
             .unwrap_or_else(|| "Execution failed".to_string());
 
         return ExecutionError {
@@ -476,9 +415,63 @@ fn extract_error_from_messages(messages: &[Value]) -> ExecutionError {
     ExecutionError::default()
 }
 
+static PREFERRED_EXIT_LINE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)^(?:error\b|fatal:|(?:/\S*/)?(?:ba|z)?sh:\s)").expect("valid pattern")
+});
+
+/// A `tracing` log line (`2026-01-01T00:00:00.000Z DEBUG ...`) names no exit reason.
+static TRACING_LINE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^\S*?\d{4}-\d{2}-\d{2}T[\d:.]+Z\s+(?:TRACE|DEBUG|INFO|WARN|ERROR)\s")
+        .expect("valid pattern")
+});
+
+/// The reason a process exited is a plain text line: JSON records, the
+/// `ANTHROPIC_LOG=debug` dump and its base64 bodies are not (hive-mind#3570).
+fn exit_reason_line(plain_output: &str) -> Option<String> {
+    let (_, lines) = split_output(plain_output);
+    let debug = classify_debug_lines(&lines);
+    let candidates: Vec<&str> = lines
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| !debug.debug_lines.contains(index))
+        .map(|(_, line)| line.trim())
+        .filter(|line| !line.is_empty() && !TRACING_LINE.is_match(line))
+        .collect();
+    candidates
+        .iter()
+        .rev()
+        .find(|line| PREFERRED_EXIT_LINE.is_match(line))
+        .or_else(|| candidates.last())
+        .map(|line| (*line).to_string())
+}
+
+fn exit_code_error(exit_code: i32, signal: Option<&str>, plain_output: &str) -> ExecutionError {
+    let reason = exit_reason_line(plain_output);
+    let Some(signal) = signal else {
+        return ExecutionError {
+            has_error: true,
+            error_type: Some("exit_code".to_string()),
+            message: reason.or_else(|| Some(format!("Process exited with code {exit_code}"))),
+        };
+    };
+    // A signal is the cause; a preferred error line may still say why it came.
+    let preferred = reason
+        .filter(|line| PREFERRED_EXIT_LINE.is_match(line))
+        .map(|line| format!(": {line}"))
+        .unwrap_or_default();
+    ExecutionError {
+        has_error: true,
+        error_type: Some("signal".to_string()),
+        message: Some(format!(
+            "Process exited with code {exit_code} ({signal}){preferred}"
+        )),
+    }
+}
+
 fn detect_execution_error(
     tool: &str,
     exit_code: i32,
+    signal: Option<&str>,
     plain_output: &str,
     messages: &[Value],
 ) -> ExecutionError {
@@ -509,22 +502,61 @@ fn detect_execution_error(
     }
 
     if exit_code != 0 {
-        let last_line = plain_output
-            .trim()
-            .lines()
-            .rev()
-            .find(|line| !line.trim().is_empty())
-            .map(str::trim)
-            .filter(|line| !line.is_empty())
-            .map(ToString::to_string);
-        return ExecutionError {
-            has_error: true,
-            error_type: Some("exit_code".to_string()),
-            message: last_line.or_else(|| Some(format!("Process exited with code {}", exit_code))),
-        };
+        return signal
+            .is_none()
+            .then(|| error_record_in_output(plain_output))
+            .flatten()
+            .unwrap_or_else(|| exit_code_error(exit_code, signal, plain_output));
     }
 
     ExecutionError::default()
+}
+
+/// A process that failed without an error event on stdout may have written it
+/// to stderr: Agent prints its fatal errors there (agent `src/cli/output.ts`
+/// `outputError`; hive-mind `agent.lib.mjs` scans both streams). Only explains
+/// a failed exit, so diagnostics cannot fail a successful run.
+fn error_record_in_output(plain_output: &str) -> Option<ExecutionError> {
+    let records: Vec<Value> = parse_json_messages(plain_output)
+        .into_iter()
+        .filter(|record| record.get("type").and_then(Value::as_str) == Some("error"))
+        .collect();
+    Some(extract_error_from_messages(&records)).filter(|error| error.has_error)
+}
+
+struct ApiErrorDetails {
+    api_error: Option<String>,
+    api_error_status: Option<i64>,
+    terminal_reason: Option<String>,
+    request_id: Option<String>,
+}
+
+/// API failure details from Claude's last `result` or its API error message.
+fn extract_api_error_details(messages: &[Value]) -> ApiErrorDetails {
+    let result = messages
+        .iter()
+        .rev()
+        .find(|event| event["type"] == "result");
+    let api_message = messages
+        .iter()
+        .rev()
+        .find(|event| event["type"] == "assistant" && event["is_api_error_message"] == true);
+    let text = |event: Option<&Value>, key: &str| {
+        event
+            .and_then(|event| event.get(key))
+            .and_then(Value::as_str)
+            .map(String::from)
+    };
+    ApiErrorDetails {
+        api_error: text(result, "api_error")
+            .or_else(|| text(result, "error"))
+            .or_else(|| text(api_message, "error")),
+        api_error_status: result
+            .and_then(|result| result.get("api_error_status"))
+            .and_then(Value::as_i64),
+        terminal_reason: text(result, "terminal_reason"),
+        request_id: text(result, "request_id").or_else(|| text(api_message, "request_id")),
+    }
 }
 
 fn extract_session_id(explicit_session_id: Option<String>, messages: &[Value]) -> Option<String> {
@@ -572,15 +604,26 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
         .filter(|event| event["parent_tool_use_id"].is_null())
         .cloned()
         .collect();
+    let signal = options
+        .signal
+        .clone()
+        .or_else(|| signal_from_exit_code(options.exit_code).map(String::from));
     let completion = completion_state(options.tool, &messages);
+    // Stopping a process after its completed result is the caller's own
+    // signal, not the tool's verdict (hive-mind#3015 interpretClaudeExitCode).
+    let exit_forgiven = options.terminated_after_result && completion == Some("completed");
+    // The raw stream contains HTTP header names (e.g.
+    // "anthropic-ratelimit-unified-5h-reset") even on a successful run, so a
+    // native completion event wins over the text scan (issue #37).
     let usage_limit = if completion == Some("completed") {
-        UsageLimit::default()
+        UsageLimitVerdict::default()
     } else {
-        detect_usage_limit(options.plain_output)
+        detect_usage_limit_sources(options.plain_output, &messages)
     };
     let mut execution_error = detect_execution_error(
         options.tool,
-        options.exit_code,
+        if exit_forgiven { 0 } else { options.exit_code },
+        signal.as_deref(),
         options.plain_output,
         outcome_messages(options.tool, &messages),
     );
@@ -591,21 +634,46 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
             message: Some("Process exited before the native completion event".into()),
         };
     }
+    let background = assess_background_tasks(
+        &all_messages,
+        options.plain_output,
+        options.terminated_after_result,
+    );
+    if !execution_error.has_error && background.incomplete {
+        execution_error = ExecutionError {
+            has_error: true,
+            error_type: Some("background_tasks_stopped".into()),
+            message: background.cause.clone(),
+        };
+    }
+    // A server-side throttle is transient: callers retry instead of waiting for a reset.
+    if execution_error.has_error && usage_limit.throttled {
+        execution_error.error_type = Some("rate_limited".into());
+    }
     let session_id = extract_session_id(options.session_id, &messages);
     let public_pricing_estimate = public_pricing_estimate(options.tool, options.usage.as_ref());
     let pricing_info = public_pricing_estimate.map(|total_cost_usd| PricingInfo {
         total_cost_usd,
         source: format!("{}-stream-usage", options.tool),
     });
+    let (observed_models, observed_model) = extract_observed_models(&all_messages);
+    let api = extract_api_error_details(&messages);
 
     ResultMetadata {
         tool: options.tool.to_string(),
         exit_code: options.exit_code,
-        success: options.exit_code == 0 && !usage_limit.reached && !execution_error.has_error,
+        signal,
+        success: (options.exit_code == 0 || exit_forgiven)
+            && !usage_limit.reached
+            && !execution_error.has_error,
+        terminated_after_result: options.terminated_after_result,
         session_id,
         limit_reached: usage_limit.reached,
         limit_reset_time: usage_limit.reset_time,
         limit_timezone: usage_limit.timezone,
+        limit_resets_at: usage_limit.resets_at,
+        limit_window: usage_limit.window,
+        limit_source: None,
         anthropic_total_cost_usd: first_number(
             &messages,
             &["total_cost_usd", "totalCostUsd", "anthropicTotalCostUSD"],
@@ -614,11 +682,21 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
         pricing_info,
         result_summary: extract_result_summary(&messages, options.plain_output),
         result_model_usage: extract_result_model_usage(&messages),
+        observed_models,
+        observed_model,
         stream_token_usage: options.usage,
         sub_agent_calls: extract_sub_agent_calls(&all_messages),
         error_during_execution: execution_error.has_error,
         error_type: execution_error.error_type,
         error_message: execution_error.message,
+        api_error: api.api_error,
+        api_error_status: api.api_error_status,
+        terminal_reason: api.terminal_reason,
+        request_id: api.request_id,
+        running_background_tasks: background.running_background_tasks,
+        background_tasks_stopped: background.background_tasks_stopped,
+        stopped_background_tasks: background.stopped_background_tasks,
+        print_wait_ceiling_seconds: background.print_wait_ceiling_seconds,
     }
 }
 
@@ -641,6 +719,7 @@ mod tests {
             parsed_output: None,
             session_id: None,
             usage: Some(usage.clone()),
+            ..Default::default()
         });
 
         assert_eq!(metadata.tool, "codex");
@@ -678,6 +757,7 @@ mod tests {
             parsed_output: Some(&messages),
             session_id: None,
             usage: Some(usage.clone()),
+            ..Default::default()
         });
 
         assert_eq!(metadata.tool, "agent");

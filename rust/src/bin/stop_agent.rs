@@ -49,6 +49,7 @@ async fn main() {
     // Stop the agent
     let stop_options = AgentStopOptions {
         dry_run: options.dry_run,
+        ..Default::default()
     };
 
     match controller.stop(stop_options).await {

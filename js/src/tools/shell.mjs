@@ -2,6 +2,8 @@
  * Shared shell helpers for tool command builders.
  */
 
+import { quoteForContext } from 'command-stream';
+
 const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /**
@@ -12,9 +14,19 @@ const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 export function escapeArg(arg) {
   const value = String(arg);
   if (!/^[-a-zA-Z0-9_./:=+,@%]+$/.test(value)) {
-    return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`')}"`;
+    return `"${quoteForContext(value, 'double')}"`;
   }
   return value;
+}
+
+/**
+ * Escape a value for printing inside '...' (command-stream's single-quote
+ * context).
+ * @param {string} value - Value to escape
+ * @returns {string} Escaped value without surrounding quotes
+ */
+export function escapeSingleQuotes(value) {
+  return quoteForContext(value ?? '', 'single');
 }
 
 /**
@@ -31,8 +43,10 @@ export function normalizeExtraArgs(extraArgs = []) {
 
 /**
  * Normalize passthrough environment variables.
+ * A `null` or `undefined` value removes the variable from the inherited
+ * environment (Hive Mind drops `GH_TOKEN`, `MAX_THINKING_TOKENS`, ... per run).
  * @param {Object|Array|undefined} extraEnv - Environment variables
- * @returns {Array<[string, string]>} Normalized entries
+ * @returns {Array<[string, string|null]>} Normalized entries; `null` unsets
  */
 export function normalizeExtraEnv(extraEnv = {}) {
   const entries = [];
@@ -69,7 +83,7 @@ export function normalizeExtraEnv(extraEnv = {}) {
     if (!ENV_NAME_PATTERN.test(name)) {
       throw new Error(`Invalid environment variable name "${name}"`);
     }
-    return [name, String(value)];
+    return [name, value === null || value === undefined ? null : String(value)];
   });
 }
 
@@ -89,7 +103,12 @@ export function buildCommandHead(options) {
   if (envEntries.length > 0) {
     parts.push('env');
     parts.push(
-      ...envEntries.map(([key, value]) => `${key}=${escapeArg(value)}`)
+      ...envEntries
+        .filter(([, value]) => value === null)
+        .map(([key]) => `-u ${key}`),
+      ...envEntries
+        .filter(([, value]) => value !== null)
+        .map(([key, value]) => `${key}=${escapeArg(value)}`)
     );
   }
 

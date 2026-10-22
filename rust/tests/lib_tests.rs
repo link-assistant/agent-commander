@@ -214,7 +214,10 @@ async fn test_agent_stop_in_dry_run_mode_with_screen() {
     let mut controller = agent(options).unwrap();
 
     let result = controller
-        .stop(AgentStopOptions { dry_run: true })
+        .stop(AgentStopOptions {
+            dry_run: true,
+            ..Default::default()
+        })
         .await
         .unwrap();
 

@@ -28,6 +28,10 @@ pub struct AgentTuiOptions {
     pub extra_args: Vec<String>,
     /// Additional environment variables.
     pub extra_env: HashMap<String, String>,
+    /// Variables removed from the inherited environment; the launch then
+    /// runs through `env -u NAME`, because the terminal capture can only add
+    /// variables.
+    pub unset_env: Vec<String>,
     /// Optional model name or alias.
     pub model: Option<String>,
     /// Initial user prompt.
@@ -64,6 +68,12 @@ pub struct AgentTuiOptions {
     pub timeout: Duration,
     /// Directory for transcript, frame, cast, and animation artifacts.
     pub artifact_directory: Option<PathBuf>,
+    /// Record a frame after every PTY write instead of after each settle
+    /// (command-stream 1.9.0 `frames_on_write`).
+    pub frames_on_write: bool,
+    /// Keep the full recording; `false` keeps only the latest frame and the
+    /// last 1 MB of output (command-stream 1.9.0 `recording`).
+    pub recording: bool,
 }
 
 impl Default for AgentTuiOptions {
@@ -75,6 +85,7 @@ impl Default for AgentTuiOptions {
             prefix_args: Vec::new(),
             extra_args: Vec::new(),
             extra_env: HashMap::new(),
+            unset_env: Vec::new(),
             model: None,
             prompt: None,
             system_prompt: None,
@@ -93,6 +104,8 @@ impl Default for AgentTuiOptions {
             stop_marker_grace: Duration::from_millis(250),
             timeout: Duration::from_secs(30),
             artifact_directory: None,
+            frames_on_write: false,
+            recording: true,
         }
     }
 }
@@ -153,7 +166,7 @@ pub enum AgentTuiError {
 
 fn mapped_model(tool: &str, model: &str) -> String {
     match tool {
-        "claude" => claude::map_model_to_id(model),
+        "claude" => claude::model_arg(model),
         "codex" => codex::map_model_to_id(model),
         "opencode" => opencode::map_model_to_id(model),
         "agent" => agent::map_model_to_id(model),
@@ -307,11 +320,29 @@ pub fn build_agent_tui_launch(options: &AgentTuiOptions) -> Result<AgentTuiLaunc
             READ_ONLY_OPENCODE_PERMISSION.into(),
         );
     }
+    let mut file = options
+        .executable
+        .clone()
+        .unwrap_or_else(|| options.tool.clone());
+    if !options.unset_env.is_empty() {
+        let mut wrapped = Vec::with_capacity(options.unset_env.len() * 2 + args.len() + 1);
+        for name in &options.unset_env {
+            if !crate::tools::shell::is_valid_env_name(name) {
+                return Err(AgentTuiError::Launch(format!(
+                    "invalid environment variable name: {name}"
+                )));
+            }
+            env.remove(name);
+            wrapped.push("-u".to_string());
+            wrapped.push(name.clone());
+        }
+        wrapped.push(file);
+        wrapped.extend(args);
+        file = "env".into();
+        args = wrapped;
+    }
     Ok(AgentTuiLaunch {
-        file: options
-            .executable
-            .clone()
-            .unwrap_or_else(|| options.tool.clone()),
+        file,
         args,
         cwd: Some(options.working_directory.clone()),
         env,
@@ -369,7 +400,7 @@ pub fn capture_agent_tui(options: AgentTuiOptions) -> Result<AgentTuiCapture, Ag
             after: options.prompt_after.clone(),
             text: Some(prompt),
             key: Some(options.prompt_key.clone()),
-            resize: None,
+            ..TerminalInteraction::default()
         });
     }
     interactions.extend(options.interactions.clone());
@@ -384,8 +415,10 @@ pub fn capture_agent_tui(options: AgentTuiOptions) -> Result<AgentTuiCapture, Ag
         interactions,
         stop_marker: options.stop_marker,
         stop_marker_grace: options.stop_marker_grace,
-        timeout: options.timeout,
+        timeout: Some(options.timeout),
         artifact_directory: options.artifact_directory,
+        frames_on_write: options.frames_on_write,
+        recording: options.recording,
     })?;
     Ok(AgentTuiCapture {
         tool: options.tool,

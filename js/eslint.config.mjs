@@ -32,6 +32,10 @@ export default [
         TextEncoder: 'readonly',
         TextDecoder: 'readonly',
         Uint8Array: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
       },
     },
     rules: {

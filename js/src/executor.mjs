@@ -2,6 +2,71 @@
  * Execute commands using the runtime's Node-compatible child_process API.
  */
 
+import { constants } from 'node:os';
+
+/** Default delay before a SIGTERM is escalated to SIGKILL. */
+export const DEFAULT_KILL_AFTER_MS = 5000;
+
+/**
+ * Default bound for the pipes to close once the wrapper shell has exited. A
+ * backgrounded grandchild (Claude Bash tasks, MCP servers) can hold stdout
+ * open for hours after the CLI itself is gone (hive-mind#3015).
+ */
+export const DEFAULT_PIPE_DRAIN_MS = 5000;
+
+/**
+ * Normalize a child exit into the shell convention: a signal becomes
+ * 128 + its number, and 128 + N names the signal a pipeline reported
+ * (hive-mind `normalizeCodexExit`).
+ * @param {Object} exit - Raw exit
+ * @param {number|null} [exit.code] - Exit code reported by the runtime
+ * @param {string|null} [exit.signal] - Signal name reported by the runtime
+ * @returns {{exitCode: number, signal: string|null}} Normalized exit
+ */
+export function normalizeExit({ code = null, signal = null } = {}) {
+  const signalNumber = signal ? constants.signals[signal] : undefined;
+  const exitCode = signalNumber
+    ? 128 + signalNumber
+    : Number.isInteger(code)
+      ? code
+      : 1;
+  return { exitCode, signal: signal || signalFromExitCode(exitCode) };
+}
+
+/**
+ * Name the signal behind an exit code of 128 + N.
+ * @param {number} exitCode - Exit code
+ * @returns {string|null} Signal name such as SIGKILL
+ */
+export function signalFromExitCode(exitCode) {
+  if (!Number.isInteger(exitCode) || exitCode <= 128) {
+    return null;
+  }
+  const entry = Object.entries(constants.signals).find(
+    ([, number]) => exitCode === 128 + number
+  );
+  return entry?.[0] || null;
+}
+
+/**
+ * True while any process in the group led by `pid` is alive. Signal 0 only
+ * checks existence; EPERM means the group exists but belongs to someone else.
+ * @param {number} pid - Process group leader
+ * @param {Function} [kill] - Injectable for tests
+ * @returns {boolean} Whether the group is alive
+ */
+export function isProcessGroupAlive(pid, kill = process.kill.bind(process)) {
+  if (!pid || process.platform === 'win32') {
+    return false;
+  }
+  try {
+    kill(-pid, 0);
+    return true;
+  } catch (error) {
+    return error?.code === 'EPERM';
+  }
+}
+
 /**
  * Execute a command and return the result
  * @param {string} command - Command to execute
@@ -11,7 +76,7 @@
  * @param {Function} [options.onStdout] - Callback for stdout chunks
  * @param {Function} [options.onStderr] - Callback for stderr chunks
  * @param {Function} [options.onExit] - Callback for exit code
- * @returns {Promise<{exitCode: number, stdout: string, stderr: string}>} Execution result
+ * @returns {Promise<{exitCode: number, signal: string|null, stdout: string, stderr: string}>} Execution result
  */
 export async function executeCommand(command, options = {}) {
   const {
@@ -25,7 +90,7 @@ export async function executeCommand(command, options = {}) {
   if (dryRun) {
     console.log('Dry run - command that would be executed:');
     console.log(command);
-    return { exitCode: 0, stdout: '', stderr: '', command };
+    return { exitCode: 0, signal: null, stdout: '', stderr: '', command };
   }
 
   const handle = await startCommand(command, {
@@ -34,13 +99,13 @@ export async function executeCommand(command, options = {}) {
     onStderr,
   });
   const exitCode = await handle.waitForExit();
-  const { stdout, stderr } = handle.getOutput();
+  const { stdout, stderr, signal } = handle.getOutput();
 
   if (onExit) {
     onExit(exitCode);
   }
 
-  return { exitCode, stdout, stderr, command };
+  return { exitCode, signal, stdout, stderr, command };
 }
 
 /**
@@ -51,17 +116,29 @@ export async function executeCommand(command, options = {}) {
  * @param {boolean} [options.pipeStdin] - If true, open the child's stdin as a
  *   writable pipe (used by the per-command approval relay to send the prompt
  *   and permission responses as NDJSON frames)
+ * @param {number} [options.pipeDrainMs] - After the wrapper shell exits, wait
+ *   this long for the pipes to close, then kill what is left of the process
+ *   group and resolve (default {@link DEFAULT_PIPE_DRAIN_MS})
  * @returns {Promise<Object>} Process handle with methods to interact with the process
  */
 export async function startCommand(command, options = {}) {
-  const { attached = true, onStdout, onStderr, pipeStdin = false } = options;
+  const {
+    attached = true,
+    onStdout,
+    onStderr,
+    pipeStdin = false,
+    pipeDrainMs = DEFAULT_PIPE_DRAIN_MS,
+  } = options;
   const { spawn } = await import('node:child_process');
 
   let stdout = '';
   let stderr = '';
   let exitCode = null;
+  let signal = null;
   let hasExited = false;
   let resolveExit;
+  let drainTimer = null;
+  const killTimers = new Set();
 
   const exitPromise = new Promise((resolve) => {
     resolveExit = resolve;
@@ -97,24 +174,62 @@ export async function startCommand(command, options = {}) {
     }
   });
 
+  const finish = (exit) => {
+    if (hasExited) {
+      return;
+    }
+    ({ exitCode, signal } = normalizeExit(exit));
+    hasExited = true;
+    clearTimeout(drainTimer);
+    resolveExit(exitCode);
+  };
+
+  const signalGroup = (name) => {
+    try {
+      if (process.platform !== 'win32') {
+        process.kill(-child.pid, name);
+      } else {
+        child.kill(name);
+      }
+    } catch (error) {
+      if (error.code !== 'ESRCH') {
+        throw error;
+      }
+    }
+  };
+
   child.on('error', (error) => {
     if (!hasExited) {
       stderr += error.message;
       if (attached) {
         process.stderr.write(error.message);
       }
-      exitCode = 1;
-      hasExited = true;
-      resolveExit(1);
+      finish({ code: 1 });
     }
   });
 
-  child.on('close', (code) => {
-    if (!hasExited) {
-      exitCode = code ?? 1;
-      hasExited = true;
-      resolveExit(exitCode);
+  // The wrapper exited; a grandchild may still hold the pipes open. Bound the
+  // wait, then stop the rest of the group so the caller is never stuck.
+  child.on('exit', (code, exitSignal) => {
+    if (hasExited || !(pipeDrainMs >= 0) || !Number.isFinite(pipeDrainMs)) {
+      return;
     }
+    drainTimer = setTimeout(() => {
+      if (isProcessGroupAlive(child.pid)) {
+        signalGroup('SIGKILL');
+      }
+      child.stdout.destroy();
+      child.stderr.destroy();
+      finish({ code, signal: exitSignal });
+    }, pipeDrainMs);
+    drainTimer.unref?.();
+  });
+
+  child.on('close', (code, exitSignal) => {
+    for (const timer of killTimers) {
+      clearTimeout(timer);
+    }
+    finish({ code, signal: exitSignal });
   });
 
   // Give the stream a moment to start
@@ -123,23 +238,45 @@ export async function startCommand(command, options = {}) {
   return {
     command,
     waitForExit: () => exitPromise,
-    getOutput: () => ({ stdout, stderr, exitCode, hasExited }),
+    getOutput: () => ({ stdout, stderr, exitCode, signal, hasExited }),
     process: child,
-    terminate: (signal = 'SIGTERM') => {
-      if (hasExited || child.exitCode !== null || child.signalCode !== null) {
-        return;
+    /**
+     * Signal the whole process group, then escalate to SIGKILL. The group is
+     * checked instead of the wrapper shell: the CLI and its background tasks
+     * can outlive `bash -c` (hive-mind#3015).
+     * @param {string} [name] - Signal to send first
+     * @param {Object} [terminateOptions] - Options
+     * @param {number|null} [terminateOptions.killAfterMs] - Delay before
+     *   SIGKILL; null disables the escalation
+     * @returns {boolean} True when a signal was sent
+     */
+    terminate: (
+      name = 'SIGTERM',
+      { killAfterMs = DEFAULT_KILL_AFTER_MS } = {}
+    ) => {
+      const alive =
+        process.platform === 'win32'
+          ? child.exitCode === null && child.signalCode === null
+          : isProcessGroupAlive(child.pid);
+      if (!alive) {
+        return false;
       }
-      try {
-        if (process.platform !== 'win32') {
-          process.kill(-child.pid, signal);
-        } else {
-          child.kill(signal);
-        }
-      } catch (error) {
-        if (error.code !== 'ESRCH') {
-          throw error;
-        }
+      signalGroup(name);
+      if (name !== 'SIGKILL' && Number.isFinite(killAfterMs)) {
+        const timer = setTimeout(() => {
+          killTimers.delete(timer);
+          if (
+            process.platform === 'win32'
+              ? child.exitCode === null
+              : isProcessGroupAlive(child.pid)
+          ) {
+            signalGroup('SIGKILL');
+          }
+        }, killAfterMs);
+        timer.unref?.();
+        killTimers.add(timer);
       }
+      return true;
     },
     /**
      * Write a chunk to the child's stdin (no-op if stdin is not piped/open).

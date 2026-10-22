@@ -1,0 +1,586 @@
+5a7cb68b7 2.39.5
+e6bc760cb Merge pull request #3585 from link-assistant/issue-3583-6afa0661442e
+759411117 test: commit the #3583 sidecar log fixture as .txt (*.log is ignored); docs: update translated COLLECTING-LOGS and CONFIGURATION
+97136fcbb chore(deps): pin @dotenvx/dotenvx 2.38.2 for the dependency-freshness gate
+a392b8bfe experiments: before/after replay of the root-owned memory volume (#3583)
+34d8a4357 Remove .gitkeep placeholder
+766e2ea4f docs: describe Formal AI memory ownership check, logging warning and sidecar log archive (#3583)
+88f3e034b fix(formal-ai): check memory volume ownership on every sidecar start, report logging failures, archive sidecar stdout (#3583)
+4663d2a0c Merge origin/main into issue-3583-6afa0661442e
+4d24c13c3 2.39.4
+74cfa4e9c Merge pull request #3571 from link-assistant/issue-3570-e9ebcaf8355f
+fc511e66e test: expect jscpd 5.4.2 in the issue #2187 pin check
+5a6978e4f chore(deps): bump jscpd to 5.4.2 and @opentelemetry/api to 1.10.0 for the dependency-freshness gate
+d01d47a28 chore: remove the PR-creation placeholder .gitkeep (#3570)
+13725c4de docs(case-study): link the filed upstream Claude Code issue for #3570
+1bdd71d2b Merge remote-tracking branch 'origin/main' into issue-3570-e9ebcaf8355f
+a55298764 docs(case-study): issue #3570 timeline, root causes, upstream report, mock reproduction and changeset
+3fdc7d867 fix(opencode): check {"type":"error"} records for a usage limit, not only the last stdout chunk (#3570)
+33e182788 fix(codex): cross-check the rollout rate_limits and error events on a non-zero exit (#3570)
+9c526b21e 2.39.3
+832cf3179 fix(claude): cross-check transcript, rate_limit_event and debug 429 headers for a usage limit (#3570)
+16774115f Merge remote-tracking branch 'origin/main' into issue-3570-e9ebcaf8355f
+f2253a7e7 Merge pull request #3553 from link-assistant/issue-3552-3292514d07d0
+bf76d4b23 fix(lint): escape every regex metacharacter when following an imported retry wrapper (#3552)
+378f7b73c fix(retry): an options call on a stub $ that returns no tag passes through the wrappers (#3552)
+bd308b164 Add development log for issue #3583 PR #3585
+e317bd33f Add development log for issue #3583 PR #3585
+39a277f0d Add development log for issue #3583 PR #3585
+00524c31f Initial commit with task details
+3bc7ebcdf fix(retry): tool-env-gh-auth loads the rate-limit policy lazily, so the isolation runner imports stay offline (#3552)
+387028248 docs(case-study): require-exec-timeout blind spot for a renamed $ (#3552)
+25e5c1762 fix(lint): require-exec-timeout follows command-stream's $ destructured under another name (#3552)
+47cbafa80 test(2324): the installation-token probe declares rawDollar$ like github.lib now does (#3552)
+dedc6b246 chore(deps): formal-ai 0.355.0, dotenvx 2.38.1 and three lockfile entries the freshness gate flagged (#3552)
+226ff0c89 chore: keep interactive-mode.lib.mjs within the 1350-line warning threshold (#3552)
+aa9b8c1c8 Add development log for issue #3570 PR #3571
+788ca9033 Add development log for issue #3570 PR #3571
+338e00024 Add development log for issue #3570 PR #3571
+ae527bf02 Initial commit with task details
+00833356c docs(case-study): every GitHub operation retried and lint-enforced, design and audit (#3552)
+45803e4de fix(retry): wrapDollarWithGitRetry is the universal wrapper, so gh through it is retried too (#3552)
+2b89094d2 fix(retry): shell scripts and workflow steps run GitHub operations through the shared retry CLI, enforced by a checker (#3552)
+f639d1d15 fix(retry): route release scripts through the shared retry loop and close the remaining lint gaps (#3552)
+d1d26335e fix(retry): route every remaining src GitHub operation through the shared retry loop (#3552)
+c28dd409b fix(retry): one shared retry loop for every GitHub operation, retrying resolved command-stream failures (#3552)
+977c47311 Revert "Initial commit with task details"
+4d36bfa53 chore(deps): bump start-command 0.38.0, links-notation 0.27.1, ignore 7.0.13
+4d46a996c Merge remote-tracking branch 'origin/issue-3552-3292514d07d0' into issue-3552-3292514d07d0
+4d5658ee0 fix(push): treat GitHub 'fatal error in commit_refs' as a transient server error (#3552)
+76a722d42 Add development log for issue #3552 PR #3553
+b7ac42289 Add development log for issue #3552 PR #3553
+65470f96c Add development log for issue #3552 PR #3553
+122dab978 Initial commit with task details
+8f22b87c5 2.39.2
+7e9dd9a71 Merge pull request #3507 from link-assistant/issue-3505-7dc6bd511c88
+b6cb3f680 Revert "Initial commit with task details"
+b5aff84f7 fix(telegram): express escapeMarkdown as a per-match replacer (CodeQL, #3505)
+61d2ee74e fix(telegram): keep intentional code spans in option errors when escaping (#3505)
+753161b21 chore(deps): eslint-plugin-n 18.5.0 for the dependency-freshness gate
+f38601d22 docs: case study for issue #3505
+acc3d479c fix(telegram): 'stopped by user (@name)' instead of 'stopped by user by @name' (#3505)
+82d86290b feat(lint): no-unescaped-telegram-markdown rule; escape Telegram Markdown across the codebase (#3505)
+1d5be5d39 fix(telegram): /fix status goes Starting → Waiting for CI/CD → Executing (#3505)
+ad51b0e40 Initial commit with task details
+5afdd328a 2.39.1
+45f71b6b0 Merge pull request #3446 from link-assistant/issue-3445-7cd6fd7f1b0b
+7c63ee5e8 Repair v2.39.0, published with the old formatter while this PR was open (#3445)
+ff4198710 Merge remote-tracking branch 'origin/main' into issue-3445-7cd6fd7f1b0b
+b3b9a8367 2.39.0
+ed7969f8c Merge remote-tracking branch 'origin/main' into issue-3445-7cd6fd7f1b0b
+4fc7d371a Merge pull request #3470 from link-assistant/issue-3469-80e8383bb928
+1c169d94b Case study: compare the released guard digest with this PR's on the live comments (#3469)
+f16991e13 Case study: list the interactive-mode marker under R1 and R3 (#3469)
+c5dd4de54 Mark interactive-mode comments so every process leaves them out of the requirements feedback (#3469)
+a1504309c Case study: list the digest fix under R1 and R3 (#3469)
+53d9ac67d Compute the requirements digest from comment content only (#3469)
+b3499c9ff Remove the PR-creation .gitkeep (#3469)
+1271ea201 chore(deps): formal-ai 0.354.1, which the freshness gate flagged on this PR (#3469)
+7c2a2480b Move the Docker disk-space probe into its own module (#3469)
+723ac9160 Describe --requirements-report without issue history (#3469)
+d87975a9e Stringify the gh api user result before matching the installation-token 403 (#3469)
+544a27932 Accept the static pr-draft-state import in the #2123 test (#3469)
+8ffc57193 Add the issue #3469 case study and changeset
+5fb7988a8 Keep quiet probes out of the log: $ has no silent option (#3469)
+b0c4895b5 Format the #3469 auto-restart test and keep case-study data verbatim
+0d7905692 Say why a directly started session matches no queue item (#3469)
+5ee824ae3 Explain why the Docker disk-space check could not read df (#3469)
+c808a4945 Read an agentic CLI's version from the package that owns its binary (#3469)
+1abbdd656 Import modules statically where Node 26 resolves a top-level import() too early (#3469)
+a2c95bee3 Block a mid-sentence "fix: <foreign issue URL>" instead of closing it (#3469)
+5a1927d59 Import the auto-merge guards' dependencies statically (#3469)
+dec76f614 Restart instead of stopping on a stale no-progress verdict (#3469)
+d124747c8 Make the requirements report experimental and off by default (#3469)
+46c27fb4b Show the pull request link in Telegram status messages as soon as the PR exists (#3469)
+7faf67532 Add development log for issue #3469 PR #3470
+6dbaf0a9b Add development log for issue #3469 PR #3470
+7fcc51e96 Add development log for issue #3469 PR #3470
+db0c1bb15 Initial commit with task details
+18cf114c0 Revert "Initial commit with task details"
+2ba255339 docs: count v2.38.0 among the repaired releases (#3445)
+84736d4cd docs: note the footer pattern simplification in the #3445 case study
+c129101e6 fix(release): match the generated footer without a nested quantifier (CodeQL, #3445)
+0f28dd6e9 docs: case study of the broken release notes, with the audit and repair evidence (#3445)
+477f143b5 chore(deps): formal-ai 0.354.0, which the freshness gate flagged on this PR (#3445)
+633ca83b0 Merge remote-tracking branch 'origin/issue-3445-7cd6fd7f1b0b' into issue-3445-7cd6fd7f1b0b
+dbb829238 chore: add changeset and release-note experiments for #3445
+9c1d77cb4 Merge remote-tracking branch 'origin/main' into issue-3445-7cd6fd7f1b0b
+43b5ed4f8 fix(release): indent multi-line manual release descriptions in CHANGELOG.md (#3445)
+7dcf9e388 style: format the v2.37.1 release snapshot (#3445)
+320b64500 feat(release): add repair script and audit for published release notes (#3445)
+b7f09372d fix(sanitizer): stop masking code and option names in release notes (#3445)
+d7c91c4b6 fix(release): keep changeset Markdown structure in GitHub release notes (#3445)
+4a134f65f 2.38.0
+800d9ae07 Add development log for issue #3445 PR #3446
+ffaa63b46 Add development log for issue #3445 PR #3446
+1ffab8113 Add development log for issue #3445 PR #3446
+18e953d86 Initial commit with task details
+a8b931f3e Merge pull request #3414 from link-assistant/issue-3413-8b6972a653d7
+760685c9c chore: drop the PR-creation .gitkeep placeholder (#3413)
+704639b45 chore(changeset): keep a single changeset for #3413
+51cc824ff chore(deps): refresh the pins the freshness gate flagged on this PR (#3413)
+05764526c docs(fix): case study, docs and README translations for merging Dependabot PRs (#3413)
+03d137229 feat(fix): merge open Dependabot PRs before --update-all-dependencies creates its issue (#3413)
+8d04f1723 Merge main into issue-3413-8b6972a653d7
+3e6166fb3 2.37.1
+f309edeb0 Merge pull request #3390 from link-assistant/issue-3282-edd2e20300e9
+eb17a67ab ci(docker): mark the swap fallback non-fatal on purpose for the #2082 shell lint (#3282)
+1a6a393e7 ci(docker): give docker-pr-check's image exports memory headroom (#3282)
+80258ac21 chore(deps): agent-commander 0.11.1, which fixes the command-stream 0.17.2 report (#3282)
+0490d6f01 chore(deps): formal-ai 0.353.8, which the freshness gate flagged on this PR (#3282)
+1638ca22f Add development log for issue #3413 PR #3414
+a0309820d Add development log for issue #3413 PR #3414
+591e19e47 Add development log for issue #3413 PR #3414
+dc33d05c5 Initial commit with task details
+f57bb8889 ci(docker): log memory and disk while docker-pr-check builds, and why it stopped (#3282)
+589ec9c62 chore(deps): eslint 10.13.0, which the freshness gate flagged on this PR (#3282)
+5f47dd946 fix(claude): pass the system prompt and a resumed prompt to Claude Code verbatim (#3282)
+d230426b7 test(solve): match the issue URL as a whole token of the raw command line (#3282)
+f645d4b84 fix(telegram): a GitHub URL argument must name the github.com host, and MarkdownV2 escaping covers backslashes (#3282)
+74461eca1 chore(deps): formal-ai 0.353.7, which the freshness gate flagged on this PR (#3282)
+e8df46d39 test(solve): a version's commit suffix may be longer than 8 characters
+3422bb148 test(auto-restart): match the run URL at the end of the stop comment's check line, not as a substring (#2293)
+6fa02cdfe fix(watch): the comment, login and state probes of every watch check stay out of the log (#2293)
+6b99055e8 fix(solve): a kept task container's workspace drops its regenerable build caches once the work is pushed (#2293)
+7b8100d60 docs(changeset): one paragraph per issue, with the #2293, #2888, #2889, #2891, #3174, #3278, #3282, #3330 and #3332 work since the last rewrite
+2b3fbb64f test(watchdog): time the bot's main thread waited for a CPU is not a stall it caused (#3278)
+56935cc09 fix(merge): /merge pairs an issue with its own PR, never an older parent plan PR on another issue's branch (#2891)
+f3c45b710 fix(kill-recovery): a new container drops the --resume of agent, gemini, qwen and opencode, whose sessions are not mounted (#2888)
+8efd8b95d fix(link-scope): another pull request's claim is found past an issue's first 100 cross-references (#3174)
+66b19e0d5 fix(codex): debug tracing goes to its own file and repeated warnings are logged once under --verbose (#2293)
+d9872158e chore(experiments): the #2293 stop experiment's fake shell takes template values
+75787b69d feat(auto-restart): stop when the same checks fail with the same output restart after restart (#2293)
+7223ee663 chore(lint): the require-exec-timeout baseline shrinks with the converted session-comments call (#3278)
+83baa0670 fix(recovery): a snapshot of an unmeasured layer still leaves the disk reserve free (#2889)
+589607a40 fix(docker): snapshot images of a container start-command already removed are removed too (#2889)
+b05f00a5c fix(links): a closing reference the session removed is reported on the PR once, not silently left out (#3174)
+ceab54f04 test(solve): the #2549 completion harness provides the solve log the #3332 push check reads (#3332)
+641b25b30 fix(codex): a sessions link another solve of the same repository made first is shared, not a failure (#2888)
+c36dda455 docs(lint): require-exec-timeout links its upstream reports (#3278)
+71df4f742 test(telegram): the event-loop watchdog also serves /fix, /task, /split and /terminal_watch (#3278)
+ce489c2e9 fix(lint): require-exec-timeout follows a renamed $ and quietProbe($) (#3278)
+5eaac3856 fix(post-merge): reopened and not-planned issues are respected, the command waits for GitHub, the sweeper gives up and locks, a stale lock is broken once (#3356 #3355 #3359 #3278)
+e856d922c fix(deps): the freshness gate checks example workflows, and the close-linked-issues example uses setup-node v7 (#3282)
+23b693b44 fix(solve): a workflow push GitHub refuses for want of the workflows permission is reported on the PR (#3332)
+5a3006dca fix(solve): an unverified run is not announced as SUCCESS, and CI solve knows it runs in Actions (#3330)
+81a706ab0 refactor(formal-ai): validation and the runtime share one Formal AI tool list (#3282)
+0d8886631 fix(formal-ai): hive and solve offload an unused Formal AI image without the bot (#3282)
+48b29de87 fix(deps): the freshness gate checks the lockfile, image ARGs and code image pins (#3282)
+73b79e0eb fix(issue-completion): a stalled git pull cannot hang the completion restart loop (#2406)
+e362a990a fix(issue-completion): hive-mind's own status comments do not make the requirements report stale (#2406)
+b64c29b30 fix(pricing): every Claude and OpenAI spelling is its vendor's model (#3279)
+abd6b14bb refactor(pricing): every tool prices through the one served-model registry (#3279, #3215)
+2040b5cb3 chore(deps): refresh the lockfile to the newest versions package.json allows (#3282)
+aa0e0c1e0 fix(models): a miscased Formal AI model is Formal AI for every tool (#3215, #3279)
+8294e196b chore(deps): refresh the pins the freshness gate flags today (#3282)
+f79132fc4 chore(experiments): await the sidecar-state and log-footer reads that became async (#3278)
+c07d41438 fix(kill-recovery): await the async session-id read so relaunches fall back to the attempt's own --resume (#2887, #2888, #3278)
+62daec069 docs(case-study): link the filed start-command issue for the snapshot gaps (#2889)
+68f606a23 chore(changeset): one changeset for the whole #3282 pull request, as CI requires
+fda8dda5f fix(ui): keep issue provenance out of the auxiliary-calls help and the requirements stop reason (#2402, #2406)
+456574c7e chore(lint): require-exec-timeout names the signal bound for $ calls in its main message (#3278)
+46e850083 fix(session-monitor): await the async log footer read and bound docker inspect in status-query recovery (#2303, #3278)
+30c56df1e Merge #2303 remainder (status query failures judged by docker) and #2293 restart evidence into the #3282 branch
+efd72d8cf Merge #2889 remainder and the #2887/#2888/#2889/#2891 case studies into the #3282 branch
+ec79e56d0 Merge #3174 remainder (stay-open lists and ranges, never re-add removed lines, negated keywords) into the #3282 branch
+8ee2f8027 fix(solve): auto-restart comments name the failing checks and the evidence (#2293)
+03ad1c7e4 test(hive): stub the merged-PR sweeper in the offline #2685 hive fixture (#3356)
+eb977aa68 docs(case-studies): add the kill-recovery notice pull request case study (#2891)
+94d2ba4c8 docs(case-studies): add the kill-recovery snapshot disk case study (#2889)
+4998c3b47 docs(case-study): lists, description history and negated keywords in the link repair (#3174)
+0efc2379b fix(links): never re-add a closing line the session removed, and warn about negated keywords (#3174)
+c6e1ea9ac fix(links): keep every issue of a stay-open list or range open and find negated keywords (#3174)
+251d55427 docs(case-studies): add the fresh-recovery Codex resume case study (#2888)
+a5e2d8ce5 docs(case-study): status query failures and the watcher reproduction script (#2303)
+d61f979a7 fix(session-monitor): judge a session by docker after repeated status query failures (#2303)
+4a9b936b6 docs(case-studies): add the kill-recovery alias case study (#2887)
+4f7064146 test(e2e): compare the Dockerfile pin line exactly instead of a partly escaped pattern (#3332)
+0f54a37fc Merge #3278 work (bot event loop no longer blocks on sync I/O; require-exec-timeout sees $ calls) into the #3282 branch
+08ccf9eb7 fix(kill-recovery): prune caches before snapshots and remove replaced containers and images (#2889)
+b872c17fd Merge #3174/#2303/#3176 case studies into the #3282 branch
+99c2d23fe docs(case-study): repository mode skips bot-maintained status issues (#3176)
+71d855b5e docs(case-study): unobserved docker exit of a detached session on a full disk (#2303)
+385bc7c14 docs(case-study): post-session link repair overrides the agent's closing decisions (#3174)
+f7b0090a5 chore(changeset): bot event loop no longer blocks on sync I/O (#3278)
+324575b24 test(bot): event-loop watchdog over every command with slow stubbed dependencies (#3278)
+6bc44575c fix(lint): check command-stream $ calls and keep only reasoned, exact baselines (#3278)
+ff6b08bc7 feat(issues): example workflow that runs close-linked-issues on merged pull requests (#3356)
+e26098cea fix(bot): async host path probes and push-guard install on the task launch path (#3278)
+3559478e6 docs(configuration): document the post-merge closing options in ru, zh and hi (#3354, #3358, #3359)
+4494476ca Merge #3354-#3359 work (one post-merge closing path, merged-PR sweeper, cross-repository references, completed parents) into the #3282 branch
+425645d7a test(merge): one suite over /merge, solve, the queue and the sweeper (#3357)
+2eafb3152 feat(issues): merged-PR sweeper in the bot and hive, and the close-linked-issues command (#3356)
+132d290ee feat(merge): close every intended issue GitHub left open after a merge, in one implementation; allow author-written cross-repository references (#3354, #3355, #3357, #3358)
+2b31af23a feat(issues): close parent issues whose work is complete, else one status comment (#3359)
+315461456 Merge #2887, #2888, #2889 and #2891 work (kill recovery runs solve, reaches Codex threads, snapshots serially, posts to the session's PR) into the #3282 branch
+ceeafd758 Merge #3330 and #3332 work (unverified Formal AI drafts stay drafts, E2E matrix tests the shipped version) into the #3282 branch
+44c311d90 fix(kill-recovery): relaunch an in-place recovery whose command never started (#2887)
+f729ddc4b Merge #3279 work (Formal AI attribution and pricing parity across claude, codex and agent) into the #3282 branch
+18dece89a test(2549): give the completion block the requirements report helper it now imports (#2406)
+770585ba5 Merge #2406 work (issue completion evidence before merge, complete-delivery prompts) into the #3282 branch
+a6d8b290b fix(bot): async log footer and tool session id scans in the session monitor (#3278)
+fdf68c6e3 fix(bot): async staging I/O in the router session drain (#3278)
+cb88fee7c fix(bot): async session snapshot writes with a synchronous exit flush (#3278)
+7b27c3ad5 fix(kill-recovery): fresh recovery resumes only reachable Codex threads (#2888)
+278a316dd docs(merge): document issue completion evidence in en, ru, zh and hi (#2406)
+e61e41248 fix(merge): require current requirements evidence before automated merges (#2406)
+4d334aa69 fix(prompts): state the complete-delivery goal in every tool prompt (#2406)
+ca2e2fc5c fix(codex): keep native goals enabled outside the auxiliary-calls opt-out (#2406)
+5d7694fb3 fix(e2e): test the shipped Formal AI and report harness failures apart from model failures (#3332)
+90dfeb599 Merge #2303 and #2293 work (killed sessions reported as kills, real description edits only) into the #3282 branch
+52e1d91d1 fix(bot): async sidecar and CLI-refresh state files, and a non-blocking active-task scan (#3278)
+7690efcf9 fix(formal-ai): attribute and price claude/codex sessions like agent (#3279)
+79a5021b3 fix(solve): detect description edits from the edit history, not updated_at (#2293)
+ba5c07e65 fix(bot): async state lock and model catalogue cache I/O (#3278)
+6b4f14abb fix(session-changes): keep unverified and non-executed Formal AI drafts out of review (#3330)
+efec38293 Merge #3176 and #2846 work (repository-mode skip filter, jq in images) into the #3282 branch
+288190c4b fix(session-monitor): report an unobserved docker exit as a kill with its cause (#2303)
+de2e1fc52 fix(bot): bound the bot's docker and gh command-stream calls with an AbortSignal (#3278)
+6f4dadf0f fix(formal-ai): async attribution file I/O and a bounded git runner (#3278)
+d34879d49 fix(repository-mode): skip bot-maintained and opted-out issues when selecting work (#3176)
+f10aa0cf6 fix(kill-recovery): snapshot killed containers one at a time with disk headroom (#2889)
+e8d1048bb fix(session-monitor): post recovery notices to the session's own pull request (#2891)
+47c5e08d2 fix(docker): install jq in every hive-mind image and verify it (#2846)
+22a23b419 chore(deps): refresh the pins the freshness gate flagged on this PR (#3282)
+eab20ffbd Revert "Initial commit with task details"
+033df13e1 chore: add #3282 reproduction script and changeset
+355d0f141 fix: no closing references for closed, later-created, other-PR or 'Part of' umbrella issues (#3174, #3282)
+cb744beef Initial commit with task details
+2083d6fd8 2.37.0
+cd4010072 Merge pull request #3327 from link-assistant/issue-3326-eed8a6871a36
+e48b13fe5 Revert "Initial commit with task details"
+46f1c801a fix: read command-stream output with toString() in issue #3326 helpers
+94ee349df docs: note listing-lag fallback in issue #3326 case study
+08b3a225d Merge remote-tracking branch 'origin/main' into issue-3326-eed8a6871a36
+8f1906a45 docs: add case study for issue #3326 and changeset
+15434023b docs: describe /fix waiting for default-branch CI/CD (#3326)
+12d13f90c feat: wait for default-branch CI/CD before /fix starts /solve and show it in Telegram (#3326)
+155c62ebe fix: never duplicate issues when gh issue create --type fails after creating (#3326)
+214b3c4b7 2.36.1
+bcfff45f2 Merge pull request #3295 from link-assistant/issue-3282-63c25a07a947
+642ee2b8d Add development log for issue #3326 PR #3327
+1eab573d4 Add development log for issue #3326 PR #3327
+ca54fa983 Add development log for issue #3326 PR #3327
+c4ce121d8 Initial commit with task details
+8017cdc90 Revert "Initial commit with task details"
+795cd2ebb ci: move the dangerous-triggers ignore to the workflow_run key for zizmor 1.31
+8f7a32444 refactor: import splitRepairBlock from its defining module
+7be90a525 chore(deps): refresh the pins the freshness gate flagged on this PR (#3282)
+35bdc2d28 fix: link repair and merge guard respect kept-open and other-repository sub-issues (#3174, #3276)
+bcde8d29d Merge origin/main into issue-3282-63c25a07a947
+e5c7266e0 2.36.0
+75d1f31a7 Add development log for issue #3282 PR #3295
+9e01321c1 Add development log for issue #3282 PR #3295
+771478e47 Merge pull request #2802 from link-assistant/issue-2801-f9bf1f787e57
+7a0f906b1 Add development log for issue #3282 PR #3295
+5fa9d6ca4 Initial commit with task details
+c6bf41c83 Merge remote-tracking branch 'origin/main' into issue-2801-f9bf1f787e57
+239d2a599 docs: images install start-command 0.37.8 after the main merge; changeset lists only this PR's changes (#2801)
+215d89bd0 docs(case-study): start#222 fixed in start-command 0.37.8 and Rust 0.25.8; penalty files unchanged from 0.37.7 (#2801)
+d0084ee14 2.35.10
+9717dbf40 Merge remote-tracking branch 'origin/main' into issue-2801-f9bf1f787e57
+207492328 Merge pull request #3225 from link-assistant/issue-3215-63110332e888
+f889e2415 test: pass the marker path to the fake docker as an argument, not as code (#3207)
+3f60cc27b test: Formal AI has no OpenAI-prefixed Codex spelling, so the #2043 alias test leaves it out (#3215)
+98727cac2 chore(experiments): every tool accepts exactly the two Formal AI spellings (#3215)
+ff2e8e730 docs(case-study): the slow commands, detached pull, launcher lease, issue fallback, decisions and limitations (#3215)
+53c821c4a chore(lint): no warnings left, and npm run lint fails on new ones (#3215)
+44ac1f38a fix(telegram): /stop and /terminal_watch run outside the update loop too (#3206)
+1baaa5ad6 fix(telegram): /models, /auth, /log, /limits and /version run outside the update loop too (#3206)
+b8cf2879d test(dind): the nested dockerd also starts in a new container created from a commit of the killed one (#3214)
+7e1d178f5 fix(recovery): a recovery that could not start is reported on the issue when there is no pull request (#2630)
+046997d34 fix(sidecar): a lease whose launcher exited before creating the container ends at once (#3210)
+5993e15fa fix(formal-ai): a timed-out image pull keeps running detached instead of leaving a containerd lease (#3207)
+2637e8587 chore(deps): start-command 0.37.8 and Node.js 26.12.0 in every image (#3215)
+4f2681509 style: prettier for the #3215 case study and experiment
+c5847b4bf feat(solve): HIVE_MIND_SOLVE_NO_CHANGES_EXIT_CODE keeps exit 0 for scripts that predate exit 5 (#3215)
+0831ee7bd fix(scratch): a tracked file under data/cache/derivations/ is the repository's own work, not Formal AI state (#3215)
+8244c28db fix(codex): a usage limit reported in a stream error is detected when turn.failed is generic (#3215)
+ba344c6ec fix(session-changes): a submitted PR review is a comment, and unreadable comments are not 'no comment' (#3215)
+b0a1f0ab6 fix(models): only a Formal AI run is blamed on a Formal AI terminal state, and the router treats both Formal AI spellings alike (#3215)
+9a6527ee1 fix(models): Formal AI has the same two spellings on every tool, and hive validates it like solve (#3215)
+2607a7ab5 fix(queue,docker): a solve that finished without changes (exit 5) is not counted as a failure (#3215)
+9f86b209a fix(screen): record the exit status of plain start-screen sessions instead of reporting it unknown (#3215)
+dcbad9b2c docs(dind): link the upstream box-dind stale pid issue (link-foundation/box#133) from the #3214 workaround
+837df92ad ci(deps): check use-m version literals in maintained scripts; claude-runtime.mjs uses the shared yargs pin
+2234e18e2 chore(deps): pin @link-assistant/agent 0.26.15, the current release (#3215)
+574434d00 docs(case-study): start-command 0.37.7 and Rust 0.25.6 re-verified on real Docker; start#218/#219 fixed, start#222 reported (#2801)
+88a9416b2 chore(deps): start-command 0.37.7 (start#218 fix) and @link-assistant/agent 0.26.14 for the freshness gate (#2801)
+7af5480df test: stub start-command in the #3206 sandbox so the launch reaches docker pull on CI
+86136c3d5 test: expect the start-command 0.37.7 and dotenvx 2.35.0 pins (#3215)
+1709a26f2 test: resolve CodeQL alerts in the #3208 and #3248 tests
+f481561b9 Revert "Initial commit with task details"
+f61134a93 docs(case-study): timeline, root causes and reproduction for #3215
+f8922ed0e chore(changeset): one changeset for the Formal AI hello-world fixes (#3215)
+07ea89bc2 fix(solve): a run that changed nothing finishes with ⚠️ and exit 5, not 🎉 (#3211)
+35e9967ea fix(solve): report a looping session as looped, without stopping it (#3211)
+368fe0135 fix(solve): do not publish an echoed tool output as the working session summary (#3211)
+6285fb65f chore(lint): keep the bot process responsive (#3206)
+e04d4af2d fix(github): bound gh calls with a timeout (#3206)
+b30d62d1c perf(bot): write logs and session events asynchronously (#3206)
+b515df2cc fix(telegram): run slow command work outside the update loop (#3206)
+60a49e506 fix(session-monitor): never report an unobserved or exit-unknown session as successful (#3209)
+6b8659c11 feat(formal-ai-draft): let another repository run a draft with its own build (#3248)
+b174bb93f fix(formal-ai-draft): fail the health check when drafts keep failing the same way (#3248)
+ed6290049 fix(formal-ai-draft): show dispatched checks as commit statuses on the draft head (#3248)
+909d50d89 fix(formal-ai-draft): run the pinned image and stop restarting over uncommitted files (#3248)
+d66147db9 fix(formal-ai): keep Formal AI's own state out of user work (#3248)
+db37acf88 fix(log-upload): point the failure comment at a log that exists (#3248)
+2b730db46 chore(experiments): reproduce the stale docker.pid resume failure (#3214)
+52ec8b6b1 test(dind): verify the nested dockerd starts again after kill and restart (#3214)
+eb337f7ba fix(dind): clear stale nested dockerd pid files at container start (#3214)
+6c40d3927 fix(formal-ai): fall back from an unmigrated accepted update and stop idle updates (#3208)
+b1bce5c68 fix(formal-ai): use a local image that provides Formal AI before pulling, and report a timed-out pull as a timeout (#3207)
+73162f7ac fix(formal-ai): end a lease as soon as its task container has stopped (#3210)
+cc15abf36 fix(codex): keep the Formal AI provider in every Codex iteration (#3212)
+b7a354a9a test: expect the 0.26.14 agent image pin (#3213)
+68e05d5bd fix(agent): a failed tool call no longer fails the run (#3213)
+0d077d239 chore(deps): refresh the pins the freshness gate flagged on this PR (#3215)
+ac7e33129 docs: preserve a finite Docker reproduction of alias recovery (#2630)
+5577dc0d3 fix: execute solve for alias recovery and retry failed snapshot starts (#2630)
+14276adbd docs(case-study): start-command 0.37.6 and Rust 0.25.4 re-verified; start#211 fixed, start#218/#219 reported (#2801)
+25321c83c chore(deps): start-command 0.37.6, formal-ai 0.353.2, dotenvx 2.35.0 for the freshness gate (#2801)
+15684de4f docs(case-study): verify start-command 0.37.6 and Rust 0.25.4 penalty on real Docker; penalizedMs/graceful-stop repro (#2801)
+543c9e8a5 Merge origin/main into issue-2801-f9bf1f787e57 (start-command pins resolved to main's 0.37.5)
+bf51f5d26 Add development log for issue #3215 PR #3225
+927f0765b Initial commit with task details
+a8bec0667 2.35.9
+7456b2aa2 Merge pull request #3191 from link-assistant/issue-3190-e41cd700053d
+ecd558e0e Revert "Initial commit with task details"
+2ccbfc238 chore(deps): refresh the pins the freshness gate flagged on this PR (#3190)
+f72f5c26b Merge remote-tracking branch 'origin/issue-3190-e41cd700053d' into issue-3190-e41cd700053d
+fd3c624bd docs: issue #3190 case study; keep solve.mjs within the line-limit threshold
+08cd6fef8 docs: add issue #3190 logs and screenshot
+f0b34dba1 fix(solve): forward every original option through auto-resume/restart relaunch (#3190)
+81321243b Add development log for issue #3190 PR #3191
+3ca706e83 Initial commit with task details
+656d45b9c docs: point OpenCode Zen links at providers#opencode-zen; opencode.ai removed /docs/zen/
+07367e83e docs(case-study): verify start-command 0.37.2 against real Docker; report stuck Rust release as start#211 (#2801)
+fa4969aa2 chore(deps): start-command 0.37.2, agent 0.26.13, command-stream 2.4.0; check Formal AI on crates.io (#2801)
+b65915cc3 chore(deps): refresh links-notation use-m pin to 0.26.0 for the freshness gate (#2801)
+cf4eec9c5 docs: start-command 0.37.1 penalty is complete; drop the stale command-stream 2.1.0 pin note (#2801)
+e4472c5e0 docs(case-study): verify start-command 0.37.1 fixes start#205 and start#206 against real Docker (#2801)
+75736202e Merge remote-tracking branch 'origin/main' into issue-2801-f9bf1f787e57
+ed6a15520 2.35.8
+5cb02e7e9 Merge pull request #2824 from link-assistant/issue-2823-91d414d49e53
+b07b41c92 chore(deps): refresh the pins the freshness gate flagged after merging main
+52b7cb53a Merge remote-tracking branch 'origin/main' into issue-2823-91d414d49e53
+d6e47d1aa 2.35.7
+d5017dc09 Merge pull request #3109 from link-assistant/issue-3108-17f8b8380c44
+fa5d5bc7d Revert "Initial commit with task details"
+f503d64f8 chore(deps): refresh the pins the freshness gate flagged on this PR (#3108)
+8823e577e docs: describe the single-open-issue shortcut of repository mode (#3108)
+0b8834aea docs(case-study): add issue #3108 case study for single-issue repository mode
+ed0e1e718 fix(solve): solve the only open issue directly in repository mode (#3108)
+4b1345c74 Add development log for issue #3108 PR #3109
+fbcbc8916 Initial commit with task details
+d2b70e4f9 2.35.6
+71643c1eb Merge pull request #3018 from link-assistant/issue-3015-8fd1ad265ebe
+9736ca2a9 test: update escaped command-stream 2.1.0 pin; drop stale changeset line (#3015)
+4e8e2ee62 chore(deps): pin command-stream 2.1.0 for the freshness gate (#3015)
+cc4a0ff8c docs(case-study): issue #3015 background-task root cause across all five runs
+8f714aaef fix(claude): post-result close timeout waits for print-mode background tasks (#3015)
+9025ed6aa Merge remote-tracking branch 'origin/main' into issue-3015-8fd1ad265ebe
+9b5230d66 chore(deps): refresh command-stream use-m pin to 2.1.0 for the freshness gate (#2801)
+30c320142 docs(case-study): record start-command 0.37.0 --cpu-penalty verification and gaps start#205, start#206 (#2801)
+b7a57c72a experiments: verify start-command 0.37.0 --cpu-penalty against real Docker (#2801)
+22ed160a4 Merge remote-tracking branch 'origin/main' into issue-2801-f9bf1f787e57
+7637b5cab 2.35.5
+d4b3c0d23 Merge pull request #2851 from link-assistant/issue-2839-757433d11292
+b2f70bc65 chore(deps): refresh command-stream 2.0.2 and links-notation 0.25.2 for the freshness gate (#2839)
+ed6a99f29 fix(prompts): every tool's system prompt requires fixing pre-existing CI failures too (#2839)
+701274f5d Merge remote-tracking branch 'origin/main' into issue-2839-757433d11292
+1c3ca7a8d 2.35.4
+864d0481e Merge pull request #2592 from link-assistant/issue-2591-1b69dfe657e2
+20ec927aa Revert "Initial commit with task details"
+d1ac18f92 chore(deps): refresh the pins the freshness gate flagged on this PR (#3015)
+8de2a351f chore(deps): refresh the pins the freshness gate flagged on this PR
+a7854412f docs: case study and changeset for issue #3015
+2194bc3e0 fix(solve): use the guarded error extractor for the restart draft reason (#3015)
+0a9559d49 fix(claude): do not report a successful session as failed when the stream close timeout kills the CLI
+5caeb5821 chore(deps): refresh the pins the freshness gate flagged on this PR (#2839)
+b4ad9a629 Merge remote-tracking branch 'origin/main' into issue-2839-757433d11292
+bdc73d6ad fix(auto-merge): ask the AI to fix pre-existing CI failures instead of stopping (#2839)
+78b6ba634 fix(claude): do not fail a successful session the solver itself stopped (#3015)
+bfe5b82bb Merge remote-tracking branch 'origin/main' into issue-2823-91d414d49e53
+f800254b3 Add development log for issue #3015 PR #3018
+cb48d6a9e Initial commit with task details
+4b32bc12c 2.35.3
+e1edbc5e9 Merge pull request #2854 from link-assistant/issue-2840-05f8c845bc2c
+ba32da27f test(deps): expect prettier 3.9.10 in the issue #2187 dependency pin checks
+abd8c73fc chore(deps): bump prettier to 3.9.10 to clear the dependency freshness gate
+e231e8a26 Revert "Initial commit with task details"
+539e19c3e docs(i18n): sync FREE_MODELS ru/zh/hi with the issue #2591 free-model changes
+8b9f16a24 chore(docker): bump Bun to 1.4.3 to clear the dependency freshness gate
+37b71ded4 docs(case-study): issue #2591 analysis, refreshed listings and changeset
+b23b631c6 test(models): cover HIVE_MIND_MODEL_DEBUG model-resolution tracing (#2591)
+e5d7a01cf fix(models): default opencode to big-pickle and list current OpenCode Zen free models (#2591)
+378b83d9e docs(case-study): CLI model catalogue evidence and after-fix listings (#2591)
+a6abd8f91 feat(models): current Gemini/Qwen/agent/opencode catalogues and latest aliases (#2591)
+f8c2e67a6 feat(models): derive latest-version aliases per model family (#2591)
+1240396a0 docs(case-study): collect issue #2591 evidence and reproduction listings
+690d11382 Merge remote-tracking branch 'origin/main' into issue-2591-1b69dfe657e2
+f7d9c7eee Revert "Initial commit with task details"
+fcbe5ec2c Merge remote-tracking branch 'origin/main' into issue-2840-05f8c845bc2c
+b8f327e62 test: cover the fallback switch warning for an observed model (#2840)
+3675177b6 test: reproduce #2840 and update opus alias expectations
+baf901e0d chore: remove the placeholder .gitkeep (#2839)
+18c60a57f fix: report and fall back from the model that actually ran (#2840)
+ab70b10d8 test: reproduce the stylist-svelte 5/5 restart run (#2839)
+d7615ceee fix(auto-merge): stop restarting for CI that fails on the base branch too (#2839)
+3d07014aa fix(session-progress): leave the final message out of the no-progress fingerprint (#2839)
+7354c9d5e Merge remote-tracking branch 'origin/main' into issue-2839-757433d11292
+7b2e39a21 chore: remove .gitkeep placeholder from PR creation
+96746c958 Merge remote-tracking branch 'origin/main' into issue-2823-91d414d49e53
+58073a1fa docs: add issue #2823 case study, log timeline extractor and changeset
+b926f54d1 fix(queue): do not attribute /hive session completions to queued /solve items by URL (#2823)
+6c27353ca fix(queue): stop listing running tasks as completed and surface post-launch failures in /queue (#2823)
+db2259e91 2.35.2
+fde3af421 Merge pull request #2924 from link-assistant/issue-2923-f8e3a2405bd9
+6684e1d12 chore(deps): refresh the pins the freshness gate flagged on this PR (#2923)
+5cf5071fa fix(ci): keep CodeQL on code this project ships (#2923)
+171a6b420 docs(case-study): collect evidence and analysis for issue #2923
+1d30bff17 fix(formal-ai): don't report the task-owned server as a leftover process
+a03329616 chore: add changeset for issue #2923
+1ace5886e docs(ci-cd): record the registry lag, release gate and messaging lessons
+f7ab1053c fix(release): repair a version that reached npm without a GitHub release
+00c82984a refactor(agent): keep the recovery helper in agent-command.lib.mjs
+21ae67aa1 fix(agent): don't log a still-failing error as recovered
+c5712c193 fix(e2e): say why the hello-world matrix was skipped
+d565998ef fix(release): wait 25 minutes for npm to expose a published version
+8bde46a85 Initial commit with task details
+d1fa7c700 2.35.1
+fdff41368 Merge pull request #2772 from link-assistant/issue-2771-a7dfc5a656b7
+d7340bc66 Add development log for issue #2840 PR #2854
+768b262c7 Add development log for issue #2839 PR #2851
+68f095df1 Initial commit with task details
+71f75a64b Initial commit with task details
+790c18dec 2.35.0
+03fb15961 Add development log for issue #2823 PR #2824
+49def0114 Initial commit with task details
+9a504b781 Merge pull request #2754 from link-assistant/issue-2751-3b566158eaa0
+17fbe1a49 docs: record complete dependency reporting review and validation
+c7e3fc447 chore(deps): refresh paired Sentry SDKs for freshness checks
+5e2f79528 test: verify dependency reporting across hive and Telegram handoffs
+4aff99b33 Merge current main and resolve dependency reporting branch conflicts
+4017fa92b experiments: run the default test suite from an offset in parallel
+5a0b5fcbf test: pin @sentry 11.6.0 in the current dependency pin test
+7c9ea2831 chore(deps): bump @sentry/node and @sentry/profiling-node to 11.6.0
+20ed4dde2 docs(docker): document the Docker CPU penalty and add the issue #2801 case study
+4ecba6098 feat(docker): delayed CPU penalty per Docker task container (#2801)
+0ecbefda2 Revert "Initial commit with task details"
+3e29816ac test: expect @sentry 11.6.0 in the current dependency pin check (#2771)
+1e94a9373 build: refresh @sentry/node and @sentry/profiling-node 11.6.0 after dependency freshness failure (#2771)
+29fd3ac2d Merge remote-tracking branch 'origin/main' into issue-2771-a7dfc5a656b7
+9fb251f76 docs: explain why Batch cannot drive an agent and re-check all model docs (#2771)
+e1e952e3d experiments: capture what Codex sends for service_tier=batch/scale/unknown (#2771)
+a3a27aa60 fix: accept documented --speed aliases on the CLI and map batch to flex (#2771)
+3d3e6dee4 Add development log for issue #2801 PR #2802
+0f34584f9 Initial commit with task details
+766d309d6 fix: keep codex.lib.mjs under the 1350-line warning threshold (#2771)
+23e02b46e docs: correct pre-#2771 baseline (150k default, 200K Codex window) and add per-tool compaction table
+17c477569 fix: keep option help free of issue refs and update remaining alias tests (#2771)
+3466bca11 2.34.3
+e7afd1a04 Merge remote-tracking branch 'origin/main' into issue-2771-a7dfc5a656b7
+4a562eddb chore: add changeset for #2771
+ba4ba4e41 chore: experiments for codex service tier capture and tier debugging (#2771)
+c0eb39ed3 docs: case study and option docs for cheapest pricing tier (#2771)
+4b710a04b test: update alias and codex-arg expectations for #2771 defaults
+5d7f55e52 feat: use cheapest pricing tier by default for every tool (#2771)
+274f615be Merge pull request #2746 from link-assistant/issue-2745-0f09e2e55406
+a61016f6c Refresh Box base image pins after upstream release
+2e892c7b8 build: refresh Box 2.10.3 after dependency freshness failure
+d2f33b936 Add development log for issue #2771 PR #2772
+016acd8c0 Initial commit with task details
+5ba4ccc9d Document dependency reporting requirements and validation evidence
+0795eacba docs: archive successful CI and cross-adapter audit for issue 2745
+183d6aabc Enable upstream dependency reporting during dependency updates
+5ac300391 Merge remote-tracking branch 'origin/main' into issue-2751-3b566158eaa0
+ed3cd5091 docs: preserve issue 2745 evidence, investigation and validation
+ed291aeb7 Merge remote-tracking branch 'origin/main' into issue-2745-0f09e2e55406
+986c90d96 test(codex): isolate cancellation probe from host memory budgets
+96394c911 fix(codex): retain process failures and report container OOM evidence
+c2089953a 2.34.2
+64f2b2ebc Merge remote-tracking branch 'origin/main' into issue-2745-0f09e2e55406
+102a74977 Merge pull request #2686 from link-assistant/issue-2685-429d60c8a3fc
+a4ac48262 Add development log for issue #2751 PR #2754
+30893dbe4 Initial commit with task details
+3b89fdd80 Add development log for issue #2745 PR #2746
+3c8d80aad docs: archive successful parent PR review CI
+781e39295 Initial commit with task details
+5f2e47e53 docs: compress verbatim ownership regression output
+6ba2dfa18 docs: preserve parent PR review evidence and validation
+17fdeee25 fix(hive): keep children eligible when parent PRs close them
+b0c3f2a8d Merge remote-tracking branch 'origin/main' into issue-2685-429d60c8a3fc
+b5a6bd8f0 2.34.1
+579335217 Revert "Initial commit with task details"
+b50a53624 Merge pull request #2690 from link-assistant/issue-2687-cdf77e59ffa9
+4ec5f8d97 docs: record successful CI validation for issue 2685
+3aac96762 docs(2687): record successful Docker retry and final validation
+e3732b830 docs: preserve the previous issue 2685 solution attempt
+70c79e15a docs(2687): archive local validation and Docker verification failure
+c21ccd1d9 fix(hive): report no-work runs as warnings
+6ad714ae1 docs(2687): preserve incident evidence and explain terminal error precedence
+e6f1f6275 fix(images): include file and align current Node runtime pins
+feca4bcfb fix(claude): preserve terminal provider errors and usage-limit recovery
+610fb0f9e Add development log for issue #2687 PR #2690
+1c39c6fb3 Initial commit with task details
+6c735c6c1 Add development log for issue #2685 PR #2686
+fadf5cf21 Initial commit with task details
+1675c0a57 2.34.0
+1957ab22a Merge pull request #2616 from link-assistant/issue-2615-d911d7752514
+816086f4e Merge remote-tracking branch 'origin/main' into issue-2615-d911d7752514
+0307dcd50 docs(hive): case study, configuration docs and changeset for issue relations (#2615)
+e05684944 feat(hive): respect sub-issue and dependency relations when queueing (#2615)
+f459ba73e 2.33.17
+28edef613 Merge pull request #2614 from link-assistant/issue-2613-2efa14ce78a7
+7574f35f6 2.33.16
+758eae1bb Merge pull request #2562 from link-assistant/issue-2326-b5647b8dfa49
+109a0a6c9 docs: align regression evidence with the caret display
+247aeac4c fix: phrase typo suggestions as natural questions
+cfdcf4a6f Merge main and retain current dependency pins
+c5734d8a6 fix: handle structured GitHub label creation conflicts
+2f78e9f46 Merge main release metadata and preserve final validation
+88bc93a8c Merge main and reconcile session diagnostics regressions
+e32460ef8 2.33.15
+b21219222 fix: refresh dependency pins after the CI freshness failure
+eb138db69 Merge pull request #2626 from link-assistant/issue-2625-ba46c90ff692
+24dd07853 docs: link upstream reports and record implementation review
+0fad636aa chore(changeset): list the agent-commander and Node.js refresh (#2625)
+1fff77c3d chore(deps): refresh Node 26.11.0 and agent-commander 0.11.0 for the freshness gate (#2625)
+a2e037157 docs: preserve issue 2613 evidence and root-cause analysis
+33e3a76ae fix: preserve failed-session logs and repair formal draft finalization
+8b425e5d9 fix: bound version probes and clean up descendant processes
+4e4c14484 test: follow the Sentry 11.5.0 pin (#2625)
+577c927c5 style(agent): keep agent.lib.mjs within the 1350-line warning threshold
+d5b9a2bff docs(issue-2625): case study with timeline, root causes, fixes and upstream reports
+fe9650ea5 chore(changeset): patch release for issue #2625 CI/CD fixes
+2671be6b3 chore(issue-2625): keep the template release-preflight logs as comparison evidence
+d5cd3300e docs(ci-cd): add principle 17, tell a broken pipeline from a changed world
+2981093a1 chore(issue-2625): reproduce Formal AI reading 'e.g' as a file
+85521438e chore(issue-2625): keep the full CI job logs as evidence
+982dbee6a fix(formal-ai-draft): create the draft label when it is missing
+b7fbf5e76 fix(attach-logs): do not retry a token that cannot create gists
+e602cc324 fix(ci): let release.yml be dispatched with only mode=checks
+47781dd1e fix(solve): apply --log-dir to the session log
+448c384fd chore(issue-2625): collect CI logs and repository data for the analysis
+7cd1309dd chore(issue-2625): keep the Agent provider smoke test and its evidence
+4a75d9ff1 docs: document the Kilo gateway default free model
+e6d2555ba fix(agent): run the default free model on the Kilo gateway
+407da13b0 fix(ci): treat ruleset-retained fixture branches as retained, not cleanup errors
+9ebc0ce5c fix(ci): keep the dependency-freshness gate blocking on pull requests only
+44081ee5b chore(deps): bump command-stream to 2.0.0 and Sentry to 11.5.0
+00973d16c fix(solve): verify results with integration tokens and print the real failure reason
+f7fa845fa Initial commit with task details
+76618e996 Initial commit with task details
+f77d772a3 Initial commit with task details
+59d1112ae Initial commit with task details
+157fe2903 fix: document legacy-Markdown backslash handling in Telegram hints
+f0dfaa08a feat: underline input typos with a compiler-style caret
+9d9da8fc3 chore: refresh newly released links-notation runtime pin
+ad28e4cdb chore: update vulnerable shell-quote development dependency
+4a7353d9e test: align current dependency fixture with refreshed start-command
+c765dde3f test: compare complete echoed inputs in URL diagnostics
+65cf49d4f chore: refresh stale runtime and Docker dependency pins
+3ad8eb407 fix: identify offending URL segments and argument positions
+32e1f3397 Initial commit with task details

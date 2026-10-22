@@ -1,5 +1,6 @@
 import { nativeUsage } from './usage.mjs';
 import { syncedModels, syncedDefaults } from './model-catalog.mjs';
+import { createModelMapper, parseJsonLines } from './json-lines.mjs';
 /**
  * OpenCode CLI tool configuration
  * Based on hive-mind's opencode.lib.mjs implementation
@@ -8,6 +9,7 @@ import { syncedModels, syncedDefaults } from './model-catalog.mjs';
 import {
   buildCommandHead,
   escapeArg,
+  escapeSingleQuotes,
   normalizeExtraArgs,
   normalizeExtraEnv,
 } from './shell.mjs';
@@ -28,10 +30,7 @@ export const modelMap = {
  * @param {string} options.model - Model alias or full ID
  * @returns {string} Full model ID
  */
-export function mapModelToId(options) {
-  const { model } = options;
-  return modelMap[model] || model;
-}
+export const mapModelToId = createModelMapper(modelMap);
 
 /**
  * Build command line arguments for OpenCode
@@ -104,7 +103,7 @@ export function buildCommand(options) {
   // Build command with stdin piping
   const inputCommand = promptFile
     ? `cat ${escapeArg(promptFile)}`
-    : `printf '%s' '${combinedPrompt.replace(/'/g, "'\\''")}'`;
+    : `printf '%s' '${escapeSingleQuotes(combinedPrompt)}'`;
   const env = readOnly
     ? [
         ['OPENCODE_PERMISSION', READ_ONLY_PERMISSION],
@@ -126,25 +125,7 @@ export function buildCommand(options) {
  * @returns {Object[]} Array of parsed JSON messages
  */
 export function parseOutput(options) {
-  const { output } = options;
-  const messages = [];
-  const lines = output.split('\n');
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || !trimmed.startsWith('{')) {
-      continue;
-    }
-
-    try {
-      const parsed = JSON.parse(trimmed);
-      messages.push(parsed);
-    } catch {
-      // Skip lines that aren't valid JSON
-    }
-  }
-
-  return messages;
+  return parseJsonLines(options);
 }
 
 /**

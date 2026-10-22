@@ -1,60 +1,20 @@
 import { completionState, outcomeMessages } from './completion.mjs';
-const USAGE_LIMIT_PATTERNS = [
-  /usage limit (?:reached|exceeded)/i,
-  // Require an explicit qualifier so a bare "ratelimit" does not match. The raw
-  // stream-json output emitted by Claude contains HTTP header names such as
-  // "anthropic-ratelimit-unified-5h-reset", which previously triggered a false
-  // positive on every successful run. See issue #37.
-  /rate[_\s-]?limit(?:ed|\s+reached|\s+exceeded)/i,
-  /limit reached/i,
-  /billing hard limit/i,
-  /please try again at/i,
-  /available again at/i,
-  /session limit reached/i,
-  /weekly limit reached/i,
-  /daily limit reached/i,
-  /monthly limit reached/i,
-  /freeusagelimiterror/i,
-  /resets\s+(?:(?:at\s+)?[0-9]|month)/i,
-];
-
-const RESET_TIME_PATTERNS = [
-  /(?:resets?|reset|try again|available again|available)\s+(?:at|on)?\s*([^\n.]+)/i,
-  /(?:reset time|limit resets at)\s*:?\s*([^\n.]+)/i,
-];
-
-const TIMEZONE_PATTERN =
-  /\b(?:UTC(?:[+-]\d{1,2}(?::\d{2})?)?|[A-Z]{2,5}|[A-Za-z]+\/[A-Za-z_/-]+)\b/;
+import { assessBackgroundTasks } from './background-tasks.mjs';
+import { firstErrorText } from './error-text.mjs';
+import { signalFromExitCode } from './executor.mjs';
+import { extractObservedModels, isRealModelId } from './observed-models.mjs';
+import { parseJsonRecords } from './streaming/json-records.mjs';
+import {
+  classifyDebugLines,
+  detectUsageLimitSources,
+  isRecoverableToolError,
+  splitOutput,
+} from './usage-limit.mjs';
 
 function parseJsonMessages(output) {
-  if (!output) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(output);
-    return Array.isArray(parsed) ? parsed : [parsed];
-  } catch {
-    const messages = [];
-    for (const line of output.split('\n')) {
-      const trimmed = line.trim();
-      if (!trimmed || (!trimmed.startsWith('{') && !trimmed.startsWith('['))) {
-        continue;
-      }
-
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) {
-          messages.push(...parsed);
-        } else {
-          messages.push(parsed);
-        }
-      } catch {
-        // Ignore non-JSON lines mixed into CLI output.
-      }
-    }
-    return messages;
-  }
+  return parseJsonRecords(output || '').flatMap((value) =>
+    Array.isArray(value) ? value : [value]
+  );
 }
 
 function normalizeMessages({ parsedOutput, plainOutput, toolConfig }) {
@@ -69,14 +29,6 @@ function normalizeMessages({ parsedOutput, plainOutput, toolConfig }) {
   return parseJsonMessages(plainOutput || '');
 }
 
-function cleanResetTime(value) {
-  const cleaned = value?.trim().replace(/[),;]+$/g, '');
-  if (!cleaned || cleaned.length > 120) {
-    return null;
-  }
-  return cleaned;
-}
-
 // A structured result message that reports an explicit success is authoritative.
 // The raw stream-json output contains HTTP header names (e.g.
 // "anthropic-ratelimit-unified-5h-reset") that can match usage-limit patterns
@@ -86,35 +38,20 @@ function hasStructuredSuccess(messages, tool) {
   return completionState(tool, messages) === 'completed';
 }
 
+const NO_USAGE_LIMIT = {
+  reached: false,
+  throttled: false,
+  resetTime: null,
+  timezone: null,
+  resetsAt: null,
+  window: null,
+};
+
 function detectUsageLimit({ plainOutput, messages = [], tool }) {
-  const output = plainOutput || '';
-
   if (hasStructuredSuccess(messages, tool)) {
-    return { reached: false, resetTime: null, timezone: null };
+    return NO_USAGE_LIMIT;
   }
-
-  const reached = USAGE_LIMIT_PATTERNS.some((pattern) => pattern.test(output));
-  let resetTime = null;
-  let timezone = null;
-
-  if (reached) {
-    for (const pattern of RESET_TIME_PATTERNS) {
-      const match = output.match(pattern);
-      resetTime = cleanResetTime(match?.[1]);
-      if (resetTime) {
-        break;
-      }
-    }
-
-    const parentheticalTimezone = output.match(/\(([^)]+)\)/)?.[1];
-    const timezoneCandidate =
-      parentheticalTimezone?.match(TIMEZONE_PATTERN)?.[0] ||
-      resetTime?.match(TIMEZONE_PATTERN)?.[0] ||
-      output.match(/\btimezone\s*:?\s*([A-Za-z_/-]+|UTC[+-]?\d*)\b/i)?.[1];
-    timezone = timezoneCandidate || null;
-  }
-
-  return { reached, resetTime, timezone };
+  return detectUsageLimitSources({ plainOutput: plainOutput || '', messages });
 }
 
 function textFromValue(value) {
@@ -224,7 +161,7 @@ function extractResultModelUsage(messages) {
       message.model || message.message?.model || message.part?.model;
     const usage =
       message.usage || message.message?.usage || message.part?.tokens;
-    if (model && usage && typeof usage === 'object') {
+    if (isRealModelId(model) && usage && typeof usage === 'object') {
       usageByModel[model] = usageByModel[model] || [];
       usageByModel[model].push(usage);
     }
@@ -280,9 +217,28 @@ function extractSubAgentCalls(messages) {
   return calls.length > 0 ? calls : null;
 }
 
+// Claude's synthetic API error message carries the error code as a string
+// (`"error":"rate_limit"`) and the readable text in its content.
+function apiErrorCode(messages) {
+  const message = [...messages]
+    .reverse()
+    .find(
+      (event) =>
+        event?.type === 'assistant' &&
+        event.is_api_error_message === true &&
+        typeof event.error === 'string'
+    );
+  return message?.error || null;
+}
+
 function extractErrorFromMessages(messages) {
+  const code = apiErrorCode(messages);
   for (const message of [...messages].reverse()) {
     if (!message || typeof message !== 'object') {
+      continue;
+    }
+    // A failed tool call is returned to the model; it does not decide the run.
+    if (isRecoverableToolError(message)) {
       continue;
     }
 
@@ -297,19 +253,21 @@ function extractErrorFromMessages(messages) {
       message.subtype?.startsWith('error')
     ) {
       const error = message.error;
+      const objectError = error && typeof error === 'object' ? error : null;
       const errorType =
-        (error && typeof error === 'object' && (error.type || error.code)) ||
+        (objectError &&
+          (objectError.type || objectError.code || objectError.name)) ||
+        (typeof error === 'string' && error) ||
         message.errorType ||
         message.error_type ||
+        (messageType === 'result' && (message.api_error || code)) ||
         messageType ||
         'execution_error';
       const errorMessage =
-        (typeof error === 'string' && error) ||
-        (error &&
-          typeof error === 'object' &&
-          (error.message || error.details)) ||
+        (objectError && firstErrorText([objectError])) ||
         textFromValue(message.message) ||
         textFromValue(message.result) ||
+        (typeof error === 'string' && error) ||
         'Execution failed';
 
       return { hasError: true, errorType, message: errorMessage };
@@ -319,7 +277,53 @@ function extractErrorFromMessages(messages) {
   return { hasError: false, errorType: null, message: null };
 }
 
-function detectExecutionError({ exitCode, plainOutput, messages, toolConfig }) {
+const PREFERRED_EXIT_LINE = /^(?:error\b|fatal:|(?:\/\S*\/)?(?:ba|z)?sh:\s)/i;
+// `2026-05-01T10:00:00.123Z DEBUG codex_core::...` tracing telemetry is not an
+// exit reason (hive-mind codex.process-exit).
+const TRACING_LINE =
+  /^\S*?\d{4}-\d{2}-\d{2}T[\d:.]+Z\s+(?:TRACE|DEBUG|INFO|WARN|ERROR)\s/;
+
+// The reason a process exited is a plain text line: JSON records, the
+// ANTHROPIC_LOG=debug dump and its base64 bodies are not (hive-mind#3570).
+function exitReasonLine(plainOutput) {
+  const { lines } = splitOutput(plainOutput);
+  const { debugLines } = classifyDebugLines(lines);
+  const candidates = lines
+    .filter((_, index) => !debugLines.has(index))
+    .map((line) => line.trim())
+    .filter((line) => line && !TRACING_LINE.test(line));
+  return (
+    candidates.findLast((line) => PREFERRED_EXIT_LINE.test(line)) ||
+    candidates.at(-1) ||
+    null
+  );
+}
+
+function exitCodeError({ exitCode, signal, plainOutput }) {
+  const reason = exitReasonLine(plainOutput || '');
+  if (!signal) {
+    return {
+      hasError: true,
+      errorType: 'exit_code',
+      message: reason || `Process exited with code ${exitCode}`,
+    };
+  }
+  // A signal is the cause; a preferred error line may still say why it came.
+  const preferred = reason && PREFERRED_EXIT_LINE.test(reason) ? reason : null;
+  return {
+    hasError: true,
+    errorType: 'signal',
+    message: `Process exited with code ${exitCode} (${signal})${preferred ? `: ${preferred}` : ''}`,
+  };
+}
+
+function detectExecutionError({
+  exitCode,
+  signal,
+  plainOutput,
+  messages,
+  toolConfig,
+}) {
   if (toolConfig?.detectErrors) {
     const detected = toolConfig.detectErrors({
       output: messages.map((message) => JSON.stringify(message)).join('\n'),
@@ -339,19 +343,51 @@ function detectExecutionError({ exitCode, plainOutput, messages, toolConfig }) {
   }
 
   if (exitCode !== 0) {
-    const lastLine = (plainOutput || '')
-      .trim()
-      .split('\n')
-      .filter(Boolean)
-      .pop();
-    return {
-      hasError: true,
-      errorType: 'exit_code',
-      message: lastLine || `Process exited with code ${exitCode}`,
-    };
+    return (
+      (!signal && errorRecordInOutput(plainOutput)) ||
+      exitCodeError({ exitCode, signal, plainOutput })
+    );
   }
 
   return { hasError: false, errorType: null, message: null };
+}
+
+// A process that failed without an error event on stdout may have written it
+// to stderr: Agent prints its fatal errors there (agent src/cli/output.ts
+// outputError; hive-mind agent.lib.mjs scans both streams). Only explains a
+// failed exit, so diagnostics cannot fail a successful run.
+function errorRecordInOutput(plainOutput) {
+  const records = parseJsonMessages(plainOutput).filter(
+    (record) => record?.type === 'error'
+  );
+  const error = extractErrorFromMessages(records);
+  return error.hasError ? error : null;
+}
+
+// Claude's API failure details, passed through for callers that log or
+// classify them (hive-mind feca4bcfb: errorCode, api_error_status, terminal_reason).
+function extractApiErrorDetails(messages) {
+  const result = [...messages]
+    .reverse()
+    .find((event) => event?.type === 'result');
+  const apiMessage = [...messages]
+    .reverse()
+    .find(
+      (event) =>
+        event?.type === 'assistant' && event.is_api_error_message === true
+    );
+  const stringError = (event) =>
+    typeof event?.error === 'string' ? event.error : null;
+  return {
+    apiError:
+      result?.api_error ??
+      stringError(result) ??
+      stringError(apiMessage) ??
+      null,
+    apiErrorStatus: result?.api_error_status ?? null,
+    terminalReason: result?.terminal_reason ?? null,
+    requestId: result?.request_id ?? apiMessage?.request_id ?? null,
+  };
 }
 
 function extractSessionId({ explicitSessionId, messages }) {
@@ -408,6 +444,10 @@ function publicPricingEstimate({ tool, usage }) {
  * @param {string|null} [options.sessionId] - Extracted session ID
  * @param {Object|null} [options.usage] - Aggregated stream token usage
  * @param {Object|null} [options.toolConfig] - Tool parser configuration
+ * @param {string|null} [options.signal] - Signal that ended the process;
+ *   inferred from an exit code above 128 when omitted
+ * @param {boolean} [options.terminatedAfterResult] - The caller stopped the
+ *   process after its result arrived
  * @returns {Object} Normalized result metadata
  */
 export function buildNormalizedResultMetadata(options) {
@@ -419,7 +459,9 @@ export function buildNormalizedResultMetadata(options) {
     sessionId = null,
     usage = null,
     toolConfig = null,
+    terminatedAfterResult = false,
   } = options;
+  const signal = options.signal ?? signalFromExitCode(exitCode);
   const allMessages = normalizeMessages({
     parsedOutput,
     plainOutput,
@@ -427,8 +469,13 @@ export function buildNormalizedResultMetadata(options) {
   });
   const messages = allMessages.filter((event) => !event?.parent_tool_use_id);
   const usageLimit = detectUsageLimit({ plainOutput, messages, tool });
+  const completed = completionState(tool, messages) === 'completed';
+  // Stopping a process after its completed result is the caller's own
+  // signal, not the tool's verdict (hive-mind#3015 interpretClaudeExitCode).
+  const exitForgiven = terminatedAfterResult && completed;
   const error = detectExecutionError({
-    exitCode,
+    exitCode: exitForgiven ? 0 : exitCode,
+    signal,
     plainOutput,
     messages: outcomeMessages(tool, messages),
     toolConfig,
@@ -440,6 +487,22 @@ export function buildNormalizedResultMetadata(options) {
       message: 'Process exited before the native completion event',
     });
   }
+  const background = assessBackgroundTasks({
+    messages: allMessages,
+    output: plainOutput,
+    terminatedAfterResult,
+  });
+  if (!error.hasError && background.incomplete) {
+    Object.assign(error, {
+      hasError: true,
+      errorType: 'background_tasks_stopped',
+      message: background.cause,
+    });
+  }
+  // A server-side throttle is transient: callers retry instead of waiting for a reset.
+  if (error.hasError && usageLimit.throttled) {
+    error.errorType = 'rate_limited';
+  }
   const anthropicTotalCostUSD = firstNumber(messages, [
     'total_cost_usd',
     'totalCostUsd',
@@ -450,7 +513,12 @@ export function buildNormalizedResultMetadata(options) {
   return {
     tool,
     exitCode,
-    success: exitCode === 0 && !usageLimit.reached && !error.hasError,
+    signal,
+    success:
+      (exitCode === 0 || exitForgiven) &&
+      !usageLimit.reached &&
+      !error.hasError,
+    terminatedAfterResult: Boolean(terminatedAfterResult),
     sessionId: extractSessionId({
       explicitSessionId: sessionId,
       messages,
@@ -458,6 +526,8 @@ export function buildNormalizedResultMetadata(options) {
     limitReached: usageLimit.reached,
     limitResetTime: usageLimit.resetTime,
     limitTimezone: usageLimit.timezone,
+    limitResetsAt: usageLimit.resetsAt,
+    limitWindow: usageLimit.window,
     anthropicTotalCostUSD,
     publicPricingEstimate: estimate,
     pricingInfo:
@@ -469,10 +539,16 @@ export function buildNormalizedResultMetadata(options) {
           },
     resultSummary: extractResultSummary({ messages, plainOutput }),
     resultModelUsage: extractResultModelUsage(messages),
+    ...extractObservedModels(allMessages),
     streamTokenUsage: usage,
     subAgentCalls: extractSubAgentCalls(allMessages),
     errorDuringExecution: error.hasError,
     errorType: error.errorType,
     errorMessage: error.message,
+    ...extractApiErrorDetails(messages),
+    runningBackgroundTasks: background.runningBackgroundTasks,
+    backgroundTasksStopped: background.backgroundTasksStopped,
+    stoppedBackgroundTasks: background.stoppedBackgroundTasks,
+    printWaitCeilingSeconds: background.printWaitCeilingSeconds,
   };
 }
