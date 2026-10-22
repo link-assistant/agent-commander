@@ -24,6 +24,7 @@ pub mod permissions;
 pub mod result_close;
 pub mod result_metadata;
 pub mod streaming;
+pub mod tool_overrides;
 pub mod tool_version;
 pub mod tools;
 pub mod tui;
@@ -43,8 +44,9 @@ pub use cli_parser::{
 };
 
 pub use command_builder::{
-    build_agent_command, build_docker_stop_command, build_piped_command, build_screen_stop_command,
-    read_only_unsupported_error, supports_read_only, AgentCommandOptions,
+    build_agent_command, build_base_command, build_docker_stop_command, build_piped_command,
+    build_screen_stop_command, read_only_unsupported_error, supports_read_only,
+    AgentCommandOptions,
 };
 
 pub use permissions::{
@@ -125,15 +127,20 @@ pub use usage_windows::{
     merge_usage_windows, usage_windows_from_message, UsageWindow, USAGE_WINDOW_KINDS,
 };
 
+pub use tool_overrides::{
+    BuildCommandFn, ExtractSessionIdFn, ExtractUsageFn, ParseOutputFn, ToolOverrides,
+};
+
 pub use tool_version::{
     build_version_command, compare_versions, get_tool_version, parse_tool_version,
     tool_version_from_output, ToolVersion,
 };
 
 pub use tools::launch_options::{
-    check_launch_options_supported, codex_mcp_servers_override, launch_capabilities,
-    normalize_reasoning_effort, push_attachments, push_directories, to_toml_value,
-    LaunchCapabilities, LaunchOptions, CLAUDE_REASONING_EFFORTS, CODEX_REASONING_EFFORTS,
+    check_launch_options_against, check_launch_options_supported, codex_mcp_servers_override,
+    launch_capabilities, normalize_reasoning_effort, push_attachments, push_directories,
+    to_toml_value, LaunchCapabilities, LaunchOptions, CLAUDE_REASONING_EFFORTS,
+    CODEX_REASONING_EFFORTS,
 };
 
 /// Agent options for creating a controller
@@ -197,6 +204,9 @@ pub struct AgentOptions {
     /// (`claude`, `qwen`, `agent`; attached runs without isolation). The
     /// prompt becomes the first stream-json frame and JSON output is forced.
     pub live_input: bool,
+    /// Replace the command builder, output parser, session ID or usage
+    /// extractor, or launch capabilities for this run
+    pub tool_overrides: ToolOverrides,
 }
 
 /// Agent result from stop()
@@ -418,7 +428,12 @@ impl Agent {
     /// Result indicating success or error
     pub async fn start(&mut self, start_options: AgentStartOptions) -> Result<(), String> {
         // Reject launch options the tool cannot honor before any side effects.
-        check_launch_options_supported(&self.options.tool, &self.options.launch)?;
+        let capabilities = self
+            .options
+            .tool_overrides
+            .launch_capabilities
+            .unwrap_or_else(|| launch_capabilities(&self.options.tool));
+        check_launch_options_against(&self.options.tool, &self.options.launch, &capabilities)?;
         let live = self.options.live_input;
         if live && !supports_live_input(&self.options.tool) {
             return Err(live_input_unsupported_error(&self.options.tool));
@@ -488,6 +503,7 @@ impl Agent {
             container_name: self.options.container_name.clone(),
             detached: start_options.detached,
             launch: self.options.launch.clone(),
+            overrides: self.options.tool_overrides.clone(),
         };
 
         let command = build_agent_command(&command_options);
@@ -661,8 +677,10 @@ impl Agent {
             };
 
             // Process output through stream if available
-            let mut parsed_output = None;
-            if let Some(ref mut stream) = self.output_stream {
+            // A caller's parser replaces the streamed messages too.
+            let overrides = &self.options.tool_overrides;
+            let mut parsed_output = overrides.parse_output.as_ref().map(|parse| parse(stdout));
+            if let (None, Some(stream)) = (&parsed_output, self.output_stream.as_mut()) {
                 stream.process(stdout);
                 stream.flush();
                 let messages = stream.get_messages();
@@ -680,7 +698,9 @@ impl Agent {
             }
 
             // Try to extract session ID
-            if is_tool_supported(&self.options.tool) {
+            if let Some(extract) = &overrides.extract_session_id {
+                self.session_id = extract(stdout);
+            } else if is_tool_supported(&self.options.tool) {
                 match self.options.tool.as_str() {
                     "claude" => {
                         self.session_id = tools::claude::extract_session_id(stdout);
@@ -700,7 +720,10 @@ impl Agent {
                 }
             }
 
-            let usage = extract_usage_value(&self.options.tool, stdout);
+            let usage = match &overrides.extract_usage {
+                Some(extract) => extract(stdout),
+                None => extract_usage_value(&self.options.tool, stdout),
+            };
             let mut metadata = build_normalized_result_metadata(BuildMetadataOptions {
                 tool: &self.options.tool,
                 exit_code,

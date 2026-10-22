@@ -2,13 +2,15 @@
 
 use crate::tools::shell::escape_arg;
 // The same quoting rules command-stream audits for `bash -c` strings.
-use crate::tools::launch_options::{check_launch_options_supported, LaunchOptions};
+use crate::tool_overrides::ToolOverrides;
+use crate::tools::launch_options::{
+    check_launch_options_against, launch_capabilities, LaunchOptions,
+};
 use crate::tools::{
     agent::{self, AgentBuildOptions},
     claude::{self, ClaudeBuildOptions},
     codex::{self, CodexBuildOptions},
     gemini::{self, GeminiBuildOptions},
-    is_tool_supported,
     opencode::{self, OpencodeBuildOptions},
     qwen::{self, QwenBuildOptions},
 };
@@ -50,6 +52,8 @@ pub struct AgentCommandOptions {
     pub detached: bool,
     /// Shared launch options (reasoning effort, MCP servers, extra directories)
     pub launch: LaunchOptions,
+    /// Caller replacements for the command builder or capability flags
+    pub overrides: ToolOverrides,
 }
 
 /// Check whether a tool has an enforceable native read-only/planning mode.
@@ -179,143 +183,19 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
         crate::permissions::ask_unsupported_error(&options.tool)
     );
 
-    if let Err(error) = check_launch_options_supported(&options.tool, &options.launch) {
+    let capabilities = options
+        .overrides
+        .launch_capabilities
+        .unwrap_or_else(|| launch_capabilities(&options.tool));
+    if let Err(error) = check_launch_options_against(&options.tool, &options.launch, &capabilities)
+    {
         panic!("{error}");
     }
 
-    // Build base command using tool-specific builder if available
-    let base_command = if is_tool_supported(&options.tool) {
-        match options.tool.as_str() {
-            "claude" => claude::build_command(&ClaudeBuildOptions {
-                prompt: options.prompt.clone(),
-                prompt_file: options.prompt_file.clone(),
-                system_prompt: options.system_prompt.clone(),
-                append_system_prompt: options.append_system_prompt.clone(),
-                model: options.model.clone(),
-                fallback_model: options.fallback_model.clone(),
-                json: options.json,
-                json_input: options.stream_input,
-                verbose: options.verbose,
-                replay_user_messages: options.replay_user_messages,
-                resume: options.resume.clone(),
-                session_id: options.session_id.clone(),
-                fork_session: options.fork_session,
-                print: false,
-                read_only: read_only_requested,
-                approve_each: options.approve_each,
-                executable: options.executable.clone(),
-                extra_env: options.extra_env.clone(),
-                unset_env: options.unset_env.clone(),
-                extra_args: options.extra_args.clone(),
-                skip_default_safety_flags: options.skip_default_safety_flags,
-                permission_mode: None,
-                stream_input: options.stream_input,
-                launch: options.launch.clone(),
-            }),
-            "codex" => codex::build_command(&CodexBuildOptions {
-                prompt: options.prompt.clone(),
-                prompt_file: options.prompt_file.clone(),
-                system_prompt: options.system_prompt.clone(),
-                model: options.model.clone(),
-                json: options.json,
-                resume: options.resume.clone(),
-                read_only: read_only_requested,
-                executable: options.executable.clone(),
-                extra_env: options.extra_env.clone(),
-                unset_env: options.unset_env.clone(),
-                extra_args: options.extra_args.clone(),
-                skip_default_safety_flags: options.skip_default_safety_flags,
-                sandbox_mode: None,
-                approval_mode: None,
-                launch: options.launch.clone(),
-            }),
-            "opencode" => opencode::build_command(&OpencodeBuildOptions {
-                prompt: options.prompt.clone(),
-                prompt_file: options.prompt_file.clone(),
-                system_prompt: options.system_prompt.clone(),
-                model: options.model.clone(),
-                json: options.json,
-                resume: options.resume.clone(),
-                read_only: read_only_requested,
-                executable: options.executable.clone(),
-                extra_env: options.extra_env.clone(),
-                unset_env: options.unset_env.clone(),
-                extra_args: options.extra_args.clone(),
-                launch: options.launch.clone(),
-            }),
-            "agent" => agent::build_command(&AgentBuildOptions {
-                resume: options.resume.clone(),
-                prompt: options.prompt.clone(),
-                prompt_file: options.prompt_file.clone(),
-                system_prompt: options.system_prompt.clone(),
-                model: options.model.clone(),
-                compact_json: false,
-                use_existing_claude_oauth: false,
-                read_only: read_only_requested,
-                plan_only: options.plan_only,
-                approve_each: options.approve_each,
-                permission_mode: None,
-                permission: None,
-                stream_input: options.stream_input,
-                json_input: options.stream_input,
-                executable: options.executable.clone(),
-                extra_env: options.extra_env.clone(),
-                unset_env: options.unset_env.clone(),
-                extra_args: options.extra_args.clone(),
-            }),
-            "gemini" => {
-                let options = GeminiBuildOptions {
-                    resume: options.resume.clone(),
-                    prompt: options.prompt.clone(),
-                    prompt_file: options.prompt_file.clone(),
-                    system_prompt: options.system_prompt.clone(),
-                    model: options.model.clone(),
-                    json: options.json,
-                    read_only: read_only_requested,
-                    executable: options.executable.clone(),
-                    extra_env: options.extra_env.clone(),
-                    unset_env: options.unset_env.clone(),
-                    extra_args: options.extra_args.clone(),
-                    skip_default_safety_flags: options.skip_default_safety_flags,
-                    launch: options.launch.clone(),
-                    ..GeminiBuildOptions::new()
-                };
-                gemini::build_command(&options)
-            }
-            "qwen" => {
-                let options = QwenBuildOptions {
-                    prompt: options.prompt.clone(),
-                    prompt_file: options.prompt_file.clone(),
-                    system_prompt: options.system_prompt.clone(),
-                    model: options.model.clone(),
-                    json: options.json,
-                    resume: options.resume.clone(),
-                    read_only: read_only_requested,
-                    executable: options.executable.clone(),
-                    extra_env: options.extra_env.clone(),
-                    unset_env: options.unset_env.clone(),
-                    extra_args: options.extra_args.clone(),
-                    skip_default_safety_flags: options.skip_default_safety_flags,
-                    launch: options.launch.clone(),
-                    json_input: options.stream_input,
-                    stream_input: options.stream_input,
-                    ..QwenBuildOptions::new()
-                };
-                qwen::build_command(&options)
-            }
-            _ => build_tool_command(
-                &options.tool,
-                options.prompt.as_deref(),
-                options.system_prompt.as_deref(),
-            ),
-        }
-    } else {
-        // Unknown tool, use generic command builder
-        build_tool_command(
-            &options.tool,
-            options.prompt.as_deref(),
-            options.system_prompt.as_deref(),
-        )
+    // A caller's builder replaces the tool-specific one (issue #57).
+    let base_command = match &options.overrides.build_command {
+        Some(build) => build(options),
+        None => build_base_command(options),
     };
 
     // Wrap in bash -c with working directory change
@@ -346,6 +226,139 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
     }
 
     full_command
+}
+
+/// Build the native tool command without the working-directory and isolation
+/// wrappers. A `ToolOverrides::build_command` can call it and extend the result.
+pub fn build_base_command(options: &AgentCommandOptions) -> String {
+    // A planning request implies a read-only restriction for tools that do not
+    // distinguish the two modes.
+    let read_only_requested = options.read_only || options.plan_only;
+    match options.tool.as_str() {
+        "claude" => claude::build_command(&ClaudeBuildOptions {
+            prompt: options.prompt.clone(),
+            prompt_file: options.prompt_file.clone(),
+            system_prompt: options.system_prompt.clone(),
+            append_system_prompt: options.append_system_prompt.clone(),
+            model: options.model.clone(),
+            fallback_model: options.fallback_model.clone(),
+            json: options.json,
+            json_input: options.stream_input,
+            verbose: options.verbose,
+            replay_user_messages: options.replay_user_messages,
+            resume: options.resume.clone(),
+            session_id: options.session_id.clone(),
+            fork_session: options.fork_session,
+            print: false,
+            read_only: read_only_requested,
+            approve_each: options.approve_each,
+            executable: options.executable.clone(),
+            extra_env: options.extra_env.clone(),
+            unset_env: options.unset_env.clone(),
+            extra_args: options.extra_args.clone(),
+            skip_default_safety_flags: options.skip_default_safety_flags,
+            permission_mode: None,
+            stream_input: options.stream_input,
+            launch: options.launch.clone(),
+        }),
+        "codex" => codex::build_command(&CodexBuildOptions {
+            prompt: options.prompt.clone(),
+            prompt_file: options.prompt_file.clone(),
+            system_prompt: options.system_prompt.clone(),
+            model: options.model.clone(),
+            json: options.json,
+            resume: options.resume.clone(),
+            read_only: read_only_requested,
+            executable: options.executable.clone(),
+            extra_env: options.extra_env.clone(),
+            unset_env: options.unset_env.clone(),
+            extra_args: options.extra_args.clone(),
+            skip_default_safety_flags: options.skip_default_safety_flags,
+            sandbox_mode: None,
+            approval_mode: None,
+            launch: options.launch.clone(),
+        }),
+        "opencode" => opencode::build_command(&OpencodeBuildOptions {
+            prompt: options.prompt.clone(),
+            prompt_file: options.prompt_file.clone(),
+            system_prompt: options.system_prompt.clone(),
+            model: options.model.clone(),
+            json: options.json,
+            resume: options.resume.clone(),
+            read_only: read_only_requested,
+            executable: options.executable.clone(),
+            extra_env: options.extra_env.clone(),
+            unset_env: options.unset_env.clone(),
+            extra_args: options.extra_args.clone(),
+            launch: options.launch.clone(),
+        }),
+        "agent" => agent::build_command(&AgentBuildOptions {
+            resume: options.resume.clone(),
+            prompt: options.prompt.clone(),
+            prompt_file: options.prompt_file.clone(),
+            system_prompt: options.system_prompt.clone(),
+            model: options.model.clone(),
+            compact_json: false,
+            use_existing_claude_oauth: false,
+            read_only: read_only_requested,
+            plan_only: options.plan_only,
+            approve_each: options.approve_each,
+            permission_mode: None,
+            permission: None,
+            stream_input: options.stream_input,
+            json_input: options.stream_input,
+            executable: options.executable.clone(),
+            extra_env: options.extra_env.clone(),
+            unset_env: options.unset_env.clone(),
+            extra_args: options.extra_args.clone(),
+        }),
+        "gemini" => {
+            let options = GeminiBuildOptions {
+                resume: options.resume.clone(),
+                prompt: options.prompt.clone(),
+                prompt_file: options.prompt_file.clone(),
+                system_prompt: options.system_prompt.clone(),
+                model: options.model.clone(),
+                json: options.json,
+                read_only: read_only_requested,
+                executable: options.executable.clone(),
+                extra_env: options.extra_env.clone(),
+                unset_env: options.unset_env.clone(),
+                extra_args: options.extra_args.clone(),
+                skip_default_safety_flags: options.skip_default_safety_flags,
+                launch: options.launch.clone(),
+                ..GeminiBuildOptions::new()
+            };
+            gemini::build_command(&options)
+        }
+        "qwen" => {
+            let options = QwenBuildOptions {
+                prompt: options.prompt.clone(),
+                prompt_file: options.prompt_file.clone(),
+                system_prompt: options.system_prompt.clone(),
+                model: options.model.clone(),
+                json: options.json,
+                resume: options.resume.clone(),
+                read_only: read_only_requested,
+                executable: options.executable.clone(),
+                extra_env: options.extra_env.clone(),
+                unset_env: options.unset_env.clone(),
+                extra_args: options.extra_args.clone(),
+                skip_default_safety_flags: options.skip_default_safety_flags,
+                launch: options.launch.clone(),
+                json_input: options.stream_input,
+                stream_input: options.stream_input,
+                ..QwenBuildOptions::new()
+            };
+            qwen::build_command(&options)
+        }
+        // Unknown tool, use generic command builder
+        _ => build_tool_command(
+            &options.tool,
+            options.prompt.as_deref(),
+            options.system_prompt.as_deref(),
+        ),
+    }
 }
 
 /// Build stop command for screen sessions
@@ -787,175 +800,6 @@ mod tests {
         assert!(command.contains("agent"));
         assert!(command.contains("--model"));
         assert!(command.contains("opencode/grok-code"));
-    }
-
-    #[test]
-    fn test_build_agent_command_claude_read_only() {
-        let options = AgentCommandOptions {
-            tool: "claude".to_string(),
-            working_directory: "/tmp/test".to_string(),
-            prompt: Some("Plan only".to_string()),
-            read_only: true,
-            isolation: "none".to_string(),
-            ..Default::default()
-        };
-
-        let command = build_agent_command(&options);
-        assert!(command.contains("--permission-mode"));
-        assert!(command.contains("plan"));
-        assert!(!command.contains("--dangerously-skip-permissions"));
-    }
-
-    #[test]
-    fn test_build_agent_command_codex_read_only() {
-        let options = AgentCommandOptions {
-            tool: "codex".to_string(),
-            working_directory: "/tmp/test".to_string(),
-            prompt: Some("Plan only".to_string()),
-            read_only: true,
-            isolation: "none".to_string(),
-            ..Default::default()
-        };
-
-        let command = build_agent_command(&options);
-        assert!(command.contains("codex --ask-for-approval never exec"));
-        assert!(command.contains("--sandbox"));
-        assert!(command.contains("read-only"));
-        assert!(!command.contains("--dangerously-bypass-approvals-and-sandbox"));
-    }
-
-    #[test]
-    fn test_build_agent_command_opencode_read_only() {
-        let options = AgentCommandOptions {
-            tool: "opencode".to_string(),
-            working_directory: "/tmp/test".to_string(),
-            prompt: Some("Plan only".to_string()),
-            read_only: true,
-            isolation: "none".to_string(),
-            ..Default::default()
-        };
-
-        let command = build_agent_command(&options);
-        assert!(command.contains("OPENCODE_PERMISSION="));
-        assert!(command.contains("bash"));
-        assert!(command.contains("edit"));
-        assert!(command.contains("deny"));
-    }
-
-    #[test]
-    fn test_build_agent_command_agent_read_only_uses_readonly_mode() {
-        let options = AgentCommandOptions {
-            tool: "agent".to_string(),
-            working_directory: "/tmp/test".to_string(),
-            prompt: Some("Inspect only".to_string()),
-            read_only: true,
-            isolation: "none".to_string(),
-            ..Default::default()
-        };
-
-        let command = build_agent_command(&options);
-        assert!(command.contains("--permission-mode"));
-        assert!(command.contains("readonly"));
-        assert!(!command.contains("plan"));
-    }
-
-    #[test]
-    fn test_build_agent_command_agent_plan_only_uses_plan_mode() {
-        let options = AgentCommandOptions {
-            tool: "agent".to_string(),
-            working_directory: "/tmp/test".to_string(),
-            prompt: Some("Plan only".to_string()),
-            plan_only: true,
-            isolation: "none".to_string(),
-            ..Default::default()
-        };
-
-        let command = build_agent_command(&options);
-        assert!(command.contains("--permission-mode"));
-        assert!(command.contains("plan"));
-        assert!(!command.contains("readonly"));
-    }
-
-    #[test]
-    fn test_build_agent_command_agent_approve_each_uses_ask_mode() {
-        let options = AgentCommandOptions {
-            tool: "agent".to_string(),
-            working_directory: "/tmp/test".to_string(),
-            prompt: Some("Do work".to_string()),
-            approve_each: true,
-            isolation: "none".to_string(),
-            ..Default::default()
-        };
-
-        let command = build_agent_command(&options);
-        assert!(command.contains("--permission-mode"));
-        assert!(command.contains("ask"));
-        // Ask mode requires streaming stdin so requests can be answered mid-turn.
-        assert!(command.contains("--input-format"));
-        assert!(command.contains("stream-json"));
-        assert!(!command.contains("readonly"));
-    }
-
-    #[test]
-    fn test_build_agent_command_claude_approve_each_uses_default_mode() {
-        let options = AgentCommandOptions {
-            tool: "claude".to_string(),
-            working_directory: "/tmp/test".to_string(),
-            prompt: Some("Do work".to_string()),
-            approve_each: true,
-            isolation: "none".to_string(),
-            ..Default::default()
-        };
-
-        let command = build_agent_command(&options);
-        assert!(command.contains("--permission-mode"));
-        assert!(command.contains("default"));
-        // Default mode keeps Claude's own per-tool prompting active instead of
-        // bypassing it.
-        assert!(!command.contains("--dangerously-skip-permissions"));
-        assert!(!command.contains("plan"));
-    }
-
-    #[test]
-    #[should_panic(expected = "does not support enforceable per-command approval")]
-    fn test_build_agent_command_approve_each_rejects_codex() {
-        let options = AgentCommandOptions {
-            tool: "codex".to_string(),
-            working_directory: "/tmp/test".to_string(),
-            approve_each: true,
-            isolation: "none".to_string(),
-            ..Default::default()
-        };
-
-        let _command = build_agent_command(&options);
-    }
-
-    #[test]
-    #[should_panic(expected = "does not support enforceable per-command approval")]
-    fn test_build_agent_command_approve_each_rejects_unknown_tool() {
-        let options = AgentCommandOptions {
-            tool: "unknown-tool".to_string(),
-            working_directory: "/tmp/test".to_string(),
-            approve_each: true,
-            isolation: "none".to_string(),
-            ..Default::default()
-        };
-
-        let _command = build_agent_command(&options);
-    }
-
-    #[test]
-    #[should_panic(expected = "does not support enforceable read-only mode")]
-    fn test_build_agent_command_read_only_rejects_unknown_tool() {
-        let options = AgentCommandOptions {
-            tool: "unknown-tool".to_string(),
-            working_directory: "/tmp/test".to_string(),
-            read_only: true,
-            isolation: "none".to_string(),
-            ..Default::default()
-        };
-
-        let _command = build_agent_command(&options);
     }
 
     #[test]

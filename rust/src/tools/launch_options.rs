@@ -75,6 +75,19 @@ pub fn launch_capabilities(tool: &str) -> LaunchCapabilities {
 /// # Errors
 /// Returns the message naming the tools that do support the option.
 pub fn check_launch_options_supported(tool: &str, launch: &LaunchOptions) -> Result<(), String> {
+    check_launch_options_against(tool, launch, &launch_capabilities(tool))
+}
+
+/// Check the requested launch options against the given capabilities, such
+/// as a `ToolOverrides::launch_capabilities` replacement.
+///
+/// # Errors
+/// Returns the message naming the tools that do support the option.
+pub fn check_launch_options_against(
+    tool: &str,
+    launch: &LaunchOptions,
+    capabilities: &LaunchCapabilities,
+) -> Result<(), String> {
     type Pick = fn(&LaunchCapabilities) -> bool;
     let checks: [(bool, Pick, &str); 5] = [
         (
@@ -103,9 +116,8 @@ pub fn check_launch_options_supported(tool: &str, launch: &LaunchOptions) -> Res
             "file attachments (--attach)",
         ),
     ];
-    let capabilities = launch_capabilities(tool);
     for (requested, pick, label) in checks {
-        if requested && !pick(&capabilities) {
+        if requested && !pick(capabilities) {
             let supporting: Vec<&str> = TOOLS
                 .iter()
                 .copied()
