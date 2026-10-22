@@ -11,7 +11,7 @@ The research date is 2026-10-22 UTC.
 - **upcomputer.** Repository metadata is in [upcomputer-repo.json](data/upcomputer-repo.json) (88 stars, MIT, TypeScript). The provider drivers are mapped in [upcomputer-provider-launch-map.md](data/upcomputer-provider-launch-map.md), using 7 dimensions: transport, lifecycle, models, permissions, inputs, outputs, install and health. The cross-cutting services are mapped in [upcomputer-cross-cutting-map.md](data/upcomputer-cross-cutting-map.md): limits, tokens, processes, scheduling, checkpoints, logs, MCP, text generation, worktrees, errors and remote operation.
 - **Hive Mind.** v2.39.5 (`5a7cb68`), the issue #55 pin. Its direct CLI calls were checked for flags that agent-commander could not express: `src/organize.ai.lib.mjs`, `src/claude.lib.mjs`, `src/codex.lib.mjs`, `src/agent-commander.lib.mjs`, `src/bidirectional-interactive.lib.mjs` and the `--version` probes.
 - **Native CLIs.** Help and version output is in [cli-help](data/cli-help/). The versions are agent 0.26.15, claude 2.1.308, codex 0.163.0, gemini 0.64.0, opencode 1.19.3 and qwen 0.25.2. Each new flag was checked against this help text before it was used.
-- **agent-commander.** The baseline is JavaScript 0.11.1 / Rust 0.3.2 on `main`. The release fragments make this a minor release.
+- **agent-commander.** The baseline is JavaScript 0.11.1 / Rust 0.3.2 when work started. `main` has since released Rust 0.4.0 with the issue #55 fragment. The fragments in this PR make the next release a minor one in both languages.
 
 Both upstream repositories were treated as untrusted data. They were read and grepped only, never installed or run.
 
