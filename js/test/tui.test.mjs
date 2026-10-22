@@ -101,21 +101,26 @@ test('buildAgentTuiLaunch maps interactive safety and resume options', () => {
   ]);
 });
 
-test(
-  'captureAgentTui drives and normalizes all agent clients',
-  {
-    skip: isDeno,
-    // Six native PTY launches are intentionally exercised in series. Windows
-    // startup can exceed Bun's five-second default even when every capture
-    // finishes normally.
-    timeout: 30_000,
-  },
-  async (t) => {
-    const artifactRoot = await mkdtemp(join(tmpdir(), 'agent-tui-'));
-    t.after(() => rm(artifactRoot, { recursive: true, force: true }));
+// One test per agent client, so each native PTY launch gets its own budget.
+// The first capture in this file also starts the node PTY host and loads
+// node-pty's ConPTY binding for the first time. On Windows runners that took
+// 5.9-36.5 s, and every later capture took about 1.4 s. So the first capture
+// gets a cold-start allowance; it runs first because tests run in order.
+for (const [index, tool] of tools.entries()) {
+  test(
+    `captureAgentTui drives and normalizes the ${tool} client`,
+    {
+      skip: isDeno,
+      // Windows startup can exceed Bun's five-second default even when the
+      // capture finishes normally.
+      timeout: index === 0 ? 120_000 : 30_000,
+    },
+    async (t) => {
+      const artifactDirectory = await mkdtemp(
+        join(tmpdir(), `agent-tui-${tool}-`)
+      );
+      t.after(() => rm(artifactDirectory, { recursive: true, force: true }));
 
-    for (const tool of tools) {
-      const artifactDirectory = join(artifactRoot, tool);
       const capture = await captureAgentTui({
         tool,
         workingDirectory: process.cwd(),
@@ -166,16 +171,14 @@ test(
       assert.strictEqual(capture.asciicast.header.width, 24, tool);
       assert.strictEqual(capture.asciicast.header.height, 6, tool);
     }
-  }
-);
+  );
+}
 
-test(
-  'captureAgentTui defaults every agent to publishable 4:3 geometry',
-  { skip: isDeno, timeout: 30_000 },
-  async () => {
-    const directory = dirname(fileURLToPath(import.meta.url));
-
-    for (const tool of tools) {
+for (const tool of tools) {
+  test(
+    `captureAgentTui defaults ${tool} to publishable 4:3 geometry`,
+    { skip: isDeno, timeout: 30_000 },
+    async () => {
       const capture = await captureAgentTui({
         tool,
         workingDirectory: process.cwd(),
@@ -197,8 +200,8 @@ test(
       assert.strictEqual(capture.asciicast.header.width, 80, tool);
       assert.strictEqual(capture.asciicast.header.height, 30, tool);
     }
-  }
-);
+  );
+}
 
 test(
   'captureAgentTui forwards renderer options and selects artifacts',

@@ -13,6 +13,10 @@ import {
   normalizeExtraArgs,
   normalizeExtraEnv,
 } from './shell.mjs';
+import {
+  normalizeAttachments,
+  normalizeReasoningEffort,
+} from './launch-options.mjs';
 
 const READ_ONLY_PERMISSION = '{"edit":"deny","bash":"deny","task":"deny"}';
 
@@ -41,12 +45,27 @@ export const mapModelToId = createModelMapper(modelMap);
  * @param {boolean} [options.json] - JSON output mode
  * @param {string} [options.resume] - Resume session ID
  * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
+ * @param {string} [options.reasoningEffort] - Provider-specific variant (`--variant`)
+ * @param {string[]} [options.attachments] - Files attached to the message (`--file`)
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
-  const { model, json = true, resume, extraArgs = [] } = options;
+  const {
+    model,
+    json = true,
+    resume,
+    extraArgs = [],
+    reasoningEffort,
+    attachments,
+  } = options;
 
   const args = ['run'];
+
+  // `--file` is a yargs array that would swallow a following positional, so
+  // each path gets its own flag right after the subcommand.
+  for (const file of normalizeAttachments(attachments)) {
+    args.push('--file', file);
+  }
 
   if (model) {
     const mappedModel = mapModelToId({ model });
@@ -59,6 +78,10 @@ export function buildArgs(options) {
 
   if (resume) {
     args.push('--session', resume);
+  }
+
+  if (reasoningEffort) {
+    args.push('--variant', normalizeReasoningEffort(reasoningEffort));
   }
 
   args.push(...normalizeExtraArgs(extraArgs));
@@ -170,6 +193,13 @@ export const opencodeTool = {
   supportsResume: true,
   supportsReadOnly: true, // Supports OPENCODE_PERMISSION
   supportsAsk: false, // Only a static up-front policy; no per-command request/response relay
+  supportsReasoningEffort: true, // --variant <provider-specific level>
+  reasoningEfforts: null, // Variants are defined by the model provider
+  supportsMcpConfig: false, // MCP servers come from opencode.json only
+  supportsStrictMcpConfig: false,
+  supportsAdditionalDirectories: false, // No extra workspace directory flag
+  supportsAttachments: true, // run --file <file>
+  supportsJsonSchema: false, // No structured-output flag (opencode 1.19)
   defaultModel: syncedDefaults.opencode,
   modelMap,
   mapModelToId,

@@ -25,13 +25,18 @@ import {
   setupSignalHandler,
   startCommand,
 } from './executor.mjs';
-import { getTool, isToolSupported } from './tools/index.mjs';
+import { isToolSupported, resolveToolConfig } from './tools/index.mjs';
 import { normalizeExtraEnv } from './tools/shell.mjs';
+import { definedLaunchOptions } from './tools/launch-options.mjs';
 import { createOutputStream, createInputStream } from './streaming/index.mjs';
 import { stringifyNdjsonLine } from './streaming/ndjson.mjs';
 import { parseJsonRecords } from './streaming/json-records.mjs';
 import { buildNormalizedResultMetadata } from './result-metadata.mjs';
-import { applyCodexRolloutUsageLimit } from './codex-rollout.mjs';
+import {
+  applyCodexRolloutUsageLimit,
+  applyCodexRolloutContextUsage,
+  applyCodexRolloutUsageWindows,
+} from './codex-rollout.mjs';
 import { applyClaudeTranscriptUsageLimit } from './claude-transcript.mjs';
 import { requireCompletedResult } from './completion.mjs';
 import {
@@ -40,6 +45,12 @@ import {
   waitForExitAfterResult,
 } from './result-close.mjs';
 import { PermissionRelay, askUnsupportedError } from './permissions/index.mjs';
+import {
+  buildInterruptFrame,
+  buildUserInputFrame,
+  liveInputUnsupportedError,
+  supportsLiveInput,
+} from './live-input.mjs';
 
 const PROMPT_FILE_TOOLS = new Set([
   'claude',
@@ -78,34 +89,6 @@ function buildPromptFileContent(options) {
 }
 
 /**
- * Build the initial user-message frame written to a tool's stdin when relaying
- * per-command approvals over a streaming input channel.
- * @param {Object} options - Options
- * @param {string} options.toolName - Tool name (`agent` | `claude`)
- * @param {string} [options.prompt] - User prompt
- * @param {string} [options.systemPrompt] - System prompt
- * @returns {Object} A user-message frame ready to be serialized as NDJSON
- */
-function buildInitialInputFrame(options) {
-  const { toolName, prompt, systemPrompt } = options;
-
-  if (toolName === 'claude') {
-    // Claude stream-json input expects an Anthropic-style message envelope.
-    return {
-      type: 'user',
-      message: { role: 'user', content: prompt || '' },
-    };
-  }
-
-  // Agent's stream-json input takes a plain user message string (system prompt
-  // is combined in, since agent has no separate system-prompt channel here).
-  const combinedPrompt = systemPrompt
-    ? `${systemPrompt}\n\n${prompt || ''}`
-    : prompt || '';
-  return { type: 'user', message: combinedPrompt };
-}
-
-/**
  * Return true when a temporary prompt file should replace inline shell input.
  * @param {Object} options - Options
  * @param {string} options.toolName - Tool name
@@ -133,18 +116,15 @@ function shouldCreatePromptFile(options) {
  * Parse JSON messages from output if the tool supports it
  * @param {Object} options - Options
  * @param {string} options.output - Raw output to parse
- * @param {string} [options.toolName] - Tool name for tool-specific parsing
+ * @param {Object} [options.toolConfig] - Tool configuration with an optional parser
  * @returns {Array|null} Array of parsed JSON messages or null if parsing fails
  */
 function parseJsonMessages(options) {
-  const { output, toolName } = options;
+  const { output, toolConfig } = options;
 
   // If we have a tool-specific parser, use it
-  if (toolName && isToolSupported({ toolName })) {
-    const tool = getTool({ toolName });
-    if (tool.parseOutput) {
-      return tool.parseOutput({ output });
-    }
+  if (toolConfig?.parseOutput) {
+    return toolConfig.parseOutput({ output });
   }
 
   // Default parsing logic: NDJSON, pretty-printed, or concatenated records
@@ -174,7 +154,18 @@ function parseJsonMessages(options) {
  * @param {Function} [options.onPermissionRequest] - async (normalizedRequest) => 'once'|'always'|'reject';
  *   when provided together with approveEach for a relay-capable tool, native permission requests are
  *   normalized, relayed to this callback, and the decision is forwarded to the tool's stdin
+ * @param {string} [options.reasoningEffort] - Native reasoning effort / variant level
+ * @param {string|Object} [options.mcpConfig] - MCP servers: config path, inline JSON or `{mcpServers}` object
+ * @param {boolean} [options.strictMcpConfig=false] - Use only the servers from `mcpConfig`
+ * @param {string|string[]} [options.additionalDirectories] - Extra directories the agent may access
+ * @param {string|string[]} [options.attachments] - Files attached to the prompt (codex images, opencode files)
+ * @param {string|Object} [options.jsonSchema] - JSON Schema the final answer must match (claude, qwen `--json-schema`; codex `--output-schema`); read it from `metadata.structuredOutput`
+ * @param {boolean} [options.liveInput=false] - Keep stdin open as a stream-json channel so
+ *   `sendMessage()` / `interrupt()` can reach the running session (claude, qwen, agent)
  * @param {Object} [options.toolOptions] - Additional tool-specific options
+ * @param {Object} [options.toolOverrides] - Replace parts of the tool configuration for this run:
+ *   `buildCommand`, `parseOutput`, `extractSessionId`, `extractUsage`, `detectErrors`, `executable`
+ *   or any `supports*` capability flag. A `buildCommand` also drives a tool that is not registered.
  * @returns {Object} Agent controller with start, stop, and utility methods
  */
 export function agent(options) {
@@ -194,7 +185,15 @@ export function agent(options) {
     planOnly = false,
     approveEach = false,
     onPermissionRequest,
+    reasoningEffort,
+    mcpConfig,
+    strictMcpConfig = false,
+    additionalDirectories,
+    attachments,
+    jsonSchema,
+    liveInput = false,
     toolOptions = {},
+    toolOverrides,
   } = options;
 
   // Validate required options
@@ -212,9 +211,8 @@ export function agent(options) {
   }
 
   // Get tool configuration if available
-  const toolConfig = isToolSupported({ toolName: tool })
-    ? getTool({ toolName: tool })
-    : null;
+  const toolConfig =
+    resolveToolConfig({ toolName: tool, toolOverrides }) ?? null;
 
   // Live per-command approval relay is active only when ask mode is requested,
   // a decision callback is supplied, and the tool exposes a relayable protocol.
@@ -225,7 +223,12 @@ export function agent(options) {
     toolConfig.supportsAsk
   );
 
+  // Both the relay and live input write NDJSON frames to the child's stdin.
+  const streamingInput = relayActive || liveInput;
+
   let processHandle = null;
+  let inputOpen = false;
+  let messagesAtLastInput = 0;
   let removeSignalHandler = null;
   let command = null;
   let outputStream = null;
@@ -291,11 +294,19 @@ export function agent(options) {
     if (approveEach && !(toolConfig && toolConfig.supportsAsk)) {
       throw new Error(askUnsupportedError({ tool }));
     }
+    if (liveInput && !supportsLiveInput(toolConfig)) {
+      throw new Error(liveInputUnsupportedError({ tool }));
+    }
+    if (liveInput && !dryRun && (detached || isolation !== 'none')) {
+      throw new Error(
+        'liveInput needs an attached run without isolation (stdin is piped to the tool).'
+      );
+    }
 
     // Create output stream for JSON parsing if in JSON mode, callbacks are
     // provided, or a live permission relay is active (the relay inspects every
     // parsed message looking for native permission requests).
-    if (json || onMessage || relayActive) {
+    if (json || onMessage || streamingInput) {
       outputStream = createOutputStream({
         onMessage: (data) => {
           if (onMessage) {
@@ -315,7 +326,7 @@ export function agent(options) {
     try {
       // In relay mode the prompt is delivered as the initial NDJSON user frame
       // over stdin, so no temporary prompt file is created or piped.
-      const preparedPromptFile = relayActive
+      const preparedPromptFile = streamingInput
         ? undefined
         : await preparePromptFile({ dryRun });
       const promptHandledByTempFile = preparedPromptFile && !promptFile;
@@ -337,6 +348,7 @@ export function agent(options) {
         readOnly,
         planOnly,
         approveEach,
+        toolOverrides,
       };
 
       // Add tool-specific options if tool is known
@@ -344,13 +356,25 @@ export function agent(options) {
         commandOptions.model = model;
         commandOptions.json = json;
         commandOptions.resume = resume;
-        Object.assign(commandOptions, toolOptions);
+        Object.assign(
+          commandOptions,
+          definedLaunchOptions({
+            reasoningEffort,
+            mcpConfig,
+            strictMcpConfig,
+            additionalDirectories,
+            attachments,
+            jsonSchema,
+          }),
+          toolOptions
+        );
       }
 
-      // When relaying per-command approvals, force a streaming JSON channel in
-      // both directions: the tool emits permission requests on stdout and reads
-      // our decisions plus the initial prompt as NDJSON frames on stdin.
-      if (relayActive) {
+      // When relaying per-command approvals or accepting live input, force a
+      // streaming JSON channel in both directions: the tool emits events (and
+      // permission requests) on stdout and reads the prompt, follow-up
+      // messages and decisions as NDJSON frames on stdin.
+      if (streamingInput) {
         commandOptions.json = true;
         commandOptions.jsonInput = true;
         commandOptions.streamInput = true;
@@ -386,7 +410,7 @@ export function agent(options) {
         }
       } else {
         // For attached mode, start command without waiting
-        const commandOptions = { attached, pipeStdin: relayActive };
+        const commandOptions = { attached, pipeStdin: streamingInput };
 
         // Add output handling for streaming
         if (onOutput) {
@@ -408,23 +432,20 @@ export function agent(options) {
         processHandle = await startCommand(command, commandOptions);
 
         // Establish the live permission relay: it writes normalized decisions
-        // (and the initial user prompt) to the child's stdin as NDJSON frames.
+        // to the child's stdin as NDJSON frames.
         if (relayActive) {
           permissionRelay = new PermissionRelay({
             tool,
             onRequest: onPermissionRequest,
             write: (line) => processHandle.writeStdin(line),
           });
+        }
 
-          // Kick off the turn by sending the user prompt as the first frame.
-          processHandle.writeStdin(
-            stringifyNdjsonLine({
-              value: buildInitialInputFrame({
-                toolName: tool,
-                prompt,
-                systemPrompt,
-              }),
-            })
+        // Kick off the turn by sending the user prompt as the first frame.
+        if (streamingInput) {
+          inputOpen = true;
+          writeInputFrame(
+            buildUserInputFrame({ tool, content: prompt, systemPrompt })
           );
         }
       }
@@ -432,6 +453,60 @@ export function agent(options) {
       await cleanupPromptTempDir();
       throw error;
     }
+  };
+
+  const writeInputFrame = (frame) => {
+    if (!inputOpen || !processHandle?.writeStdin) {
+      throw new Error(
+        liveInput || relayActive
+          ? 'Agent input is closed (not started, ended, or stopped)'
+          : 'Agent was not started with liveInput'
+      );
+    }
+    messagesAtLastInput = currentMessages().length;
+    return processHandle.writeStdin(stringifyNdjsonLine({ value: frame }));
+  };
+
+  /**
+   * Queue a follow-up user message into the running session. The tool reads
+   * it after (or, for Claude, alongside) the current turn.
+   * @param {string|Object[]} content - Text, or content blocks for Claude and Qwen
+   * @returns {boolean} True when the frame was written
+   */
+  const sendMessage = (content) =>
+    writeInputFrame(buildUserInputFrame({ tool, content }));
+
+  /**
+   * Ask Claude or Qwen to end the running turn; queued messages still run.
+   * @returns {boolean} True when the frame was written
+   */
+  const interrupt = () => writeInputFrame(buildInterruptFrame({ tool }));
+
+  /**
+   * Close stdin: the tool finishes the queued input and exits.
+   */
+  const endInput = () => {
+    if (inputOpen) {
+      inputOpen = false;
+      processHandle?.endStdin?.();
+    }
+  };
+
+  // A relay still has to answer permission requests of the last turn, so it
+  // keeps stdin open until that turn reports its final result.
+  const endInputAfterLastTurn = async () => {
+    if (!inputOpen) {
+      return;
+    }
+    if (relayActive) {
+      while (
+        processHandle.getOutput?.().hasExited !== true &&
+        !hasFinalResult(tool, currentMessages().slice(messagesAtLastInput))
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+    }
+    endInput();
   };
 
   /**
@@ -516,6 +591,7 @@ export function agent(options) {
       }
 
       try {
+        await endInputAfterLastTurn();
         // Wait for the process to exit, closing it when it outlives its result
         const waited = await waitForExitAfterResult({
           tool,
@@ -540,14 +616,14 @@ export function agent(options) {
         }
 
         // Try to parse JSON messages (use output stream messages if available, otherwise parse)
+        // A caller's parser replaces the streamed messages too.
         let parsedOutput;
-        if (outputStream && outputStream.getMessages().length > 0) {
+        if (toolOverrides?.parseOutput) {
+          parsedOutput = toolOverrides.parseOutput({ output: stdout });
+        } else if (outputStream && outputStream.getMessages().length > 0) {
           parsedOutput = outputStream.getMessages();
         } else {
-          parsedOutput = parseJsonMessages({
-            output: stdout,
-            toolName: tool,
-          });
+          parsedOutput = parseJsonMessages({ output: stdout, toolConfig });
         }
 
         // Extract session ID if tool supports it
@@ -577,16 +653,18 @@ export function agent(options) {
           usage,
           toolConfig,
           terminatedAfterResult,
+          structuredOutputRequested:
+            (jsonSchema ?? toolOptions.jsonSchema ?? null) !== null,
         });
         // Codex and Claude can leave a usage limit only in their session
         // files (hive-mind#3570)
         const runEnv = normalizeExtraEnv(toolOptions.extraEnv);
         const codexHome = runEnv.findLast(([name]) => name === 'CODEX_HOME');
-        await applyCodexRolloutUsageLimit(
-          metadata,
-          codexHome ? { codexHome: codexHome[1] } : {}
-        );
-        if ((json || tool === 'agent') && toolConfig) {
+        const rolloutOptions = codexHome ? { codexHome: codexHome[1] } : {};
+        await applyCodexRolloutUsageLimit(metadata, rolloutOptions);
+        await applyCodexRolloutUsageWindows(metadata, rolloutOptions);
+        await applyCodexRolloutContextUsage(metadata, rolloutOptions);
+        if ((json || tool === 'agent') && isToolSupported({ toolName: tool })) {
           requireCompletedResult(metadata, tool, parsedOutput || []);
         }
         const claudeConfigDir = runEnv.findLast(
@@ -666,6 +744,7 @@ export function agent(options) {
       terminatedAfterResult =
         processHandle.getOutput?.().hasExited !== true &&
         hasFinalResult(tool, currentMessages());
+      endInput();
       processHandle.terminate?.();
     }
     return stop({ terminatedAfterResult });
@@ -675,6 +754,9 @@ export function agent(options) {
     start,
     stop,
     cancel,
+    sendMessage,
+    interrupt,
+    endInput,
     getSessionId,
     getMessages,
     getToolConfig,
@@ -730,8 +812,11 @@ export {
   CODEX_SESSIONS_DIRNAME,
   ROLLOUT_TAIL_BYTES,
   applyCodexRolloutUsageLimit,
+  applyCodexRolloutContextUsage,
+  applyCodexRolloutUsageWindows,
   canResumeCodexSession,
   classifyCodexRateLimitSnapshot,
+  codexRolloutContextUsage,
   codexRolloutLimitFacts,
   codexSessionsDir,
   detectCodexRolloutUsageLimit,
@@ -753,7 +838,13 @@ export {
   hasFinalResult,
   waitForExitAfterResult,
 } from './result-close.mjs';
-export { tools, getTool, listTools, isToolSupported } from './tools/index.mjs';
+export {
+  tools,
+  getTool,
+  listTools,
+  isToolSupported,
+  resolveToolConfig,
+} from './tools/index.mjs';
 export { JsonOutputStream, JsonInputStream } from './streaming/index.mjs';
 export { parseNdjsonLine, stringifyNdjsonLine } from './streaming/ndjson.mjs';
 export {
@@ -761,6 +852,26 @@ export {
   parseJsonRecords,
 } from './streaming/json-records.mjs';
 export { buildNormalizedResultMetadata } from './result-metadata.mjs';
+export {
+  USAGE_WINDOW_KINDS,
+  claudeRateLimitWindows,
+  codexRateLimitWindows,
+  extractUsageWindows,
+  mergeUsageWindows,
+  usageWindowsFromMessage,
+} from './usage-windows.mjs';
+export {
+  claudeRequestContextTokens,
+  contextReadingFromMessage,
+  extractContextUsage,
+} from './context-usage.mjs';
+export { extractStructuredOutput } from './structured-output.mjs';
+export {
+  buildInterruptFrame,
+  buildUserInputFrame,
+  liveInputUnsupportedError,
+  supportsLiveInput,
+} from './live-input.mjs';
 export {
   USAGE_LIMIT_PATTERNS,
   classifyDebugLines,
@@ -774,6 +885,28 @@ export {
   limitScanText,
 } from './usage-limit.mjs';
 export { firstErrorText, stringifyErrorValue } from './error-text.mjs';
+export {
+  buildVersionCommand,
+  compareVersions,
+  getToolVersion,
+  parseToolVersion,
+  toolVersionFromOutput,
+} from './tool-version.mjs';
+// Shell quoting for `toolOverrides.buildCommand` implementations.
+export { escapeArg } from './tools/shell.mjs';
+export {
+  assertLaunchOptionsSupported,
+  codexMcpServersOverride,
+  definedLaunchOptions,
+  getLaunchCapabilities,
+  jsonSchemaArg,
+  mcpConfigArg,
+  mcpServersFromConfig,
+  normalizeAdditionalDirectories,
+  normalizeAttachments,
+  normalizeReasoningEffort,
+  toTomlValue,
+} from './tools/launch-options.mjs';
 export {
   buildAgentTuiLaunch,
   captureAgentTui,

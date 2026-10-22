@@ -1,0 +1,149 @@
+agent [command] [options]
+
+Commands:
+  agent auth  manage credentials
+  agent       Run agent in interactive or stdin mode (default)         [default]
+
+Options:
+      --version                     Show version number                [boolean]
+      --help                        Show help                          [boolean]
+      --model                       Model to use in format providerID/modelID
+                                [string] [default: "kilo/nemotron-3-super-free"]
+      --json-standard               JSON output format standard: "opencode"
+                                    (default) or "claude" (experimental)
+                  [string] [choices: "opencode", "claude"] [default: "opencode"]
+      --output-format               Claude-compatible output format alias:
+                                    "json" (OpenCode JSON) or "stream-json"
+                                    (Claude NDJSON)
+                                       [string] [choices: "json", "stream-json"]
+      --input-format                Input format: "text" (default) or
+                                    Claude-compatible "stream-json" JSONL frames
+                     [string] [choices: "text", "stream-json"] [default: "text"]
+      --system-message              Full override of the system message [string]
+      --system-message-file         Full override of the system message from
+                                    file                                [string]
+      --append-system-message       Append to the default system message[string]
+      --append-system-message-file  Append to the default system message from
+                                    file                                [string]
+      --server                      Run in server mode (default)
+                                                       [boolean] [default: true]
+      --verbose                     Enable verbose mode to debug API requests
+                                    (shows system prompt, token counts, etc.)
+                                                      [boolean] [default: false]
+      --dry-run                     Simulate operations without making actual
+                                    API calls or package installations (useful
+                                    for testing)      [boolean] [default: false]
+      --use-existing-claude-oauth   Use existing Claude OAuth credentials from
+                                    ~/.claude/.credentials.json (from Claude
+                                    Code CLI)         [boolean] [default: false]
+  -p, --prompt                      Prompt message to send directly (bypasses
+                                    stdin reading)                      [string]
+      --disable-stdin               Disable stdin streaming mode (requires
+                                    --prompt or shows help)
+                                                      [boolean] [default: false]
+      --stdin-stream-timeout        Optional timeout in milliseconds for stdin
+                                    reading (default: no timeout)       [number]
+      --auto-merge-queued-messages  Enable auto-merging of rapidly arriving
+                                    input lines into single messages (default:
+                                    true)              [boolean] [default: true]
+      --interactive                 Enable interactive mode to accept manual
+                                    input as plain text strings (default: true).
+                                    Use --no-interactive to only accept JSON
+                                    input.             [boolean] [default: true]
+      --always-accept-stdin         Keep accepting stdin input even after the
+                                    agent finishes work (default: true). Use
+                                    --no-always-accept-stdin for single-message
+                                    mode.              [boolean] [default: true]
+      --compact-json                Output compact JSON (single line) instead of
+                                    pretty-printed JSON (default: false). Useful
+                                    for program-to-program communication.
+                                                      [boolean] [default: false]
+  -r, --resume                      Resume a specific session by ID. By default,
+                                    forks the session with a new UUID. Use
+                                    --no-fork to continue in the same session.
+                                                                        [string]
+  -c, --continue                    Continue the most recent session. By
+                                    default, forks the session with a new UUID.
+                                    Use --no-fork to continue in the same
+                                    session.          [boolean] [default: false]
+      --no-fork                     When used with --resume or --continue,
+                                    continue in the same session without forking
+                                    to a new UUID.    [boolean] [default: false]
+      --generate-title              Generate session titles using AI (default:
+                                    false). Disabling saves tokens and prevents
+                                    rate limit issues.[boolean] [default: false]
+      --retry-timeout               Maximum total retry time in seconds for rate
+                                    limit errors (default: 604800 = 7 days)
+                                                                        [number]
+      --retry-on-rate-limits        Retry AI completions API requests when rate
+                                    limited (HTTP 429). Use
+                                    --no-retry-on-rate-limits in integration
+                                    tests to fail fast instead of waiting.
+                                                       [boolean] [default: true]
+      --output-response-model       Include model info in step_finish output
+                                                       [boolean] [default: true]
+      --summarize-session           Generate AI session summaries (default:
+                                    true). Use --no-summarize-session to
+                                    disable. Automatically off for a model
+                                    declared as having no context limit
+                                    (`unlimited: true` or `limit.context: null`
+                                    in the provider config).
+                                                       [boolean] [default: true]
+      --compaction-model            Model to use for context compaction and
+                                    session summaries, in format
+                                    providerID/modelID. Use "same" to use the
+                                    base model. Default:
+                                    kilo/nemotron-3-super-free (free, Kilo
+                                    authentication recommended, 262K context),
+                                    which falls back to the --model model when
+                                    --model points at another provider.
+                                    Overridden by --compaction-models if both
+                                    are specified.
+                                [string] [default: "kilo/nemotron-3-super-free"]
+      --compaction-models           Ordered cascade of compaction models in
+                                    links notation sequence format: "(model1
+                                    model2 ... same)". Models are tried from
+                                    smallest/cheapest context to largest. If
+                                    used context exceeds a model's limit or its
+                                    rate limit is reached, the next model is
+                                    tried. The special value "same" uses the
+                                    base model. Overrides --compaction-model
+                                    when specified. The default cascade is
+                                    OpenCode-specific: when --model points at
+                                    another provider, its entries from other
+                                    providers are dropped so secondary calls
+                                    inherit --model. A cascade given explicitly
+                                    is used as written.
+      [string] [default: "(kilo/nemotron-3-super-free kilo/nemotron-3-ultra-free
+                                        kilo/nemotron-3.5-lightning-free same)"]
+      --compaction-safety-margin    Safety margin (%) of usable context window
+                                    before triggering compaction. Only applies
+                                    when the compaction model has equal or
+                                    smaller context than the base model.
+                                    Default: 25.          [number] [default: 25]
+      --temperature                 Override the temperature for model
+                                    completions. When not set, the default
+                                    per-model temperature is used.      [number]
+      --read-only                   Enforceable read-only / planning mode.
+                                    Disables all filesystem-mutating and shell
+                                    tools (bash, edit, write, multiedit, patch)
+                                    so the agent can only read, search and plan.
+                                    Maps to agent-commander --read-only.
+                                                      [boolean] [default: false]
+      --disable-tools               Comma-separated list of tool ids to disable
+                                    (e.g. "bash,write,edit"). Disabled tools are
+                                    never exposed to the model and are rejected
+                                    if invoked via batch.               [string]
+      --permission-mode             Permission policy for mutating tools. "auto"
+                                    (default) allows everything; "plan" allows
+                                    read-only shell and asks before mutations;
+                                    "readonly" denies all mutations; "ask" asks
+                                    before every mutating tool. Approvals are
+                                    driven over JSON (permission_request /
+                                    permission_response).
+         [string] [choices: "auto", "plan", "readonly", "ask"] [default: "auto"]
+      --permission                  OpenCode-compatible permission override as
+                                    JSON, merged on top of --permission-mode.
+                                    Example: '{"edit":"ask","bash":{"git push*":
+                                    "ask","*":"allow"},"webfetch":"allow"}'.
+                                                                        [string]

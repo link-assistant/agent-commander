@@ -18,9 +18,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
+use crate::context_usage::extract_context_usage;
 use crate::file_tail::{default_home_dir, read_file_tail};
 use crate::result_metadata::ResultMetadata;
 use crate::usage_limit::{format_epoch_reset_time_utc, is_usage_limit_text};
+use crate::usage_windows::codex_rate_limit_windows;
 
 /// Directory under `CODEX_HOME` that holds the rollouts
 pub const CODEX_SESSIONS_DIRNAME: &str = "sessions";
@@ -431,4 +433,52 @@ pub fn apply_codex_rollout_usage_limit(
     metadata.limit_window = verdict.window;
     metadata.limit_source = Some(CODEX_ROLLOUT_LIMIT_SOURCE.to_string());
     true
+}
+
+/// Fill a Codex run's `usage_windows` from the newest `rate_limits` snapshot
+/// in its rollout: `codex exec --json` does not stream the windows (issue #57).
+///
+/// Returns whether the metadata changed.
+pub fn apply_codex_rollout_usage_windows(
+    metadata: &mut ResultMetadata,
+    options: &CodexRolloutOptions,
+) -> bool {
+    let Some(thread_id) = metadata.session_id.clone().filter(|id| !id.is_empty()) else {
+        return false;
+    };
+    if metadata.tool != "codex" || !metadata.usage_windows.is_empty() {
+        return false;
+    }
+    let Ok((_, facts)) = read_codex_rollout_limit_facts(&thread_id, options) else {
+        return false;
+    };
+    metadata.usage_windows = codex_rate_limit_windows(facts.rate_limits.as_ref());
+    !metadata.usage_windows.is_empty()
+}
+
+/// Context usage from a rollout's `token_count` events (issue #57)
+pub fn codex_rollout_context_usage(text: &str) -> Option<crate::ContextUsage> {
+    let events: Vec<Value> = text.lines().filter_map(rollout_event_payload).collect();
+    extract_context_usage(&events)
+}
+
+/// Fill a Codex run's `context_usage` from the `token_count` events in its
+/// rollout: `codex exec --json` does not stream them (issue #57).
+///
+/// Returns whether the metadata changed.
+pub fn apply_codex_rollout_context_usage(
+    metadata: &mut ResultMetadata,
+    options: &CodexRolloutOptions,
+) -> bool {
+    let Some(thread_id) = metadata.session_id.clone().filter(|id| !id.is_empty()) else {
+        return false;
+    };
+    if metadata.tool != "codex" || metadata.context_usage.is_some() {
+        return false;
+    }
+    let sessions_dir = codex_sessions_dir(options);
+    let text = find_codex_rollout_file(&sessions_dir, &thread_id)
+        .and_then(|path| read_file_tail(&path, options.max_bytes()).ok());
+    metadata.context_usage = text.as_deref().and_then(codex_rollout_context_usage);
+    metadata.context_usage.is_some()
 }

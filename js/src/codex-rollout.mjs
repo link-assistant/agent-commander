@@ -19,6 +19,8 @@ import path from 'node:path';
 
 import { formatEpochResetTimeUtc, isUsageLimitText } from './usage-limit.mjs';
 import { readFileTail } from './utils/file-tail.mjs';
+import { codexRateLimitWindows } from './usage-windows.mjs';
+import { extractContextUsage } from './context-usage.mjs';
 import { userHomeDir } from './utils/home-dir.mjs';
 
 /** Directory under `CODEX_HOME` that holds the rollouts. */
@@ -208,6 +210,19 @@ export function codexRolloutLimitFacts(text) {
   return facts;
 }
 
+/**
+ * Context usage from a rollout's `token_count` events (issue #57)
+ * @param {string} text - Rollout text (JSONL)
+ * @returns {Object|null} Context usage, see extractContextUsage
+ */
+export function codexRolloutContextUsage(text) {
+  const events = String(text || '')
+    .split('\n')
+    .map(rolloutEventPayload)
+    .filter(Boolean);
+  return extractContextUsage(events);
+}
+
 // The `event_msg` payload of one rollout line, if it is one.
 function rolloutEventPayload(text) {
   let entry;
@@ -246,7 +261,7 @@ function collectLimitFact(facts, payload) {
  * @param {string} [options.codexHome] - `CODEX_HOME`
  * @param {string} [options.homeDir] - Home directory
  * @param {number} [options.maxBytes] - Bytes read from the end
- * @returns {Promise<{found: boolean, rolloutPath?: string, reason?: string, rateLimits?: Object|null, errorText?: string|null, errorInfo?: *}>}
+ * @returns {Promise<{found: boolean, rolloutPath?: string, reason?: string, rateLimits?: Object|null, errorText?: string|null, errorInfo?: *, contextUsage?: Object|null}>}
  */
 export async function readCodexRolloutLimitFacts({
   threadId,
@@ -266,7 +281,12 @@ export async function readCodexRolloutLimitFacts({
     return { found: false, reason: `no rollout under ${sessionsDir}` };
   }
   const text = await readFileTail(rolloutPath, maxBytes);
-  return { found: true, rolloutPath, ...codexRolloutLimitFacts(text) };
+  return {
+    found: true,
+    rolloutPath,
+    ...codexRolloutLimitFacts(text),
+    contextUsage: codexRolloutContextUsage(text),
+  };
 }
 
 /**
@@ -336,6 +356,57 @@ export async function applyCodexRolloutUsageLimit(metadata, options = {}) {
       limitWindow: verdict.window,
       limitSource: 'codex-rollout',
     });
+  }
+  return metadata;
+}
+
+/**
+ * Fill a Codex run's `usageWindows` from the newest `rate_limits` snapshot
+ * in its rollout: `codex exec --json` does not stream the windows (issue #57)
+ * @param {Object} metadata - Normalized result metadata
+ * @param {Object} [options] - Options passed to readCodexRolloutLimitFacts
+ * @returns {Promise<Object>} The same metadata
+ */
+export async function applyCodexRolloutUsageWindows(metadata, options = {}) {
+  if (
+    metadata?.tool !== 'codex' ||
+    !metadata.sessionId ||
+    metadata.usageWindows?.length
+  ) {
+    return metadata;
+  }
+  const facts = await readCodexRolloutLimitFacts({
+    ...options,
+    threadId: metadata.sessionId,
+  }).catch(() => ({ found: false }));
+  const windows = facts.found ? codexRateLimitWindows(facts.rateLimits) : [];
+  if (windows.length) {
+    metadata.usageWindows = windows;
+  }
+  return metadata;
+}
+
+/**
+ * Fill a Codex run's `contextUsage` from the `token_count` events in its
+ * rollout: `codex exec --json` does not stream them (issue #57)
+ * @param {Object} metadata - Normalized result metadata
+ * @param {Object} [options] - Options passed to readCodexRolloutLimitFacts
+ * @returns {Promise<Object>} The same metadata
+ */
+export async function applyCodexRolloutContextUsage(metadata, options = {}) {
+  if (
+    metadata?.tool !== 'codex' ||
+    !metadata.sessionId ||
+    metadata.contextUsage
+  ) {
+    return metadata;
+  }
+  const facts = await readCodexRolloutLimitFacts({
+    ...options,
+    threadId: metadata.sessionId,
+  }).catch(() => ({ found: false }));
+  if (facts.contextUsage) {
+    metadata.contextUsage = facts.contextUsage;
   }
   return metadata;
 }

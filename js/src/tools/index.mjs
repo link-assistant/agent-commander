@@ -40,6 +40,33 @@ export function getTool(options) {
 }
 
 /**
+ * Resolve the configuration a run uses: the registered tool with the caller's
+ * overrides on top. Overrides replace a failing or missing part (command
+ * builder, output parser, session ID or usage extractor, capability flags)
+ * for one run without waiting for a release; with a `buildCommand` they also
+ * drive a tool that is not registered.
+ * @param {Object} options - Options
+ * @param {string} options.toolName - Name of the tool
+ * @param {Object} [options.toolOverrides] - Tool configuration fields to replace
+ * @returns {Object|undefined} Tool configuration, or undefined for an unknown tool without overrides
+ */
+export function resolveToolConfig(options) {
+  const { toolName, toolOverrides } = options;
+  const base = isToolSupported({ toolName })
+    ? getTool({ toolName })
+    : undefined;
+  if (!toolOverrides) {
+    return base;
+  }
+  if (typeof toolOverrides !== 'object' || Array.isArray(toolOverrides)) {
+    throw new Error(
+      'toolOverrides must be an object of tool configuration fields'
+    );
+  }
+  return { ...base, ...toolOverrides, name: base?.name ?? toolName };
+}
+
+/**
  * List available tools
  * @returns {string[]} Array of tool names
  */

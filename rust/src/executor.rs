@@ -7,7 +7,7 @@ use std::{
 };
 use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncWriteExt},
-    process::{Child, Command},
+    process::{Child, ChildStdin, Command},
     task::JoinHandle,
     time::Instant,
 };
@@ -213,6 +213,7 @@ pub struct ProcessHandle {
     stderr: String,
     exit_code: Option<i32>,
     signal: Option<&'static str>,
+    stdin: Option<ChildStdin>,
 }
 impl ProcessHandle {
     /// Bound the wait for open pipes after the wrapper exits; `None` waits
@@ -229,10 +230,14 @@ impl ProcessHandle {
     }
 
     /// Wait for process completion and all output, preserving exact bytes as UTF-8.
+    ///
+    /// Ends a piped stdin first: nothing can write while this borrows the
+    /// handle, and a tool reading stdin would otherwise never exit.
     pub async fn wait_for_exit(&mut self) -> io::Result<i32> {
         if let Some(code) = self.exit_code {
             return Ok(code);
         }
+        self.end_stdin();
         let status = self.child.wait().await?;
         if let Some((stdout, stderr)) = self.readers.take() {
             let mut readers = [Some(stdout), Some(stderr)];
@@ -343,10 +348,40 @@ impl ProcessHandle {
     pub const fn has_exited(&self) -> bool {
         self.exit_code.is_some()
     }
+    /// Whether stdin is piped and still open (see [`start_command_with_stdin`]).
+    pub const fn has_stdin(&self) -> bool {
+        self.stdin.is_some()
+    }
+    /// Write to the piped stdin and flush.
+    ///
+    /// Fails when stdin was not piped, was ended, or the process exited
+    /// (`BrokenPipe`).
+    pub async fn write_stdin(&mut self, data: &str) -> io::Result<()> {
+        let stdin = self
+            .stdin
+            .as_mut()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdin is not open"))?;
+        stdin.write_all(data.as_bytes()).await?;
+        stdin.flush().await
+    }
+    /// Close the piped stdin (end of input). Returns whether it was open.
+    pub fn end_stdin(&mut self) -> bool {
+        self.stdin.take().is_some()
+    }
 }
 
 /// Start a command and drain stdout/stderr concurrently, with optional console output.
 pub async fn start_command(command: &str, attached: bool) -> io::Result<ProcessHandle> {
+    spawn_command(command, attached, false)
+}
+
+/// Like [`start_command`], with stdin piped for
+/// [`ProcessHandle::write_stdin`] (live input, stream-json frames).
+pub async fn start_command_with_stdin(command: &str, attached: bool) -> io::Result<ProcessHandle> {
+    spawn_command(command, attached, true)
+}
+
+fn spawn_command(command: &str, attached: bool, pipe_stdin: bool) -> io::Result<ProcessHandle> {
     let mut command_builder = Command::new("bash");
     #[cfg(unix)]
     {
@@ -358,9 +393,14 @@ pub async fn start_command(command: &str, attached: bool) -> io::Result<ProcessH
         .arg(command)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .stdin(Stdio::null())
+        .stdin(if pipe_stdin {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        })
         .kill_on_drop(true)
         .spawn()?;
+    let stdin = child.stdin.take();
     let stdout = child.stdout.take().expect("piped stdout");
     let stderr = child.stderr.take().expect("piped stderr");
     let stdout_buffer = Buffer::default();
@@ -380,6 +420,7 @@ pub async fn start_command(command: &str, attached: bool) -> io::Result<ProcessH
         stderr: String::new(),
         exit_code: None,
         signal: None,
+        stdin,
     })
 }
 

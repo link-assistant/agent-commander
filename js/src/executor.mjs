@@ -149,6 +149,9 @@ export async function startCommand(command, options = {}) {
     stdio: [pipeStdin ? 'pipe' : 'ignore', 'pipe', 'pipe'],
   });
 
+  // A write after the tool exited fails with EPIPE; it must not crash the host.
+  child.stdin?.on('error', () => {});
+
   child.stdout.setEncoding('utf8');
   child.stderr.setEncoding('utf8');
 

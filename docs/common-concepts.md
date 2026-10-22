@@ -34,6 +34,57 @@ Both packages support a uniform `--approve-each` flag (alias: `--permission-mode
 
 Only `agent` and `claude` can drive the handshake (`relay = ✅`). For every other tool, `--approve-each` is rejected up front with a clear error — the same pattern `--read-only` uses for tools without an enforceable native restriction.
 
+## Launch options
+
+Both packages map the same launch options onto each tool's native flag. A tool without a native flag rejects the option up front, naming the tools that support it, instead of dropping it silently. `getLaunchCapabilities(toolConfig)` / `launch_capabilities(tool)` report the matrix below.
+
+| Option (JS / Rust / CLI)                                                | `claude`               | `codex`                                 | `opencode`   | `qwen`                  | `gemini`                | `agent` |
+| ----------------------------------------------------------------------- | ---------------------- | --------------------------------------- | ------------ | ----------------------- | ----------------------- | ------- |
+| `reasoningEffort` / `launch.reasoning_effort` / `--reasoning-effort`    | `--effort`             | `-c model_reasoning_effort=`            | `--variant`  | ❌                      | ❌                      | ❌      |
+| `mcpConfig` / `launch.mcp_config` / `--mcp-config`                      | `--mcp-config`         | `-c mcp_servers={...}` (inline JSON)    | ❌           | `--mcp-config`          | ❌                      | ❌      |
+| `strictMcpConfig` / `launch.strict_mcp_config` / `--strict-mcp-config`  | `--strict-mcp-config`  | ❌ (overrides merge with `config.toml`) | ❌           | ❌                      | ❌                      | ❌      |
+| `additionalDirectories` / `launch.additional_directories` / `--add-dir` | `--add-dir`            | `exec --add-dir`                        | ❌           | `--include-directories` | `--include-directories` | ❌      |
+| `attachments` / `launch.attachments` / `--attach`                       | ❌ (live-input images) | `--image` (`exec` and `exec resume`)    | `run --file` | ❌ (live-input images)  | ❌                      | ❌      |
+| `jsonSchema` / `launch.json_schema` / `--json-schema`                   | `--json-schema`        | `--output-schema <(printf ...)`         | ❌           | `--json-schema`         | ❌                      | ❌      |
+
+`mcpConfig` takes a file path, inline JSON or (JavaScript) a `{mcpServers}` object. Codex receives the servers as one TOML `-c mcp_servers={...}` override: `headers` becomes `http_headers` and the transport `type` is implied by `command` or `url`. The TOML encoder in Rust writes keys in sorted order. Attachment paths that are relative resolve against the working directory; each path gets its own flag, because both native flags take several values.
+
+### Structured output
+
+`jsonSchema` (a JSON Schema object or its JSON text; JSON text in Rust and on the CLI) asks the tool to shape its final answer to the schema. The answer is reported as `metadata.structuredOutput` / `metadata.structured_output`:
+
+- Claude Code reads the schema from `--json-schema` and reports the answer as `structured_output` on the `result` message.
+- Qwen Code takes the same flag and reports `structured_result`. A value starting with `@` would be read as a file path, so the schema is always passed as a JSON literal.
+- Codex `--output-schema` takes a file. The schema is passed as a bash process substitution, `--output-schema <(printf '%s' '<schema>')`, so no temporary file is left behind; codex 0.163 reads `/dev/fd/N` in `exec` and `exec resume`. Codex has no structured field: when a schema was requested, the final `agent_message` (or, without `--json`, the printed final message) is parsed as JSON.
+
+The value is `null` / `None` when no structured answer was found or the Codex answer is not JSON. Gemini 0.64, OpenCode 1.19 and agent 0.26 have no schema flag, so they reject the option. `extractStructuredOutput` / `extract_structured_output` are exported for callers that read the streams themselves. Rust compacts the schema with `serde_json`, which writes object keys in sorted order.
+
+## Tool version probe
+
+`getToolVersion({ tool, executable, minimumVersion })` / `get_tool_version(tool, executable, minimum_version)` run `<tool> --version` (`buildVersionCommand` / `build_version_command`) and return `{ tool, installed, version, raw, meetsMinimum }`. `installed` is false when the shell cannot find or run the executable (exit 126 or 127). `version` is the first `x.y.z` in the output without a leading `v`. `meetsMinimum` is `null` / `None` when no minimum was asked for. `compareVersions` / `compare_versions` order versions, with a pre-release lower than its release.
+
+## Usage windows and context usage
+
+Result metadata carries two normalized views next to the token totals:
+
+- `usageWindows` / `usage_windows`: subscription windows as `{ id, kind, label, usedPercent, resetsAt, windowDurationMins }`, where `kind` is `session`, `weekly`, `monthly` or `other`, `usedPercent` is 0-100 and `resetsAt` is in epoch seconds. Claude streams them as `rate_limit_event` messages (`five_hour` is the session window, every `seven_day*` type is weekly). Codex writes `rate_limits.primary` / `secondary` to its rollout `token_count` events, which `stop()` reads after the run because `codex exec --json` does not print them. App-server `account/rateLimits/*` notifications are recognized too.
+- `contextUsage` / `context_usage`: how full the context window is, as `{ usedTokens, peakTokens, maxTokens, usedPercent, model, compactions }`. For Claude and Qwen a request fills input + cache writes + cache reads + output tokens. Sub-agent messages (`parent_tool_use_id`) are skipped, and `maxTokens` comes from the result's `modelUsage[model].contextWindow`. For Codex, `stop()` reads `last_token_usage.total_tokens` and `model_context_window` from the rollout. `compactions` counts `compact_boundary` messages. The value is `null` / `None` when the run reported no token usage.
+
+The extractors are public for callers that read the streams themselves: `extractUsageWindows`, `usageWindowsFromMessage`, `mergeUsageWindows`, `extractContextUsage` and `contextReadingFromMessage` (snake_case in Rust).
+
+## Live input
+
+`liveInput: true` / `live_input: true` keeps the tool's stdin open as a stream-json channel for an attached run without isolation. The prompt becomes the first frame and JSON output is forced.
+
+| Tool     | `sendMessage` / `send_message`       | `interrupt`                   | Notes                                                                        |
+| -------- | ------------------------------------ | ----------------------------- | ---------------------------------------------------------------------------- |
+| `claude` | text or content blocks (text, image) | `control_request` `interrupt` | Claude can read a queued message during the running turn.                    |
+| `qwen`   | text or content blocks               | `control_request` `interrupt` | Qwen turns non-text blocks into JSON text.                                   |
+| `agent`  | text                                 | ❌ (stop the agent instead)   | The message runs after the current turn.                                     |
+| others   | ❌                                   | ❌                            | `codex`, `opencode` and `gemini` read a plain prompt, so `liveInput` throws. |
+
+`endInput()` / `end_input()` closes stdin so the tool finishes the queued input and exits; `stop()` and `cancel()` also close it. In JavaScript, a run that also relays permission requests keeps stdin open until the last turn reports its result.
+
 ## Isolation
 
 The shared isolation modes are:
@@ -64,6 +115,28 @@ Both packages expose raw passthrough controls for the native commands for all si
 Passthrough environment variables are attached to the native tool side of prompt pipelines, so `cat prompt.txt | env KEY=value codex exec ...` applies `KEY` to `codex` without altering prompt-file reads. Raw arguments are appended after typed arguments, allowing callers to override or extend native CLI behavior such as MCP config, reasoning config, permission modes, sandbox modes, approval modes, and custom config paths.
 
 Claude and Codex builders also expose typed `permissionMode` / `permission_mode`, `sandboxMode` / `sandbox_mode`, and `approvalMode` / `approval_mode` fields for callers that build commands directly. The `agent` builder exposes typed `permissionMode` / `permission_mode` (`auto` | `plan` | `readonly` | `ask`) and an OpenCode-compatible `permission` / `permission` JSON policy. `--read-only` maps to `readonly` and `--plan-only` maps to `plan` for `agent`.
+
+## Tool overrides
+
+When a built-in part of a tool breaks or is missing, a caller can replace it for one run without waiting for a release (issue #57). JavaScript takes `toolOverrides` and Rust takes `AgentOptions.tool_overrides` / `AgentCommandOptions.overrides` (`ToolOverrides`).
+
+| Part                 | JavaScript (`toolOverrides`)                                                                                                                          | Rust (`ToolOverrides`)                                       |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Command builder      | `buildCommand(options)`                                                                                                                               | `build_command: Arc<dyn Fn(&AgentCommandOptions) -> String>` |
+| Output parser        | `parseOutput({ output })`                                                                                                                             | `parse_output: Arc<dyn Fn(&str) -> Vec<Value>>`              |
+| Session ID extractor | `extractSessionId({ output })`                                                                                                                        | `extract_session_id: Arc<dyn Fn(&str) -> Option<String>>`    |
+| Usage extractor      | `extractUsage({ output })`                                                                                                                            | `extract_usage: Arc<dyn Fn(&str) -> Option<Value>>`          |
+| Launch capabilities  | `supportsReasoningEffort`, `supportsMcpConfig`, `supportsStrictMcpConfig`, `supportsAdditionalDirectories`, `supportsAttachments`, `reasoningEfforts` | `launch_capabilities: Option<LaunchCapabilities>`            |
+| Anything else        | any other tool configuration field, such as `detectErrors`                                                                                            | -                                                            |
+
+- A builder returns the native command. The `cd` into the working directory and the isolation wrapper still apply. To extend a built-in, call it first: `tools.claude.buildCommand(options)` in JavaScript, or `build_base_command(&options)` in Rust.
+- `escapeArg` / `escape_arg` quote values for the shell command a builder returns.
+- A parser override also replaces the messages streamed during the run.
+- With a builder, the override drives a tool that is not registered. The result metadata still uses the generic rules for such a tool.
+- `resolveToolConfig({ toolName, toolOverrides })` returns the merged JavaScript configuration. The registered `tools` stay unchanged.
+- Overrides do not relax read-only, plan-only or per-command approval. Those modes stay limited to tools with a native, enforceable switch.
+
+The overrides complement the [native tool passthrough](#native-tool-passthrough) controls.
 
 ## Claude Options
 
@@ -97,4 +170,4 @@ Common resume maps to `--resume` for Claude, Qwen and Gemini; `codex exec resume
 
 Claude and Qwen final result usage supersedes assistant snapshots. Codex fresh input excludes cached reads, exposed separately; output may include reasoning, so do not add reasoning tokens again. Agent and OpenCode sum step-finish usage. Gemini uses native result statistics. Native model usage and cost remain available without inventing provider prices.
 
-The [issue #50 audit](case-studies/issue-50/README.md) records the source revision, complete feature inventory, alternatives and consumer migration plan.
+The [issue #57 case study](case-studies/issue-57/README.md) covers the launch options, version probe, usage windows, context usage and live input added for hive-mind and upcomputer. The [issue #50 audit](case-studies/issue-50/README.md) records the source revision, complete feature inventory, alternatives and consumer migration plan.

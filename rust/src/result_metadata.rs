@@ -5,12 +5,15 @@ use crate::background_tasks::{
     StoppedBackgroundTask,
 };
 use crate::completion::{completion_state, outcome_messages};
+use crate::context_usage::{extract_context_usage, ContextUsage};
 use crate::error_text::first_error_text;
 use crate::executor::signal_from_exit_code;
+use crate::structured_output::extract_structured_output;
 use crate::usage_limit::{
     classify_debug_lines, detect_usage_limit_sources, is_recoverable_tool_error, split_output,
     UsageLimitVerdict,
 };
+use crate::usage_windows::{extract_usage_windows, UsageWindow};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -46,10 +49,20 @@ pub struct ResultMetadata {
     /// Where a limit found outside the output came from (`codex-rollout`)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit_source: Option<String>,
+    /// Usage windows the run reported (Claude `rate_limit_event`, Codex
+    /// `rate_limits`), newest value per window
+    #[serde(default)]
+    pub usage_windows: Vec<UsageWindow>,
+    /// Context-window fill of the main thread (issue #57)
+    #[serde(default)]
+    pub context_usage: Option<ContextUsage>,
     pub anthropic_total_cost_usd: Option<f64>,
     pub public_pricing_estimate: Option<f64>,
     pub pricing_info: Option<PricingInfo>,
     pub result_summary: Option<String>,
+    /// Final answer shaped by the `json_schema` launch option (issue #57)
+    #[serde(default)]
+    pub structured_output: Option<Value>,
     pub result_model_usage: Option<Value>,
     /// Real model ids seen in the stream: main thread first, then subagents
     pub observed_models: Vec<String>,
@@ -87,6 +100,9 @@ pub struct BuildMetadataOptions<'a> {
     pub signal: Option<String>,
     /// The caller stopped the process after its final result
     pub terminated_after_result: bool,
+    /// A `json_schema` was passed; enables reading Codex's final message as
+    /// the structured output
+    pub structured_output_requested: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -673,6 +689,8 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
         limit_timezone: usage_limit.timezone,
         limit_resets_at: usage_limit.resets_at,
         limit_window: usage_limit.window,
+        usage_windows: extract_usage_windows(&messages),
+        context_usage: extract_context_usage(&all_messages),
         limit_source: None,
         anthropic_total_cost_usd: first_number(
             &messages,
@@ -681,6 +699,12 @@ pub fn build_normalized_result_metadata(options: BuildMetadataOptions<'_>) -> Re
         public_pricing_estimate,
         pricing_info,
         result_summary: extract_result_summary(&messages, options.plain_output),
+        structured_output: extract_structured_output(
+            options.tool,
+            &messages,
+            options.plain_output,
+            options.structured_output_requested,
+        ),
         result_model_usage: extract_result_model_usage(&messages),
         observed_models,
         observed_model,

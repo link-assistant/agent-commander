@@ -3,6 +3,9 @@
 
 use super::usage::{self, count};
 use crate::streaming::parse_json_records;
+use crate::tools::launch_options::{
+    json_schema_arg, normalize_reasoning_effort, push_directories, LaunchOptions,
+};
 use crate::tools::shell::{build_command_head, escape_arg, lookup_model_alias};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -187,6 +190,8 @@ pub struct ClaudeBuildOptions {
     /// Caller owns the child's stdin and streams the prompt + permission
     /// responses as NDJSON frames, so no `--prompt` arg is passed.
     pub stream_input: bool,
+    /// Shared launch options (reasoning effort, MCP servers, extra directories)
+    pub launch: LaunchOptions,
 }
 
 impl ClaudeBuildOptions {
@@ -223,6 +228,27 @@ pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
         args.push("--dangerously-skip-permissions".to_string());
     }
 
+    // Variadic flags (`--add-dir`, `--mcp-config`) stay before `--model` so the
+    // next option terminates them.
+    let launch = &options.launch;
+    push_directories(&mut args, "--add-dir", &launch.additional_directories);
+    if let Some(ref mcp_config) = launch.mcp_config {
+        args.push("--mcp-config".to_string());
+        args.push(mcp_config.clone());
+    }
+    if launch.strict_mcp_config {
+        args.push("--strict-mcp-config".to_string());
+    }
+    if let Some(ref effort) = launch.reasoning_effort {
+        args.push("--effort".to_string());
+        args.push(normalize_reasoning_effort(effort));
+    }
+    // The answer is reported as `structured_output` on the result message.
+    if let Some(ref json_schema) = launch.json_schema {
+        args.push("--json-schema".to_string());
+        args.push(json_schema_arg(json_schema));
+    }
+
     if let Some(ref model) = options.model {
         args.push("--model".to_string());
         args.push(model_arg(model));
@@ -257,7 +283,9 @@ pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
         args.push("--verbose".to_string());
     }
 
-    if options.prompt.is_none()
+    // Without a prompt argument (stream input frames, prompt file) print mode
+    // still needs `-p`.
+    if (options.prompt.is_none() || options.stream_input)
         && (options.print || options.json || options.json_input || options.prompt_file.is_some())
     {
         args.push("-p".to_string()); // Print mode

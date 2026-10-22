@@ -48,6 +48,11 @@ Common options:
 - `--tool-env <KEY=VALUE>`: add an environment variable to the native tool process, repeatable
 - `--tool-arg <arg>`: append a raw native tool argument, repeatable
 - `--skip-default-safety-flags`: suppress default autonomous safety bypass flags, including Qwen/Gemini `--yolo`
+- `--reasoning-effort <level>`: native reasoning effort (claude `--effort`, codex `model_reasoning_effort`, opencode `--variant`)
+- `--mcp-config <path|json>` and `--strict-mcp-config`: MCP servers (claude, codex, qwen; strict for claude)
+- `--add-dir <dir>`: extra directory the agent may access, repeatable (claude, codex, gemini, qwen)
+- `--attach <file>`: attach a file to the prompt, repeatable (codex `--image`, opencode `--file`)
+- `--json-schema <json>`: JSON Schema the final answer must match (claude and qwen `--json-schema`, codex `--output-schema`)
 - `--isolation <mode>`: `none`, `screen`, or `docker`
 - `--dry-run`: print the command without executing it
 
@@ -124,6 +129,84 @@ Bundled aliases track a recorded Hive Mind catalogue (v2.39.5: `sonnet` is `clau
 
 See the [parity audit](../docs/case-studies/issue-50/README.md) for the feature matrix and regression evidence.
 
+## Launch options, live input and run telemetry
+
+```rust
+use agent_commander::{agent, get_tool_version, AgentOptions, AgentStartOptions, AgentStopOptions, LaunchOptions};
+
+# async fn run() -> Result<(), String> {
+let probe = get_tool_version("claude", None, Some("2.0.0")).await.map_err(|e| e.to_string())?;
+assert_eq!(probe.meets_minimum, Some(true));
+
+let mut controller = agent(AgentOptions {
+    tool: "claude".to_string(),
+    working_directory: "/tmp/project".to_string(),
+    prompt: Some("Refactor the parser".to_string()),
+    launch: LaunchOptions {
+        reasoning_effort: Some("high".to_string()),
+        mcp_config: Some("/tmp/mcp.json".to_string()),
+        strict_mcp_config: true,
+        additional_directories: vec!["../shared".to_string()],
+        ..Default::default()
+    },
+    live_input: true,
+    ..Default::default()
+})?;
+controller.start(AgentStartOptions::default()).await?;
+controller.send_message("Keep the public API unchanged").await?;
+let result = controller.stop(AgentStopOptions::default()).await?;
+println!("{:?} {:?}", result.metadata.usage_windows, result.metadata.context_usage);
+# Ok(())
+# }
+```
+
+A tool without a native flag for a launch option is rejected before it starts; `launch_capabilities(tool)` reports what each tool supports. `attachments` works for Codex (`--image`) and OpenCode (`--file`). `launch.json_schema` (JSON text) asks Claude, Codex or Qwen for an answer that matches the schema and reports it as `metadata.structured_output`. `interrupt().await` ends the running turn for Claude and Qwen; `end_input()` closes stdin. `metadata.usage_windows` comes from Claude `rate_limit_event` messages and Codex `rate_limits`; `metadata.context_usage` reports the last and peak context fill against the model's window. For Codex, `stop()` reads both from the thread's rollout file. See [launch options](../docs/common-concepts.md#launch-options) and the [upcomputer case study](../docs/case-studies/issue-57/README.md).
+
+## Tool overrides
+
+`AgentOptions.tool_overrides` (`ToolOverrides`) replaces a failing or missing part of a tool for one run: `build_command`, `parse_output`, `extract_session_id`, `extract_usage` or `launch_capabilities`. With a `build_command` it also drives a CLI that is not registered. `build_base_command` returns the built-in native command for the builder to extend.
+
+```rust
+use agent_commander::{
+    agent, build_base_command, escape_arg, launch_capabilities, AgentCommandOptions, AgentOptions,
+    LaunchCapabilities, LaunchOptions, ToolOverrides,
+};
+use std::sync::Arc;
+
+# fn run() -> Result<(), String> {
+let controller = agent(AgentOptions {
+    tool: "claude".to_string(),
+    working_directory: "/tmp/project".to_string(),
+    prompt: Some("Describe the screenshot".to_string()),
+    launch: LaunchOptions {
+        attachments: vec!["shot.png".to_string()],
+        ..Default::default()
+    },
+    tool_overrides: ToolOverrides {
+        build_command: Some(Arc::new(|options: &AgentCommandOptions| {
+            let mut inner = options.clone();
+            let images = std::mem::take(&mut inner.launch.attachments);
+            format!(
+                "{} --image {}",
+                build_base_command(&inner),
+                images.iter().map(|image| escape_arg(image)).collect::<Vec<_>>().join(" ")
+            )
+        })),
+        launch_capabilities: Some(LaunchCapabilities {
+            attachments: true,
+            ..launch_capabilities("claude")
+        }),
+        ..Default::default()
+    },
+    ..Default::default()
+})?;
+# drop(controller);
+# Ok(())
+# }
+```
+
+`cargo run --example tool_overrides` prints the resulting dry-run command. See [tool overrides](../docs/common-concepts.md#tool-overrides).
+
 ## Shared Behavior
 
 JavaScript and Rust expose the same core concepts:
@@ -134,6 +217,8 @@ JavaScript and Rust expose the same core concepts:
 - JSON/NDJSON output parsing for tools that support it
 - Read-only planning mode for tools with enforceable native restrictions
 - Per-command approval (ask mode) with a normalized `permission_request`/`permission_response` relay for tools with a drivable native handshake
+- Launch options, live input, usage windows, context usage and the tool version probe
+- Per-run tool overrides for the command builder, output parser, session ID and usage extractors, and launch capabilities
 
 See [shared concepts](../docs/common-concepts.md) for behavior that should stay aligned across both packages, including the [per-command approval parity table](../docs/common-concepts.md#per-command-approval-ask-mode).
 

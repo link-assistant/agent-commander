@@ -4,6 +4,7 @@
 
 use super::usage::{self, count};
 use crate::streaming::parse_json_records;
+use crate::tools::launch_options::{json_schema_arg, push_directories, LaunchOptions};
 use crate::tools::shell::{build_command_head, escape_arg, lookup_model_alias};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -79,6 +80,12 @@ pub struct QwenBuildOptions {
     pub unset_env: Vec<String>,
     pub extra_args: Vec<String>,
     pub skip_default_safety_flags: bool,
+    /// Shared launch options (reasoning effort, MCP servers, extra directories)
+    pub launch: LaunchOptions,
+    /// Read stream-json user frames and control requests from stdin
+    pub json_input: bool,
+    /// The caller writes the prompt to stdin as a frame (live input)
+    pub stream_input: bool,
 }
 
 impl QwenBuildOptions {
@@ -124,6 +131,13 @@ pub fn build_args(options: &QwenBuildOptions) -> Vec<String> {
         args.push("json".to_string());
     }
 
+    // Live input: qwen keeps reading Claude-shaped user frames and control
+    // requests from stdin (requires stream-json output).
+    if options.json_input {
+        args.push("--input-format".to_string());
+        args.push("stream-json".to_string());
+    }
+
     // Include partial messages for real-time UI updates
     if options.include_partial_messages && options.stream_json {
         args.push("--include-partial-messages".to_string());
@@ -150,9 +164,25 @@ pub fn build_args(options: &QwenBuildOptions) -> Vec<String> {
         args.push("--all-files".to_string());
     }
 
-    for dir in &options.include_directories {
-        args.push("--include-directories".to_string());
-        args.push(dir.clone());
+    push_directories(
+        &mut args,
+        "--include-directories",
+        &options.include_directories,
+    );
+    push_directories(
+        &mut args,
+        "--include-directories",
+        &options.launch.additional_directories,
+    );
+    if let Some(ref mcp_config) = options.launch.mcp_config {
+        args.push("--mcp-config".to_string());
+        args.push(mcp_config.clone());
+    }
+    // A JSON literal; qwen reads a value starting with `@` as a file path. The
+    // answer is reported as `structured_result` on the result message.
+    if let Some(ref json_schema) = options.launch.json_schema {
+        args.push("--json-schema".to_string());
+        args.push(json_schema_arg(json_schema));
     }
 
     args.extend(options.extra_args.clone());
@@ -172,7 +202,7 @@ pub fn build_command(options: &QwenBuildOptions) -> String {
     let mut combined_options = options.clone();
 
     // Combine system prompt with user prompt if provided
-    if options.prompt_file.is_some() {
+    if options.prompt_file.is_some() || options.stream_input {
         combined_options.prompt = None;
     } else {
         match (&options.system_prompt, &options.prompt) {
@@ -198,11 +228,12 @@ pub fn build_command(options: &QwenBuildOptions) -> String {
     .trim()
     .to_string();
 
-    if let Some(prompt_file) = &options.prompt_file {
-        return format!("cat {} | {}", escape_arg(prompt_file), command);
+    match &options.prompt_file {
+        Some(prompt_file) if !options.stream_input => {
+            format!("cat {} | {}", escape_arg(prompt_file), command)
+        }
+        _ => command,
     }
-
-    command
 }
 
 /// Parse JSON messages from Qwen Code output

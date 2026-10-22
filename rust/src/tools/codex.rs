@@ -3,6 +3,10 @@
 
 use super::usage::{self, count};
 use crate::streaming::parse_json_records;
+use crate::tools::launch_options::{
+    codex_mcp_servers_override, json_schema_arg, normalize_reasoning_effort, push_attachments,
+    push_directories, LaunchOptions,
+};
 use crate::tools::shell::{
     build_command_head, escape_arg, escape_single_quotes, lookup_model_alias,
 };
@@ -166,6 +170,8 @@ pub struct CodexBuildOptions {
     pub skip_default_safety_flags: bool,
     pub sandbox_mode: Option<String>,
     pub approval_mode: Option<String>,
+    /// Shared launch options (reasoning effort, MCP servers, extra directories)
+    pub launch: LaunchOptions,
 }
 
 /// Build command line arguments for Codex
@@ -178,9 +184,35 @@ pub struct CodexBuildOptions {
 pub fn build_args(options: &CodexBuildOptions) -> Vec<String> {
     let mut args = vec!["exec".to_string()];
 
+    // `--sandbox` and `--add-dir` are `exec` options; `exec resume` rejects
+    // them, so they go before the subcommand.
+    if options.read_only {
+        args.push("--sandbox".to_string());
+        args.push("read-only".to_string());
+    } else if let Some(ref sandbox_mode) = options.sandbox_mode {
+        args.push("--sandbox".to_string());
+        args.push(sandbox_mode.clone());
+    }
+    let launch = &options.launch;
+    push_directories(&mut args, "--add-dir", &launch.additional_directories);
+
     if let Some(ref resume) = options.resume {
         args.push("resume".to_string());
         args.push(resume.clone());
+    }
+    // `exec` and `exec resume` both take `--image <FILE>` (codex 0.163).
+    push_attachments(&mut args, "--image", &launch.attachments);
+
+    if let Some(ref effort) = launch.reasoning_effort {
+        args.push("-c".to_string());
+        args.push(format!(
+            "model_reasoning_effort={}",
+            normalize_reasoning_effort(effort)
+        ));
+    }
+    if let Some(ref mcp_config) = launch.mcp_config {
+        args.push("-c".to_string());
+        args.push(codex_mcp_servers_override(mcp_config).unwrap_or_else(|error| panic!("{error}")));
     }
 
     if let Some(ref model) = options.model {
@@ -196,13 +228,6 @@ pub fn build_args(options: &CodexBuildOptions) -> Vec<String> {
 
     // Codex-specific flags for autonomous execution
     args.push("--skip-git-repo-check".to_string());
-    if options.read_only {
-        args.push("--sandbox".to_string());
-        args.push("read-only".to_string());
-    } else if let Some(ref sandbox_mode) = options.sandbox_mode {
-        args.push("--sandbox".to_string());
-        args.push(sandbox_mode.clone());
-    }
 
     if !options.read_only
         && options.sandbox_mode.is_none()
@@ -218,7 +243,10 @@ pub fn build_args(options: &CodexBuildOptions) -> Vec<String> {
 }
 
 /// Build complete command string for Codex
-/// Codex uses stdin for prompt input
+///
+/// Codex uses stdin for prompt input. A JSON Schema goes to `--output-schema`
+/// as a bash process substitution, so no temporary file is left behind
+/// (codex 0.163 reads and validates `/dev/fd/N`, in `exec` and `exec resume`).
 ///
 /// # Arguments
 /// * `options` - Build options
@@ -227,7 +255,13 @@ pub fn build_args(options: &CodexBuildOptions) -> Vec<String> {
 /// Complete command string
 pub fn build_command(options: &CodexBuildOptions) -> String {
     let args = build_args(options);
-    let args_str: Vec<String> = args.iter().map(|a| escape_arg(a)).collect();
+    let mut args_str: Vec<String> = args.iter().map(|a| escape_arg(a)).collect();
+    if let Some(ref json_schema) = options.launch.json_schema {
+        args_str.push(format!(
+            "--output-schema <(printf '%s' {})",
+            escape_arg(&json_schema_arg(json_schema))
+        ));
+    }
 
     // Codex expects prompt via stdin, combine system and user prompts
     let combined_prompt = match (&options.system_prompt, &options.prompt) {

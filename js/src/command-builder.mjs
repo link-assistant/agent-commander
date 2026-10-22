@@ -3,7 +3,8 @@
  */
 
 import { quoteForContext } from 'command-stream';
-import { isToolSupported, getTool } from './tools/index.mjs';
+import { resolveToolConfig, tools } from './tools/index.mjs';
+import { assertLaunchOptionsSupported } from './tools/launch-options.mjs';
 import { escapeArg } from './tools/shell.mjs';
 import { askUnsupportedError } from './permissions/index.mjs';
 
@@ -25,6 +26,14 @@ import { askUnsupportedError } from './permissions/index.mjs';
  * @param {boolean} [options.readOnly] - Enforce native read-only/planning mode
  * @param {boolean} [options.planOnly] - Enforce native planning mode (where the tool distinguishes it)
  * @param {boolean} [options.approveEach] - Enforce per-command approval (ask mode)
+ * @param {string} [options.reasoningEffort] - Native reasoning effort level
+ * @param {string|Object} [options.mcpConfig] - MCP servers (`{mcpServers}`, inline JSON or path)
+ * @param {boolean} [options.strictMcpConfig] - Use only the `mcpConfig` servers
+ * @param {string[]} [options.additionalDirectories] - Extra workspace directories
+ * @param {string[]} [options.attachments] - Files attached to the prompt
+ * @param {string|Object} [options.jsonSchema] - Structured-output JSON Schema
+ * @param {Object} [options.toolOverrides] - Tool configuration fields that
+ *   replace the registered ones (see `resolveToolConfig`)
  * @returns {string} The command string
  */
 export function buildAgentCommand(options) {
@@ -44,6 +53,7 @@ export function buildAgentCommand(options) {
     readOnly = false,
     planOnly = false,
     approveEach = false,
+    toolOverrides,
     ...toolOptions
   } = options;
 
@@ -53,9 +63,15 @@ export function buildAgentCommand(options) {
 
   // Build base command using tool-specific builder if available
   let baseCommand;
+  const toolConfig = resolveToolConfig({ toolName: tool, toolOverrides });
+  assertLaunchOptionsSupported({
+    tool,
+    toolConfig,
+    tools,
+    requested: toolOptions,
+  });
 
-  if (isToolSupported({ toolName: tool })) {
-    const toolConfig = getTool({ toolName: tool });
+  if (toolConfig) {
     if (readOnlyRequested && !toolConfig.supportsReadOnly) {
       throw new Error(readOnlyUnsupportedError(tool));
     }

@@ -5,6 +5,7 @@ pub mod agent;
 pub mod claude;
 pub mod codex;
 pub mod gemini;
+pub mod launch_options;
 pub mod opencode;
 pub mod qwen;
 pub(crate) mod shell;

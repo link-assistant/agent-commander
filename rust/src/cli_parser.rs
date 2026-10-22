@@ -85,6 +85,15 @@ pub struct StartAgentOptions {
     pub append_system_prompt: Option<String>,
     pub model: Option<String>,
     pub fallback_model: Option<String>,
+    pub reasoning_effort: Option<String>,
+    pub mcp_config: Option<String>,
+    pub strict_mcp_config: bool,
+    /// Extra directories the agent may access (`--add-dir`, repeatable)
+    pub additional_directories: Vec<String>,
+    /// Files attached to the prompt (`--attach`, repeatable)
+    pub attachments: Vec<String>,
+    /// JSON Schema text for the final answer (`--json-schema`)
+    pub json_schema: Option<String>,
     pub verbose: bool,
     pub replay_user_messages: bool,
     pub read_only: bool,
@@ -142,6 +151,12 @@ pub fn parse_start_agent_args(args: &[String]) -> StartAgentOptions {
         append_system_prompt: parsed.get("append-system-prompt").cloned(),
         model: parsed.get("model").cloned(),
         fallback_model: parsed.get("fallback-model").cloned(),
+        reasoning_effort: parsed.get("reasoning-effort").cloned(),
+        mcp_config: parsed.get("mcp-config").cloned(),
+        strict_mcp_config: parsed.get_bool("strict-mcp-config"),
+        additional_directories: parsed.get_all("add-dir"),
+        attachments: parsed.get_all("attach"),
+        json_schema: parsed.get("json-schema").cloned(),
         verbose: parsed.get_bool("verbose"),
         replay_user_messages: parsed.get_bool("replay-user-messages"),
         read_only: parsed.get_bool("read-only") || parsed.get_bool("plan-only"),
@@ -202,6 +217,16 @@ Options:
   --append-system-prompt <text>    Append to the default system prompt
   --model <model>                  Model to use (e.g., 'sonnet', 'opus', 'haiku')
   --fallback-model <model>         Fallback model when default is overloaded
+  --reasoning-effort <level>       Native reasoning effort (claude --effort, codex
+                                   model_reasoning_effort, opencode --variant)
+  --mcp-config <path|json>         MCP servers config (claude, codex, qwen)
+  --strict-mcp-config              Use only the --mcp-config servers (claude)
+  --add-dir <dir>                  Extra directory the agent may access (repeatable;
+                                   claude, codex, gemini, qwen)
+  --attach <file>                  Attach a file to the prompt (repeatable;
+                                   codex --image, opencode --file)
+  --json-schema <json>             JSON Schema for the final answer (claude, qwen
+                                   --json-schema; codex --output-schema)
   --verbose                        Enable verbose mode
   --read-only                      Enforce native read-only mode (agent: --permission-mode readonly)
   --plan-only                      Enforce native planning mode (agent: --permission-mode plan)
@@ -229,6 +254,11 @@ Examples:
   # With model selection
   start-agent --tool claude --working-directory "/tmp/dir" \
     --prompt "Hello" --model opus --fallback-model sonnet
+
+  # Reasoning effort, MCP servers and an extra workspace directory
+  start-agent --tool claude --working-directory "/tmp/dir" \
+    --prompt "Hello" --reasoning-effort high \
+    --mcp-config ./mcp.json --strict-mcp-config --add-dir ../shared
 
   # Resume a session with fork
   start-agent --tool claude --working-directory "/tmp/dir" \

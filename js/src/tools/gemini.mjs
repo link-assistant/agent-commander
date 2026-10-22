@@ -8,6 +8,7 @@ import { syncedModels, syncedDefaults } from './model-catalog.mjs';
 import { createModelMapper, parseJsonLines } from './json-lines.mjs';
 
 import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
+import { normalizeAdditionalDirectories } from './launch-options.mjs';
 
 /**
  * Available Gemini model configurations
@@ -40,6 +41,7 @@ export const mapModelToId = createModelMapper(modelMap);
  * @param {boolean} [options.interactive] - Start interactive session with initial prompt
  * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
  * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
+ * @param {string[]} [options.additionalDirectories] - Extra workspace directories (`--include-directories`)
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
@@ -56,6 +58,7 @@ export function buildArgs(options) {
     interactive = false,
     extraArgs = [],
     skipDefaultSafetyFlags = false,
+    additionalDirectories,
   } = options;
 
   const args = [];
@@ -74,6 +77,10 @@ export function buildArgs(options) {
 
   if (resume) {
     args.push('--resume', resume);
+  }
+
+  for (const dir of normalizeAdditionalDirectories(additionalDirectories)) {
+    args.push('--include-directories', dir);
   }
 
   // Sandbox mode for secure execution
@@ -259,6 +266,13 @@ export const geminiTool = {
   supportsDebug: true, // Supports -d for debug output
   supportsReadOnly: true, // Supports --approval-mode plan
   supportsAsk: false, // No JSON stdin channel (prompt via -p), so approvals cannot be relayed
+  supportsReasoningEffort: false, // Thinking budget lives in settings.json only
+  reasoningEfforts: null,
+  supportsMcpConfig: false, // MCP servers come from settings.json only
+  supportsStrictMcpConfig: false,
+  supportsAdditionalDirectories: true, // --include-directories <dir>
+  supportsAttachments: false, // No attachment flag (@path in the prompt)
+  supportsJsonSchema: false, // No structured-output flag (gemini 0.64)
   defaultModel: syncedDefaults.gemini,
   modelMap,
   mapModelToId,

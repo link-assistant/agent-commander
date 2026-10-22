@@ -15,16 +15,22 @@ pub mod cli_parser;
 pub mod codex_rollout;
 pub mod command_builder;
 mod completion;
+pub mod context_usage;
 pub mod error_text;
 pub mod executor;
 pub mod file_tail;
+pub mod live_input;
 pub mod permissions;
 pub mod result_close;
 pub mod result_metadata;
 pub mod streaming;
+pub mod structured_output;
+pub mod tool_overrides;
+pub mod tool_version;
 pub mod tools;
 pub mod tui;
 pub mod usage_limit;
+pub mod usage_windows;
 
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -39,8 +45,9 @@ pub use cli_parser::{
 };
 
 pub use command_builder::{
-    build_agent_command, build_docker_stop_command, build_piped_command, build_screen_stop_command,
-    read_only_unsupported_error, supports_read_only, AgentCommandOptions,
+    build_agent_command, build_base_command, build_docker_stop_command, build_piped_command,
+    build_screen_stop_command, read_only_unsupported_error, supports_read_only,
+    AgentCommandOptions,
 };
 
 pub use permissions::{
@@ -51,8 +58,9 @@ pub use permissions::{
 
 pub use executor::{
     execute_command, execute_detached, is_process_group_alive, normalize_exit,
-    setup_signal_handler, signal_from_exit_code, signal_name, start_command, ExecutionResult,
-    ProcessHandle, DEFAULT_KILL_AFTER, DEFAULT_PIPE_DRAIN,
+    setup_signal_handler, signal_from_exit_code, signal_name, start_command,
+    start_command_with_stdin, ExecutionResult, ProcessHandle, DEFAULT_KILL_AFTER,
+    DEFAULT_PIPE_DRAIN,
 };
 
 pub use background_tasks::{
@@ -67,10 +75,12 @@ pub use result_close::{
 };
 
 pub use codex_rollout::{
-    apply_codex_rollout_usage_limit, can_resume_codex_session, classify_codex_rate_limit_snapshot,
-    codex_rollout_limit_facts, codex_sessions_dir, detect_codex_rollout_usage_limit,
-    find_codex_rollout_file, is_codex_rollout_file_name, read_codex_rollout_limit_facts,
-    CodexLimitVerdict, CodexRolloutLimitFacts, CodexRolloutOptions, CODEX_ROLLOUT_LIMIT_SOURCE,
+    apply_codex_rollout_context_usage, apply_codex_rollout_usage_limit,
+    apply_codex_rollout_usage_windows, can_resume_codex_session,
+    classify_codex_rate_limit_snapshot, codex_rollout_context_usage, codex_rollout_limit_facts,
+    codex_sessions_dir, detect_codex_rollout_usage_limit, find_codex_rollout_file,
+    is_codex_rollout_file_name, read_codex_rollout_limit_facts, CodexLimitVerdict,
+    CodexRolloutLimitFacts, CodexRolloutOptions, CODEX_ROLLOUT_LIMIT_SOURCE,
     CODEX_SESSIONS_DIRNAME, ROLLOUT_TAIL_BYTES,
 };
 
@@ -80,7 +90,15 @@ pub use claude_transcript::{
     ClaudeTranscriptOptions, CLAUDE_TRANSCRIPT_LIMIT_SOURCE, TRANSCRIPT_TAIL_BYTES,
 };
 
+pub use context_usage::{
+    claude_request_context_tokens, context_reading_from_message, extract_context_usage,
+    ContextReading, ContextUsage,
+};
 pub use file_tail::read_file_tail;
+pub use live_input::{
+    build_interrupt_frame, build_user_input_frame, live_input_unsupported_error,
+    supports_live_input,
+};
 
 pub use result_metadata::{
     build_normalized_result_metadata, BuildMetadataOptions, PricingInfo, ResultMetadata,
@@ -94,6 +112,8 @@ pub use usage_limit::{
     is_usage_limit_text, limit_scan_text, DebugLines, UsageLimitVerdict,
 };
 
+pub use structured_output::extract_structured_output;
+
 pub use streaming::{
     create_input_stream, create_output_stream, parse_json_records, parse_ndjson, parse_ndjson_line,
     stringify_ndjson, stringify_ndjson_line, JsonInputStream, JsonOutputStream, JsonRecordEvent,
@@ -103,6 +123,30 @@ pub use streaming::{
 pub use tools::{
     get_tool, is_tool_supported, list_tools, AgentTool, ClaudeTool, CodexTool, OpencodeTool, Tool,
     ToolRegistry,
+};
+
+pub use usage_windows::{
+    claude_rate_limit_windows, codex_rate_limit_windows, extract_usage_windows,
+    merge_usage_windows, usage_windows_from_message, UsageWindow, USAGE_WINDOW_KINDS,
+};
+
+/// Shell quoting for `ToolOverrides::build_command` implementations
+pub use tools::shell::escape_arg;
+
+pub use tool_overrides::{
+    BuildCommandFn, ExtractSessionIdFn, ExtractUsageFn, ParseOutputFn, ToolOverrides,
+};
+
+pub use tool_version::{
+    build_version_command, compare_versions, get_tool_version, parse_tool_version,
+    tool_version_from_output, ToolVersion,
+};
+
+pub use tools::launch_options::{
+    check_launch_options_against, check_launch_options_supported, codex_mcp_servers_override,
+    json_schema_arg, launch_capabilities, normalize_reasoning_effort, push_attachments,
+    push_directories, to_toml_value, LaunchCapabilities, LaunchOptions, CLAUDE_REASONING_EFFORTS,
+    CODEX_REASONING_EFFORTS,
 };
 
 /// Agent options for creating a controller
@@ -159,6 +203,17 @@ pub struct AgentOptions {
     pub unset_env: Vec<String>,
     /// Do not add default autonomous safety bypass flags
     pub skip_default_safety_flags: bool,
+    /// Shared launch options: reasoning effort, MCP servers, strict MCP
+    /// configuration, extra workspace directories, attachments and a JSON
+    /// Schema for structured output
+    pub launch: LaunchOptions,
+    /// Keep stdin open for [`Agent::send_message`] and [`Agent::interrupt`]
+    /// (`claude`, `qwen`, `agent`; attached runs without isolation). The
+    /// prompt becomes the first stream-json frame and JSON output is forced.
+    pub live_input: bool,
+    /// Replace the command builder, output parser, session ID or usage
+    /// extractor, or launch capabilities for this run
+    pub tool_overrides: ToolOverrides,
 }
 
 /// Agent result from stop()
@@ -268,6 +323,23 @@ async fn create_prompt_temp_dir(parent: &Path, nanos: u128) -> Result<PathBuf, S
     ))
 }
 
+/// Write a new, owner-only prompt file and return once all of it is on disk.
+async fn write_prompt_file(path: &Path, content: &str) -> Result<(), String> {
+    let mut open_options = tokio::fs::OpenOptions::new();
+    open_options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        open_options.mode(0o600);
+    }
+    let mut file = open_options.open(path).await.map_err(|e| e.to_string())?;
+    file.write_all(content.as_bytes())
+        .await
+        .map_err(|e| e.to_string())?;
+    // tokio writes at most 2 MiB per background operation and `write_all`
+    // returns once the last one is queued; `flush` waits for it to finish.
+    file.flush().await.map_err(|e| e.to_string())
+}
+
 fn should_create_prompt_file(options: &AgentOptions, dry_run: bool) -> bool {
     if dry_run || options.prompt_file.is_some() || !supports_prompt_file_input(&options.tool) {
         return false;
@@ -354,19 +426,7 @@ impl Agent {
             self.options.system_prompt.as_deref(),
         );
 
-        let mut open_options = tokio::fs::OpenOptions::new();
-        open_options.write(true).create_new(true);
-        #[cfg(unix)]
-        {
-            open_options.mode(0o600);
-        }
-        let mut file = open_options
-            .open(&prompt_file)
-            .await
-            .map_err(|e| e.to_string())?;
-        file.write_all(content.as_bytes())
-            .await
-            .map_err(|e| e.to_string())?;
+        write_prompt_file(&prompt_file, &content).await?;
 
         Ok(Some(prompt_file.to_string_lossy().into_owned()))
     }
@@ -379,12 +439,35 @@ impl Agent {
     /// # Returns
     /// Result indicating success or error
     pub async fn start(&mut self, start_options: AgentStartOptions) -> Result<(), String> {
+        // Reject launch options the tool cannot honor before any side effects.
+        let capabilities = self
+            .options
+            .tool_overrides
+            .launch_capabilities
+            .unwrap_or_else(|| launch_capabilities(&self.options.tool));
+        check_launch_options_against(&self.options.tool, &self.options.launch, &capabilities)?;
+        let live = self.options.live_input;
+        if live && !supports_live_input(&self.options.tool) {
+            return Err(live_input_unsupported_error(&self.options.tool));
+        }
+        let isolated = !(self.options.isolation == "none" || self.options.isolation.is_empty());
+        if live && !start_options.dry_run && (start_options.detached || isolated) {
+            return Err(
+                "live_input needs an attached run without isolation (stdin is piped to the tool)."
+                    .to_string(),
+            );
+        }
+
         // Create output stream for JSON parsing if in JSON mode
-        if self.options.json {
+        if self.options.json || live {
             self.output_stream = Some(create_output_stream());
         }
 
-        let prepared_prompt_file = match self.prepare_prompt_file(start_options.dry_run).await {
+        // Live input writes the prompt as the first stdin frame instead.
+        let prepared_prompt_file = match self
+            .prepare_prompt_file(start_options.dry_run || live)
+            .await
+        {
             Ok(prompt_file) => prompt_file,
             Err(error) => {
                 self.cleanup_prompt_temp_dir().await;
@@ -398,7 +481,7 @@ impl Agent {
         let command_options = AgentCommandOptions {
             tool: self.options.tool.clone(),
             working_directory: self.options.working_directory.clone(),
-            prompt: if prompt_handled_by_temp_file {
+            prompt: if prompt_handled_by_temp_file || live {
                 None
             } else {
                 self.options.prompt.clone()
@@ -412,7 +495,7 @@ impl Agent {
             append_system_prompt: self.options.append_system_prompt.clone(),
             model: self.options.model.clone(),
             fallback_model: self.options.fallback_model.clone(),
-            json: self.options.json,
+            json: self.options.json || live,
             verbose: self.options.verbose,
             replay_user_messages: self.options.replay_user_messages,
             resume: self.options.resume.clone(),
@@ -421,6 +504,7 @@ impl Agent {
             read_only: self.options.read_only,
             plan_only: self.options.plan_only,
             approve_each: self.options.approve_each,
+            stream_input: live,
             executable: self.options.executable.clone(),
             extra_args: self.options.extra_args.clone(),
             extra_env: self.options.extra_env.clone(),
@@ -430,6 +514,8 @@ impl Agent {
             screen_name: self.options.screen_name.clone(),
             container_name: self.options.container_name.clone(),
             detached: start_options.detached,
+            launch: self.options.launch.clone(),
+            overrides: self.options.tool_overrides.clone(),
         };
 
         let command = build_agent_command(&command_options);
@@ -458,10 +544,12 @@ impl Agent {
             }
         } else {
             // For attached mode, start command without waiting
-            let handle = match start_command(&command, start_options.attached)
-                .await
-                .map_err(|e| e.to_string())
-            {
+            let started = if live {
+                start_command_with_stdin(&command, start_options.attached).await
+            } else {
+                start_command(&command, start_options.attached).await
+            };
+            let handle = match started.map_err(|e| e.to_string()) {
                 Ok(handle) => handle,
                 Err(error) => {
                     self.cleanup_prompt_temp_dir().await;
@@ -469,6 +557,16 @@ impl Agent {
                 }
             };
             self.process_handle = Some(handle);
+            if live {
+                // Kick off the turn by sending the user prompt as the first frame.
+                let prompt = self.options.prompt.clone().map_or(Value::Null, Value::from);
+                let frame = build_user_input_frame(
+                    &self.options.tool,
+                    &prompt,
+                    self.options.system_prompt.as_deref(),
+                )?;
+                self.write_input_frame(&frame).await?;
+            }
         }
 
         Ok(())
@@ -560,6 +658,8 @@ impl Agent {
                 .process_handle
                 .as_mut()
                 .ok_or("Agent not started or already stopped")?;
+            // End live input: the tool finishes the queued input and exits.
+            handle.end_stdin();
 
             // Wait for the process to exit, closing it when it outlives its result
             let close = ResultCloseOptions {
@@ -589,8 +689,10 @@ impl Agent {
             };
 
             // Process output through stream if available
-            let mut parsed_output = None;
-            if let Some(ref mut stream) = self.output_stream {
+            // A caller's parser replaces the streamed messages too.
+            let overrides = &self.options.tool_overrides;
+            let mut parsed_output = overrides.parse_output.as_ref().map(|parse| parse(stdout));
+            if let (None, Some(stream)) = (&parsed_output, self.output_stream.as_mut()) {
                 stream.process(stdout);
                 stream.flush();
                 let messages = stream.get_messages();
@@ -608,7 +710,9 @@ impl Agent {
             }
 
             // Try to extract session ID
-            if is_tool_supported(&self.options.tool) {
+            if let Some(extract) = &overrides.extract_session_id {
+                self.session_id = extract(stdout);
+            } else if is_tool_supported(&self.options.tool) {
                 match self.options.tool.as_str() {
                     "claude" => {
                         self.session_id = tools::claude::extract_session_id(stdout);
@@ -628,7 +732,10 @@ impl Agent {
                 }
             }
 
-            let usage = extract_usage_value(&self.options.tool, stdout);
+            let usage = match &overrides.extract_usage {
+                Some(extract) => extract(stdout),
+                None => extract_usage_value(&self.options.tool, stdout),
+            };
             let mut metadata = build_normalized_result_metadata(BuildMetadataOptions {
                 tool: &self.options.tool,
                 exit_code,
@@ -638,13 +745,15 @@ impl Agent {
                 usage: usage.clone(),
                 signal: handle.signal().map(String::from),
                 terminated_after_result,
+                structured_output_requested: self.options.launch.json_schema.is_some(),
             });
             // Codex and Claude can leave a usage limit only in their session
             // files (hive-mind#3570)
-            codex_rollout::apply_codex_rollout_usage_limit(
-                &mut metadata,
-                &CodexRolloutOptions::for_run_env(&self.options.extra_env, &self.options.unset_env),
-            );
+            let rollout_options =
+                CodexRolloutOptions::for_run_env(&self.options.extra_env, &self.options.unset_env);
+            codex_rollout::apply_codex_rollout_usage_limit(&mut metadata, &rollout_options);
+            codex_rollout::apply_codex_rollout_usage_windows(&mut metadata, &rollout_options);
+            codex_rollout::apply_codex_rollout_context_usage(&mut metadata, &rollout_options);
             if (self.options.json || self.options.tool == "agent")
                 && is_tool_supported(&self.options.tool)
             {
@@ -734,7 +843,7 @@ pub fn agent(options: AgentOptions) -> Result<Agent, String> {
 
 #[cfg(test)]
 mod prompt_dir_tests {
-    use super::{create_prompt_temp_dir, PROMPT_DIR_SEQUENCE};
+    use super::{create_prompt_temp_dir, write_prompt_file, PROMPT_DIR_SEQUENCE};
     use std::sync::atomic::Ordering;
 
     #[tokio::test]
@@ -760,5 +869,22 @@ mod prompt_dir_tests {
         let dir = create_prompt_temp_dir(parent.path(), 9).await.unwrap();
         assert!(dir.is_dir());
         assert_eq!(std::fs::read_dir(parent.path()).unwrap().count(), 4);
+    }
+
+    /// A tokio `File` writes at most 2 MiB per background operation, so a
+    /// larger prompt must be complete before the agent is spawned to read it.
+    #[tokio::test]
+    async fn large_prompt_files_are_complete_when_written() {
+        let parent = tempfile::tempdir().expect("parent directory");
+        let content = "x".repeat(3 * 1024 * 1024 + 37);
+        for attempt in 0..20 {
+            let path = parent.path().join(format!("prompt-{attempt}.txt"));
+            write_prompt_file(&path, &content).await.unwrap();
+            assert_eq!(
+                std::fs::metadata(&path).unwrap().len(),
+                content.len() as u64,
+                "attempt {attempt}"
+            );
+        }
     }
 }
