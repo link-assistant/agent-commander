@@ -44,6 +44,12 @@ import {
   waitForExitAfterResult,
 } from './result-close.mjs';
 import { PermissionRelay, askUnsupportedError } from './permissions/index.mjs';
+import {
+  buildInterruptFrame,
+  buildUserInputFrame,
+  liveInputUnsupportedError,
+  supportsLiveInput,
+} from './live-input.mjs';
 
 const PROMPT_FILE_TOOLS = new Set([
   'claude',
@@ -79,34 +85,6 @@ function buildPromptFileContent(options) {
   }
 
   return systemPrompt ? `${systemPrompt}\n\n${prompt || ''}` : prompt || '';
-}
-
-/**
- * Build the initial user-message frame written to a tool's stdin when relaying
- * per-command approvals over a streaming input channel.
- * @param {Object} options - Options
- * @param {string} options.toolName - Tool name (`agent` | `claude`)
- * @param {string} [options.prompt] - User prompt
- * @param {string} [options.systemPrompt] - System prompt
- * @returns {Object} A user-message frame ready to be serialized as NDJSON
- */
-function buildInitialInputFrame(options) {
-  const { toolName, prompt, systemPrompt } = options;
-
-  if (toolName === 'claude') {
-    // Claude stream-json input expects an Anthropic-style message envelope.
-    return {
-      type: 'user',
-      message: { role: 'user', content: prompt || '' },
-    };
-  }
-
-  // Agent's stream-json input takes a plain user message string (system prompt
-  // is combined in, since agent has no separate system-prompt channel here).
-  const combinedPrompt = systemPrompt
-    ? `${systemPrompt}\n\n${prompt || ''}`
-    : prompt || '';
-  return { type: 'user', message: combinedPrompt };
 }
 
 /**
@@ -182,6 +160,8 @@ function parseJsonMessages(options) {
  * @param {string|Object} [options.mcpConfig] - MCP servers: config path, inline JSON or `{mcpServers}` object
  * @param {boolean} [options.strictMcpConfig=false] - Use only the servers from `mcpConfig`
  * @param {string|string[]} [options.additionalDirectories] - Extra directories the agent may access
+ * @param {boolean} [options.liveInput=false] - Keep stdin open as a stream-json channel so
+ *   `sendMessage()` / `interrupt()` can reach the running session (claude, agent)
  * @param {Object} [options.toolOptions] - Additional tool-specific options
  * @returns {Object} Agent controller with start, stop, and utility methods
  */
@@ -206,6 +186,7 @@ export function agent(options) {
     mcpConfig,
     strictMcpConfig = false,
     additionalDirectories,
+    liveInput = false,
     toolOptions = {},
   } = options;
 
@@ -237,7 +218,12 @@ export function agent(options) {
     toolConfig.supportsAsk
   );
 
+  // Both the relay and live input write NDJSON frames to the child's stdin.
+  const streamingInput = relayActive || liveInput;
+
   let processHandle = null;
+  let inputOpen = false;
+  let messagesAtLastInput = 0;
   let removeSignalHandler = null;
   let command = null;
   let outputStream = null;
@@ -303,11 +289,19 @@ export function agent(options) {
     if (approveEach && !(toolConfig && toolConfig.supportsAsk)) {
       throw new Error(askUnsupportedError({ tool }));
     }
+    if (liveInput && !supportsLiveInput(toolConfig)) {
+      throw new Error(liveInputUnsupportedError({ tool }));
+    }
+    if (liveInput && !dryRun && (detached || isolation !== 'none')) {
+      throw new Error(
+        'liveInput needs an attached run without isolation (stdin is piped to the tool).'
+      );
+    }
 
     // Create output stream for JSON parsing if in JSON mode, callbacks are
     // provided, or a live permission relay is active (the relay inspects every
     // parsed message looking for native permission requests).
-    if (json || onMessage || relayActive) {
+    if (json || onMessage || streamingInput) {
       outputStream = createOutputStream({
         onMessage: (data) => {
           if (onMessage) {
@@ -327,7 +321,7 @@ export function agent(options) {
     try {
       // In relay mode the prompt is delivered as the initial NDJSON user frame
       // over stdin, so no temporary prompt file is created or piped.
-      const preparedPromptFile = relayActive
+      const preparedPromptFile = streamingInput
         ? undefined
         : await preparePromptFile({ dryRun });
       const promptHandledByTempFile = preparedPromptFile && !promptFile;
@@ -368,10 +362,11 @@ export function agent(options) {
         );
       }
 
-      // When relaying per-command approvals, force a streaming JSON channel in
-      // both directions: the tool emits permission requests on stdout and reads
-      // our decisions plus the initial prompt as NDJSON frames on stdin.
-      if (relayActive) {
+      // When relaying per-command approvals or accepting live input, force a
+      // streaming JSON channel in both directions: the tool emits events (and
+      // permission requests) on stdout and reads the prompt, follow-up
+      // messages and decisions as NDJSON frames on stdin.
+      if (streamingInput) {
         commandOptions.json = true;
         commandOptions.jsonInput = true;
         commandOptions.streamInput = true;
@@ -407,7 +402,7 @@ export function agent(options) {
         }
       } else {
         // For attached mode, start command without waiting
-        const commandOptions = { attached, pipeStdin: relayActive };
+        const commandOptions = { attached, pipeStdin: streamingInput };
 
         // Add output handling for streaming
         if (onOutput) {
@@ -429,23 +424,20 @@ export function agent(options) {
         processHandle = await startCommand(command, commandOptions);
 
         // Establish the live permission relay: it writes normalized decisions
-        // (and the initial user prompt) to the child's stdin as NDJSON frames.
+        // to the child's stdin as NDJSON frames.
         if (relayActive) {
           permissionRelay = new PermissionRelay({
             tool,
             onRequest: onPermissionRequest,
             write: (line) => processHandle.writeStdin(line),
           });
+        }
 
-          // Kick off the turn by sending the user prompt as the first frame.
-          processHandle.writeStdin(
-            stringifyNdjsonLine({
-              value: buildInitialInputFrame({
-                toolName: tool,
-                prompt,
-                systemPrompt,
-              }),
-            })
+        // Kick off the turn by sending the user prompt as the first frame.
+        if (streamingInput) {
+          inputOpen = true;
+          writeInputFrame(
+            buildUserInputFrame({ tool, content: prompt, systemPrompt })
           );
         }
       }
@@ -453,6 +445,60 @@ export function agent(options) {
       await cleanupPromptTempDir();
       throw error;
     }
+  };
+
+  const writeInputFrame = (frame) => {
+    if (!inputOpen || !processHandle?.writeStdin) {
+      throw new Error(
+        liveInput || relayActive
+          ? 'Agent input is closed (not started, ended, or stopped)'
+          : 'Agent was not started with liveInput'
+      );
+    }
+    messagesAtLastInput = currentMessages().length;
+    return processHandle.writeStdin(stringifyNdjsonLine({ value: frame }));
+  };
+
+  /**
+   * Queue a follow-up user message into the running session. The tool reads
+   * it after (or, for Claude, alongside) the current turn.
+   * @param {string|Object[]} content - Text, or content blocks for Claude
+   * @returns {boolean} True when the frame was written
+   */
+  const sendMessage = (content) =>
+    writeInputFrame(buildUserInputFrame({ tool, content }));
+
+  /**
+   * Ask Claude to end the running turn; queued messages still run.
+   * @returns {boolean} True when the frame was written
+   */
+  const interrupt = () => writeInputFrame(buildInterruptFrame({ tool }));
+
+  /**
+   * Close stdin: the tool finishes the queued input and exits.
+   */
+  const endInput = () => {
+    if (inputOpen) {
+      inputOpen = false;
+      processHandle?.endStdin?.();
+    }
+  };
+
+  // A relay still has to answer permission requests of the last turn, so it
+  // keeps stdin open until that turn reports its final result.
+  const endInputAfterLastTurn = async () => {
+    if (!inputOpen) {
+      return;
+    }
+    if (relayActive) {
+      while (
+        processHandle.getOutput?.().hasExited !== true &&
+        !hasFinalResult(tool, currentMessages().slice(messagesAtLastInput))
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+    }
+    endInput();
   };
 
   /**
@@ -537,6 +583,7 @@ export function agent(options) {
       }
 
       try {
+        await endInputAfterLastTurn();
         // Wait for the process to exit, closing it when it outlives its result
         const waited = await waitForExitAfterResult({
           tool,
@@ -686,6 +733,7 @@ export function agent(options) {
       terminatedAfterResult =
         processHandle.getOutput?.().hasExited !== true &&
         hasFinalResult(tool, currentMessages());
+      endInput();
       processHandle.terminate?.();
     }
     return stop({ terminatedAfterResult });
@@ -695,6 +743,9 @@ export function agent(options) {
     start,
     stop,
     cancel,
+    sendMessage,
+    interrupt,
+    endInput,
     getSessionId,
     getMessages,
     getToolConfig,
@@ -790,6 +841,12 @@ export {
   mergeUsageWindows,
   usageWindowsFromMessage,
 } from './usage-windows.mjs';
+export {
+  buildInterruptFrame,
+  buildUserInputFrame,
+  liveInputUnsupportedError,
+  supportsLiveInput,
+} from './live-input.mjs';
 export {
   USAGE_LIMIT_PATTERNS,
   classifyDebugLines,

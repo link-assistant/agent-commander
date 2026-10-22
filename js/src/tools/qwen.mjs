@@ -56,6 +56,7 @@ export const mapModelToId = createModelMapper(modelMap);
  * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
  * @param {string[]} [options.additionalDirectories] - Same as includeDirectories (shared option name)
  * @param {string|Object} [options.mcpConfig] - MCP config path, inline JSON or object (`--mcp-config`)
+ * @param {boolean} [options.jsonInput] - Read stream-json user frames from stdin (live input)
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
@@ -75,6 +76,7 @@ export function buildArgs(options) {
     skipDefaultSafetyFlags = false,
     additionalDirectories,
     mcpConfig,
+    jsonInput = false,
   } = options;
 
   const args = [];
@@ -95,6 +97,12 @@ export function buildArgs(options) {
     args.push('--output-format', 'stream-json');
   } else if (json) {
     args.push('--output-format', 'json');
+  }
+
+  // Live input: qwen keeps reading Claude-shaped user frames and control
+  // requests from stdin (requires stream-json output).
+  if (jsonInput) {
+    args.push('--input-format', 'stream-json');
   }
 
   // Include partial messages for real-time UI updates
@@ -158,12 +166,14 @@ export function buildArgs(options) {
  * @param {Object|Array} [options.extraEnv] - Environment variables for the tool
  * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
  * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
+ * @param {boolean} [options.streamInput] - Prompt and follow-ups arrive as stdin frames
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {
   const {
     prompt,
     promptFile,
+    streamInput = false,
     systemPrompt,
     executable = 'qwen',
     extraEnv,
@@ -178,12 +188,12 @@ export function buildCommand(options) {
     : prompt || '';
   const args = buildArgs({
     ...argOptions,
-    prompt: promptFile ? undefined : combinedPrompt,
+    prompt: promptFile || streamInput ? undefined : combinedPrompt,
   });
   const command =
     `${buildCommandHead({ executable, extraEnv })} ${args.map(escapeArg).join(' ')}`.trim();
 
-  if (promptFile) {
+  if (promptFile && !streamInput) {
     return `cat ${escapeArg(promptFile)} | ${command}`;
   }
 

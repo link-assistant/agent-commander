@@ -47,6 +47,7 @@ export const mapModelToId = createModelMapper(modelMap);
  * @param {boolean} [options.approveEach] - Approve each mutating command (`--permission-mode ask`)
  * @param {string} [options.permissionMode] - Explicit agent permission mode (auto | plan | readonly | ask)
  * @param {string} [options.permission] - OpenCode-compatible `--permission` JSON policy
+ * @param {boolean} [options.jsonInput] - Read stream-json user frames from stdin (live input)
  * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
  * @returns {string[]} Array of CLI arguments
  */
@@ -61,6 +62,7 @@ export function buildArgs(options) {
     approveEach = false,
     permissionMode,
     permission,
+    jsonInput = false,
     extraArgs = [],
   } = options;
 
@@ -88,8 +90,9 @@ export function buildArgs(options) {
   }
 
   // Ask mode emits requests mid-turn and blocks until answered, so it requires
-  // a streaming input mode (single-shot --prompt would deadlock).
-  if (resolvedPermissionMode === 'ask') {
+  // a streaming input mode (single-shot --prompt would deadlock). Live input
+  // uses the same stream-json frames.
+  if (resolvedPermissionMode === 'ask' || jsonInput) {
     args.push('--input-format', 'stream-json');
   }
 
