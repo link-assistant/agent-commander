@@ -234,6 +234,7 @@ test('getLaunchCapabilities reports each tool', () => {
     strictMcpConfig: true,
     additionalDirectories: true,
     attachments: false,
+    jsonSchema: true,
   });
   assert.strictEqual(capabilities.codex.strictMcpConfig, false);
   assert.strictEqual(capabilities.opencode.reasoningEfforts, null);
@@ -246,6 +247,7 @@ test('getLaunchCapabilities reports each tool', () => {
     strictMcpConfig: false,
     additionalDirectories: false,
     attachments: false,
+    jsonSchema: false,
   });
 });
 

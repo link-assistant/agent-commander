@@ -272,6 +272,7 @@ export const geminiTool = {
   supportsStrictMcpConfig: false,
   supportsAdditionalDirectories: true, // --include-directories <dir>
   supportsAttachments: false, // No attachment flag (@path in the prompt)
+  supportsJsonSchema: false, // No structured-output flag (gemini 0.64)
   defaultModel: syncedDefaults.gemini,
   modelMap,
   mapModelToId,

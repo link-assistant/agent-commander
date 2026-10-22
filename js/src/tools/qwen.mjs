@@ -10,6 +10,7 @@ import { createModelMapper, parseJsonLines } from './json-lines.mjs';
 
 import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
 import {
+  jsonSchemaArg,
   mcpConfigArg,
   normalizeAdditionalDirectories,
 } from './launch-options.mjs';
@@ -57,6 +58,7 @@ export const mapModelToId = createModelMapper(modelMap);
  * @param {string[]} [options.additionalDirectories] - Same as includeDirectories (shared option name)
  * @param {string|Object} [options.mcpConfig] - MCP config path, inline JSON or object (`--mcp-config`)
  * @param {boolean} [options.jsonInput] - Read stream-json user frames from stdin (live input)
+ * @param {string|Object} [options.jsonSchema] - Structured-output schema (`--json-schema`, headless only)
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
@@ -77,6 +79,7 @@ export function buildArgs(options) {
     additionalDirectories,
     mcpConfig,
     jsonInput = false,
+    jsonSchema,
   } = options;
 
   const args = [];
@@ -138,6 +141,11 @@ export function buildArgs(options) {
 
   if (mcpConfig !== undefined && mcpConfig !== null) {
     args.push('--mcp-config', mcpConfigArg(mcpConfig));
+  }
+
+  // A JSON literal; qwen reads a value starting with `@` as a file path.
+  if (jsonSchema !== undefined && jsonSchema !== null) {
+    args.push('--json-schema', jsonSchemaArg(jsonSchema));
   }
 
   args.push(...normalizeExtraArgs(extraArgs));
@@ -291,6 +299,7 @@ export const qwenTool = {
   supportsStrictMcpConfig: false, // No flag that drops settings.json servers
   supportsAdditionalDirectories: true, // --include-directories <dir>
   supportsAttachments: false, // Images go through liveInput content blocks
+  supportsJsonSchema: true, // --json-schema <json>; result.structured_result
   defaultModel: syncedDefaults.qwen,
   modelMap,
   mapModelToId,

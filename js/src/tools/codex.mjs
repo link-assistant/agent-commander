@@ -15,6 +15,7 @@ import {
 } from './shell.mjs';
 import {
   codexMcpServersOverride,
+  jsonSchemaArg,
   normalizeAdditionalDirectories,
   normalizeAttachments,
   normalizeReasoningEffort,
@@ -71,7 +72,7 @@ export const mapModelToId = createModelMapper(modelMap);
  * @param {string|Object} [options.mcpConfig] - `{mcpServers}` object or inline JSON, sent as `-c mcp_servers={...}`
  * @param {string[]} [options.additionalDirectories] - Extra writable directories (`--add-dir`)
  * @param {string[]} [options.attachments] - Images attached to the prompt (`--image`)
- * @returns {string[]} Array of CLI arguments
+ * @returns {string[]} Array of CLI arguments (`jsonSchema` is added by `buildCommand`)
  */
 export function buildArgs(options) {
   const {
@@ -163,6 +164,7 @@ export function buildArgs(options) {
  * @param {string} [options.sandboxMode] - Explicit Codex sandbox mode
  * @param {string} [options.approvalMode] - Explicit Codex approval mode
  * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
+ * @param {string|Object} [options.jsonSchema] - Structured-output schema (`--output-schema`)
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {
@@ -172,6 +174,7 @@ export function buildCommand(options) {
     systemPrompt,
     executable = 'codex',
     extraEnv,
+    jsonSchema,
     ...argOptions
   } = options;
   const args = buildArgs(argOptions);
@@ -192,11 +195,18 @@ export function buildCommand(options) {
     prefixArgs.push('--ask-for-approval', argOptions.approvalMode);
   }
 
+  // `--output-schema` takes a file; bash process substitution supplies one
+  // without a temporary file (codex 0.163 reads and validates /dev/fd/N).
+  const schemaArg =
+    jsonSchema === undefined || jsonSchema === null
+      ? ''
+      : ` --output-schema <(printf '%s' ${escapeArg(jsonSchemaArg(jsonSchema))})`;
+
   return `${inputCommand} | ${buildCommandHead({
     executable,
     extraEnv,
     prefixArgs,
-  })} ${args.map(escapeArg).join(' ')}`.trim();
+  })} ${args.map(escapeArg).join(' ')}${schemaArg}`.trim();
 }
 
 /**
@@ -262,6 +272,7 @@ export const codexTool = {
   supportsStrictMcpConfig: false, // -c overrides merge into the user's servers
   supportsAdditionalDirectories: true, // codex exec --add-dir <dir>
   supportsAttachments: true, // --image <file> (exec and exec resume)
+  supportsJsonSchema: true, // --output-schema <(printf ...) (exec and exec resume)
   defaultModel: syncedDefaults.codex,
   modelMap,
   mapModelToId,

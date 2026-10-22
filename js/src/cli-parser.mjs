@@ -92,6 +92,7 @@ export function parseStartAgentArgs(args) {
     strictMcpConfig: parsed['strict-mcp-config'] || false,
     additionalDirectories: getOptionValues(parsed, 'add-dir'),
     attachments: getOptionValues(parsed, 'attach'),
+    jsonSchema: parsed['json-schema'],
     verbose: parsed.verbose || false,
     replayUserMessages: parsed['replay-user-messages'] || false,
     readOnly: parsed['read-only'] || parsed['plan-only'] || false,
@@ -156,6 +157,8 @@ Options:
                                    claude, codex, gemini, qwen)
   --attach <file>                  Attach a file to the prompt (repeatable;
                                    codex --image, opencode --file)
+  --json-schema <json>             JSON Schema for the final answer (claude, qwen
+                                   --json-schema; codex --output-schema)
   --verbose                        Enable verbose mode
   --read-only                      Enforce native read-only mode (agent: --permission-mode readonly)
   --plan-only                      Enforce native planning mode (agent: --permission-mode plan)

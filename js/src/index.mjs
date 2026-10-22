@@ -159,6 +159,7 @@ function parseJsonMessages(options) {
  * @param {boolean} [options.strictMcpConfig=false] - Use only the servers from `mcpConfig`
  * @param {string|string[]} [options.additionalDirectories] - Extra directories the agent may access
  * @param {string|string[]} [options.attachments] - Files attached to the prompt (codex images, opencode files)
+ * @param {string|Object} [options.jsonSchema] - JSON Schema the final answer must match (claude, qwen `--json-schema`; codex `--output-schema`); read it from `metadata.structuredOutput`
  * @param {boolean} [options.liveInput=false] - Keep stdin open as a stream-json channel so
  *   `sendMessage()` / `interrupt()` can reach the running session (claude, qwen, agent)
  * @param {Object} [options.toolOptions] - Additional tool-specific options
@@ -189,6 +190,7 @@ export function agent(options) {
     strictMcpConfig = false,
     additionalDirectories,
     attachments,
+    jsonSchema,
     liveInput = false,
     toolOptions = {},
     toolOverrides,
@@ -362,6 +364,7 @@ export function agent(options) {
             strictMcpConfig,
             additionalDirectories,
             attachments,
+            jsonSchema,
           }),
           toolOptions
         );
@@ -650,6 +653,8 @@ export function agent(options) {
           usage,
           toolConfig,
           terminatedAfterResult,
+          structuredOutputRequested:
+            (jsonSchema ?? toolOptions.jsonSchema ?? null) !== null,
         });
         // Codex and Claude can leave a usage limit only in their session
         // files (hive-mind#3570)
@@ -860,6 +865,7 @@ export {
   contextReadingFromMessage,
   extractContextUsage,
 } from './context-usage.mjs';
+export { extractStructuredOutput } from './structured-output.mjs';
 export {
   buildInterruptFrame,
   buildUserInputFrame,
@@ -893,6 +899,7 @@ export {
   codexMcpServersOverride,
   definedLaunchOptions,
   getLaunchCapabilities,
+  jsonSchemaArg,
   mcpConfigArg,
   mcpServersFromConfig,
   normalizeAdditionalDirectories,

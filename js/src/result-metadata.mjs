@@ -5,6 +5,7 @@ import { signalFromExitCode } from './executor.mjs';
 import { extractObservedModels, isRealModelId } from './observed-models.mjs';
 import { extractUsageWindows } from './usage-windows.mjs';
 import { extractContextUsage } from './context-usage.mjs';
+import { extractStructuredOutput } from './structured-output.mjs';
 import { parseJsonRecords } from './streaming/json-records.mjs';
 import {
   classifyDebugLines,
@@ -450,6 +451,8 @@ function publicPricingEstimate({ tool, usage }) {
  *   inferred from an exit code above 128 when omitted
  * @param {boolean} [options.terminatedAfterResult] - The caller stopped the
  *   process after its result arrived
+ * @param {boolean} [options.structuredOutputRequested] - A `jsonSchema` was
+ *   passed, so Codex's final message is read as JSON
  * @returns {Object} Normalized result metadata
  */
 export function buildNormalizedResultMetadata(options) {
@@ -462,6 +465,7 @@ export function buildNormalizedResultMetadata(options) {
     usage = null,
     toolConfig = null,
     terminatedAfterResult = false,
+    structuredOutputRequested = false,
   } = options;
   const signal = options.signal ?? signalFromExitCode(exitCode);
   const allMessages = normalizeMessages({
@@ -542,6 +546,12 @@ export function buildNormalizedResultMetadata(options) {
             source: `${tool}-stream-usage`,
           },
     resultSummary: extractResultSummary({ messages, plainOutput }),
+    structuredOutput: extractStructuredOutput({
+      tool,
+      messages,
+      plainOutput,
+      requested: structuredOutputRequested,
+    }),
     resultModelUsage: extractResultModelUsage(messages),
     ...extractObservedModels(allMessages),
     streamTokenUsage: usage,

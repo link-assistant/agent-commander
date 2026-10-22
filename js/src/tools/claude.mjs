@@ -9,6 +9,7 @@ import { createModelMapper, parseJsonLines } from './json-lines.mjs';
 
 import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
 import {
+  jsonSchemaArg,
   mcpConfigArg,
   normalizeAdditionalDirectories,
   normalizeReasoningEffort,
@@ -120,6 +121,7 @@ export function modelArg({ model }) {
  * @param {string|Object} [options.mcpConfig] - MCP config path, inline JSON or object (`--mcp-config`)
  * @param {boolean} [options.strictMcpConfig] - Use only `mcpConfig` servers (`--strict-mcp-config`)
  * @param {string[]} [options.additionalDirectories] - Extra directories (`--add-dir`)
+ * @param {string|Object} [options.jsonSchema] - Structured-output schema (`--json-schema`)
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
@@ -146,6 +148,7 @@ export function buildArgs(options) {
     mcpConfig,
     strictMcpConfig = false,
     additionalDirectories,
+    jsonSchema,
   } = options;
 
   const args = [];
@@ -180,6 +183,10 @@ export function buildArgs(options) {
 
   if (reasoningEffort) {
     args.push('--effort', normalizeReasoningEffort(reasoningEffort));
+  }
+
+  if (jsonSchema !== undefined && jsonSchema !== null) {
+    args.push('--json-schema', jsonSchemaArg(jsonSchema));
   }
 
   if (model) {
@@ -365,6 +372,7 @@ export const claudeTool = {
   supportsStrictMcpConfig: true, // --strict-mcp-config
   supportsAdditionalDirectories: true, // --add-dir <dir>
   supportsAttachments: false, // Images go through liveInput content blocks
+  supportsJsonSchema: true, // --json-schema <json>; result.structured_output
   defaultModel: syncedDefaults.claude,
   modelMap,
   mapModelToId,

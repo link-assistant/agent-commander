@@ -110,6 +110,7 @@ async function main() {
       strictMcpConfig: options.strictMcpConfig,
       additionalDirectories: options.additionalDirectories,
       attachments: options.attachments,
+      jsonSchema: options.jsonSchema,
       toolOptions: {
         appendSystemPrompt: options.appendSystemPrompt,
         fallbackModel: options.fallbackModel,

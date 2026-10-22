@@ -1,6 +1,7 @@
 /**
  * Launch options shared by every tool: reasoning effort, MCP servers, extra
- * workspace directories and file attachments (issue #57). Each tool maps them onto its own
+ * workspace directories, file attachments and a structured-output JSON Schema
+ * (issue #57). Each tool maps them onto its own
  * native flag; a tool without a native flag rejects the option instead of
  * silently dropping it.
  */
@@ -59,6 +60,31 @@ export function normalizeAdditionalDirectories(additionalDirectories) {
  */
 export function normalizeAttachments(attachments) {
   return normalizePathList(attachments, 'attachments');
+}
+
+/**
+ * Serialize the JSON Schema the final answer must match (Claude and Qwen
+ * `--json-schema`, Codex `--output-schema`).
+ * @param {string|Object} jsonSchema - Schema object or its JSON text
+ * @returns {string} Compact JSON text
+ */
+export function jsonSchemaArg(jsonSchema) {
+  let schema = jsonSchema;
+  if (typeof schema === 'string') {
+    try {
+      schema = JSON.parse(schema);
+    } catch (error) {
+      throw new Error(`jsonSchema is not valid JSON: ${error.message}`, {
+        cause: error,
+      });
+    }
+  }
+  if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {
+    throw new TypeError(
+      'jsonSchema must be a JSON Schema object or its JSON text'
+    );
+  }
+  return JSON.stringify(schema);
 }
 
 /**
@@ -171,7 +197,7 @@ export function codexMcpServersOverride(mcpConfig) {
 /**
  * Describe what a tool natively supports among the launch options.
  * @param {Object} toolConfig - Tool configuration
- * @returns {{reasoningEffort: boolean, reasoningEfforts: string[]|null, mcpConfig: boolean, strictMcpConfig: boolean, additionalDirectories: boolean, attachments: boolean}}
+ * @returns {{reasoningEffort: boolean, reasoningEfforts: string[]|null, mcpConfig: boolean, strictMcpConfig: boolean, additionalDirectories: boolean, attachments: boolean, jsonSchema: boolean}}
  */
 export function getLaunchCapabilities(toolConfig) {
   return {
@@ -181,6 +207,7 @@ export function getLaunchCapabilities(toolConfig) {
     strictMcpConfig: Boolean(toolConfig?.supportsStrictMcpConfig),
     additionalDirectories: Boolean(toolConfig?.supportsAdditionalDirectories),
     attachments: Boolean(toolConfig?.supportsAttachments),
+    jsonSchema: Boolean(toolConfig?.supportsJsonSchema),
   };
 }
 
@@ -211,6 +238,11 @@ const LAUNCH_OPTIONS = [
     flag: 'supportsAttachments',
     label: 'file attachments (--attach)',
     normalize: normalizeAttachments,
+  },
+  {
+    key: 'jsonSchema',
+    flag: 'supportsJsonSchema',
+    label: 'structured output (--json-schema)',
   },
 ];
 

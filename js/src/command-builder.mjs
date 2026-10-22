@@ -31,6 +31,7 @@ import { askUnsupportedError } from './permissions/index.mjs';
  * @param {boolean} [options.strictMcpConfig] - Use only the `mcpConfig` servers
  * @param {string[]} [options.additionalDirectories] - Extra workspace directories
  * @param {string[]} [options.attachments] - Files attached to the prompt
+ * @param {string|Object} [options.jsonSchema] - Structured-output JSON Schema
  * @param {Object} [options.toolOverrides] - Tool configuration fields that
  *   replace the registered ones (see `resolveToolConfig`)
  * @returns {string} The command string

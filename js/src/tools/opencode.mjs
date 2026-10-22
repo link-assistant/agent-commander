@@ -199,6 +199,7 @@ export const opencodeTool = {
   supportsStrictMcpConfig: false,
   supportsAdditionalDirectories: false, // No extra workspace directory flag
   supportsAttachments: true, // run --file <file>
+  supportsJsonSchema: false, // No structured-output flag (opencode 1.19)
   defaultModel: syncedDefaults.opencode,
   modelMap,
   mapModelToId,
