@@ -87,6 +87,10 @@ export function parseStartAgentArgs(args) {
     appendSystemPrompt: parsed['append-system-prompt'],
     model: parsed.model,
     fallbackModel: parsed['fallback-model'],
+    reasoningEffort: parsed['reasoning-effort'],
+    mcpConfig: parsed['mcp-config'],
+    strictMcpConfig: parsed['strict-mcp-config'] || false,
+    additionalDirectories: getOptionValues(parsed, 'add-dir'),
     verbose: parsed.verbose || false,
     replayUserMessages: parsed['replay-user-messages'] || false,
     readOnly: parsed['read-only'] || parsed['plan-only'] || false,
@@ -143,6 +147,12 @@ Options:
   --append-system-prompt <text>    Append to the default system prompt
   --model <model>                  Model to use (e.g., 'sonnet', 'opus', 'haiku')
   --fallback-model <model>         Fallback model when default is overloaded
+  --reasoning-effort <level>       Native reasoning effort (claude --effort, codex
+                                   model_reasoning_effort, opencode --variant)
+  --mcp-config <path|json>         MCP servers config (claude, codex, qwen)
+  --strict-mcp-config              Use only the --mcp-config servers (claude)
+  --add-dir <dir>                  Extra directory the agent may access (repeatable;
+                                   claude, codex, gemini, qwen)
   --verbose                        Enable verbose mode
   --read-only                      Enforce native read-only mode (agent: --permission-mode readonly)
   --plan-only                      Enforce native planning mode (agent: --permission-mode plan)
@@ -170,6 +180,11 @@ Examples:
   # With model selection
   start-agent --tool claude --working-directory "/tmp/dir" \\
     --prompt "Hello" --model opus --fallback-model sonnet
+
+  # Reasoning effort, MCP servers and an extra workspace directory
+  start-agent --tool claude --working-directory "/tmp/dir" \\
+    --prompt "Hello" --reasoning-effort high \\
+    --mcp-config ./mcp.json --strict-mcp-config --add-dir ../shared
 
   # Resume a session with fork
   start-agent --tool claude --working-directory "/tmp/dir" \\

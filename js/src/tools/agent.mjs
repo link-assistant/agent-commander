@@ -360,6 +360,11 @@ export const agentTool = {
   supportsResume: true, // --resume SESSION --no-fork preserves the session
   supportsReadOnly: true, // Native --permission-mode readonly/plan (agent v0.24.0, PR #272)
   supportsAsk: true, // Native --permission-mode ask with JSON permission relay
+  supportsReasoningEffort: false, // No effort/variant flag (agent 0.26)
+  reasoningEfforts: null,
+  supportsMcpConfig: false, // No MCP config flag
+  supportsStrictMcpConfig: false,
+  supportsAdditionalDirectories: false, // No extra workspace directory flag
   defaultModel: syncedDefaults.agent,
   modelMap,
   mapModelToId,

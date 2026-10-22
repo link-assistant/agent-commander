@@ -27,6 +27,7 @@ import {
 } from './executor.mjs';
 import { getTool, isToolSupported } from './tools/index.mjs';
 import { normalizeExtraEnv } from './tools/shell.mjs';
+import { definedLaunchOptions } from './tools/launch-options.mjs';
 import { createOutputStream, createInputStream } from './streaming/index.mjs';
 import { stringifyNdjsonLine } from './streaming/ndjson.mjs';
 import { parseJsonRecords } from './streaming/json-records.mjs';
@@ -174,6 +175,10 @@ function parseJsonMessages(options) {
  * @param {Function} [options.onPermissionRequest] - async (normalizedRequest) => 'once'|'always'|'reject';
  *   when provided together with approveEach for a relay-capable tool, native permission requests are
  *   normalized, relayed to this callback, and the decision is forwarded to the tool's stdin
+ * @param {string} [options.reasoningEffort] - Native reasoning effort / variant level
+ * @param {string|Object} [options.mcpConfig] - MCP servers: config path, inline JSON or `{mcpServers}` object
+ * @param {boolean} [options.strictMcpConfig=false] - Use only the servers from `mcpConfig`
+ * @param {string|string[]} [options.additionalDirectories] - Extra directories the agent may access
  * @param {Object} [options.toolOptions] - Additional tool-specific options
  * @returns {Object} Agent controller with start, stop, and utility methods
  */
@@ -194,6 +199,10 @@ export function agent(options) {
     planOnly = false,
     approveEach = false,
     onPermissionRequest,
+    reasoningEffort,
+    mcpConfig,
+    strictMcpConfig = false,
+    additionalDirectories,
     toolOptions = {},
   } = options;
 
@@ -344,7 +353,16 @@ export function agent(options) {
         commandOptions.model = model;
         commandOptions.json = json;
         commandOptions.resume = resume;
-        Object.assign(commandOptions, toolOptions);
+        Object.assign(
+          commandOptions,
+          definedLaunchOptions({
+            reasoningEffort,
+            mcpConfig,
+            strictMcpConfig,
+            additionalDirectories,
+          }),
+          toolOptions
+        );
       }
 
       // When relaying per-command approvals, force a streaming JSON channel in
@@ -774,6 +792,17 @@ export {
   limitScanText,
 } from './usage-limit.mjs';
 export { firstErrorText, stringifyErrorValue } from './error-text.mjs';
+export {
+  assertLaunchOptionsSupported,
+  codexMcpServersOverride,
+  definedLaunchOptions,
+  getLaunchCapabilities,
+  mcpConfigArg,
+  mcpServersFromConfig,
+  normalizeAdditionalDirectories,
+  normalizeReasoningEffort,
+  toTomlValue,
+} from './tools/launch-options.mjs';
 export {
   buildAgentTuiLaunch,
   captureAgentTui,

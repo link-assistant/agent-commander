@@ -9,6 +9,10 @@ import { syncedModels, syncedDefaults } from './model-catalog.mjs';
 import { createModelMapper, parseJsonLines } from './json-lines.mjs';
 
 import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
+import {
+  mcpConfigArg,
+  normalizeAdditionalDirectories,
+} from './launch-options.mjs';
 
 /**
  * Available Qwen Code model configurations
@@ -50,6 +54,8 @@ export const mapModelToId = createModelMapper(modelMap);
  * @param {string[]} [options.includeDirectories] - Directories to include
  * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
  * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
+ * @param {string[]} [options.additionalDirectories] - Same as includeDirectories (shared option name)
+ * @param {string|Object} [options.mcpConfig] - MCP config path, inline JSON or object (`--mcp-config`)
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
@@ -67,6 +73,8 @@ export function buildArgs(options) {
     includeDirectories,
     extraArgs = [],
     skipDefaultSafetyFlags = false,
+    additionalDirectories,
+    mcpConfig,
   } = options;
 
   const args = [];
@@ -113,10 +121,15 @@ export function buildArgs(options) {
     args.push('--all-files');
   }
 
-  if (includeDirectories && includeDirectories.length > 0) {
-    for (const dir of includeDirectories) {
-      args.push('--include-directories', dir);
-    }
+  for (const dir of [
+    ...normalizeAdditionalDirectories(includeDirectories),
+    ...normalizeAdditionalDirectories(additionalDirectories),
+  ]) {
+    args.push('--include-directories', dir);
+  }
+
+  if (mcpConfig !== undefined && mcpConfig !== null) {
+    args.push('--mcp-config', mcpConfigArg(mcpConfig));
   }
 
   args.push(...normalizeExtraArgs(extraArgs));
@@ -262,6 +275,11 @@ export const qwenTool = {
   supportsIncludePartialMessages: true, // Supports --include-partial-messages
   supportsReadOnly: true, // Supports --approval-mode plan
   supportsAsk: false, // No relayable per-command JSON approval handshake in headless mode
+  supportsReasoningEffort: false, // No effort flag; reasoning is model configuration
+  reasoningEfforts: null,
+  supportsMcpConfig: true, // --mcp-config <path|json>
+  supportsStrictMcpConfig: false, // No flag that drops settings.json servers
+  supportsAdditionalDirectories: true, // --include-directories <dir>
   defaultModel: syncedDefaults.qwen,
   modelMap,
   mapModelToId,

@@ -13,6 +13,24 @@ import {
   escapeSingleQuotes,
   normalizeExtraArgs,
 } from './shell.mjs';
+import {
+  codexMcpServersOverride,
+  normalizeAdditionalDirectories,
+  normalizeReasoningEffort,
+} from './launch-options.mjs';
+
+/**
+ * Documented `model_reasoning_effort` values (Codex config reference).
+ * The model decides which of them it accepts.
+ */
+export const reasoningEfforts = [
+  'none',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+];
 
 /**
  * Available Codex model configurations
@@ -48,6 +66,9 @@ export const mapModelToId = createModelMapper(modelMap);
  * @param {string} [options.approvalMode] - Explicit Codex approval mode
  * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
  * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
+ * @param {string} [options.reasoningEffort] - `-c model_reasoning_effort=<level>`
+ * @param {string|Object} [options.mcpConfig] - `{mcpServers}` object or inline JSON, sent as `-c mcp_servers={...}`
+ * @param {string[]} [options.additionalDirectories] - Extra writable directories (`--add-dir`)
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
@@ -60,12 +81,38 @@ export function buildArgs(options) {
     approvalMode,
     extraArgs = [],
     skipDefaultSafetyFlags = false,
+    reasoningEffort,
+    mcpConfig,
+    additionalDirectories,
   } = options;
 
   const args = ['exec'];
 
+  // `--sandbox` and `--add-dir` belong to `codex exec` only: `codex exec
+  // resume` rejects them, so they go before the `resume` subcommand.
+  if (readOnly) {
+    args.push('--sandbox', 'read-only');
+  } else if (sandboxMode) {
+    args.push('--sandbox', sandboxMode);
+  }
+
+  for (const dir of normalizeAdditionalDirectories(additionalDirectories)) {
+    args.push('--add-dir', dir);
+  }
+
   if (resume) {
     args.push('resume', resume);
+  }
+
+  if (reasoningEffort) {
+    args.push(
+      '-c',
+      `model_reasoning_effort=${normalizeReasoningEffort(reasoningEffort)}`
+    );
+  }
+
+  if (mcpConfig !== undefined && mcpConfig !== null) {
+    args.push('-c', codexMcpServersOverride(mcpConfig));
   }
 
   if (model) {
@@ -79,11 +126,6 @@ export function buildArgs(options) {
 
   // Codex-specific flags for autonomous execution
   args.push('--skip-git-repo-check');
-  if (readOnly) {
-    args.push('--sandbox', 'read-only');
-  } else if (sandboxMode) {
-    args.push('--sandbox', sandboxMode);
-  }
 
   if (!readOnly && !sandboxMode && !approvalMode && !skipDefaultSafetyFlags) {
     args.push('--dangerously-bypass-approvals-and-sandbox');
@@ -205,6 +247,11 @@ export const codexTool = {
   supportsResume: true,
   supportsReadOnly: true, // Supports --sandbox read-only
   supportsAsk: false, // --ask-for-approval is coupled with the sandbox; not a relayable JSON handshake
+  supportsReasoningEffort: true, // -c model_reasoning_effort=<level>
+  reasoningEfforts,
+  supportsMcpConfig: true, // -c mcp_servers={...}
+  supportsStrictMcpConfig: false, // -c overrides merge into the user's servers
+  supportsAdditionalDirectories: true, // codex exec --add-dir <dir>
   defaultModel: syncedDefaults.codex,
   modelMap,
   mapModelToId,

@@ -8,6 +8,16 @@ import { syncedModels, syncedDefaults } from './model-catalog.mjs';
 import { createModelMapper, parseJsonLines } from './json-lines.mjs';
 
 import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
+import {
+  mcpConfigArg,
+  normalizeAdditionalDirectories,
+  normalizeReasoningEffort,
+} from './launch-options.mjs';
+
+/**
+ * Levels accepted by `claude --effort` (Claude Code 2.1.x).
+ */
+export const reasoningEfforts = ['low', 'medium', 'high', 'xhigh', 'max'];
 
 /**
  * Available Claude model configurations
@@ -106,6 +116,10 @@ export function modelArg({ model }) {
  * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
  * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
  * @param {string} [options.permissionMode] - Explicit Claude permission mode
+ * @param {string} [options.reasoningEffort] - Effort level (`--effort`)
+ * @param {string|Object} [options.mcpConfig] - MCP config path, inline JSON or object (`--mcp-config`)
+ * @param {boolean} [options.strictMcpConfig] - Use only `mcpConfig` servers (`--strict-mcp-config`)
+ * @param {string[]} [options.additionalDirectories] - Extra directories (`--add-dir`)
  * @returns {string[]} Array of CLI arguments
  */
 export function buildArgs(options) {
@@ -128,6 +142,10 @@ export function buildArgs(options) {
     extraArgs = [],
     skipDefaultSafetyFlags = false,
     permissionMode,
+    reasoningEffort,
+    mcpConfig,
+    strictMcpConfig = false,
+    additionalDirectories,
   } = options;
 
   const args = [];
@@ -144,6 +162,24 @@ export function buildArgs(options) {
   } else if (!skipDefaultSafetyFlags) {
     // Permission bypass - enabled by default for autonomous execution
     args.push('--dangerously-skip-permissions');
+  }
+
+  // Variadic flags (`--add-dir`, `--mcp-config`) come before the typed flags
+  // so a following option always ends their value list.
+  for (const dir of normalizeAdditionalDirectories(additionalDirectories)) {
+    args.push('--add-dir', dir);
+  }
+
+  if (mcpConfig !== undefined && mcpConfig !== null) {
+    args.push('--mcp-config', mcpConfigArg(mcpConfig));
+  }
+
+  if (strictMcpConfig) {
+    args.push('--strict-mcp-config');
+  }
+
+  if (reasoningEffort) {
+    args.push('--effort', normalizeReasoningEffort(reasoningEffort));
   }
 
   if (model) {
@@ -323,6 +359,11 @@ export const claudeTool = {
   supportsReplayUserMessages: true, // Supports --replay-user-messages
   supportsReadOnly: true, // Supports --permission-mode plan
   supportsAsk: true, // Per-command approval via stream-json can_use_tool relay
+  supportsReasoningEffort: true, // --effort <level>
+  reasoningEfforts,
+  supportsMcpConfig: true, // --mcp-config <path|json>
+  supportsStrictMcpConfig: true, // --strict-mcp-config
+  supportsAdditionalDirectories: true, // --add-dir <dir>
   defaultModel: syncedDefaults.claude,
   modelMap,
   mapModelToId,

@@ -105,6 +105,10 @@ async function main() {
       isolation: options.isolation,
       screenName: options.screenName,
       containerName: options.containerName,
+      reasoningEffort: options.reasoningEffort,
+      mcpConfig: options.mcpConfig,
+      strictMcpConfig: options.strictMcpConfig,
+      additionalDirectories: options.additionalDirectories,
       toolOptions: {
         appendSystemPrompt: options.appendSystemPrompt,
         fallbackModel: options.fallbackModel,
