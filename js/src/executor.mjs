@@ -119,6 +119,8 @@ export async function executeCommand(command, options = {}) {
  * @param {number} [options.pipeDrainMs] - After the wrapper shell exits, wait
  *   this long for the pipes to close, then kill what is left of the process
  *   group and resolve (default {@link DEFAULT_PIPE_DRAIN_MS})
+ * @param {Object} [options.env] - Environment of the child (default: inherit
+ *   the parent's). Secrets belong here, not in the command string (issue #60)
  * @returns {Promise<Object>} Process handle with methods to interact with the process
  */
 export async function startCommand(command, options = {}) {
@@ -128,6 +130,7 @@ export async function startCommand(command, options = {}) {
     onStderr,
     pipeStdin = false,
     pipeDrainMs = DEFAULT_PIPE_DRAIN_MS,
+    env,
   } = options;
   const { spawn } = await import('node:child_process');
 
@@ -147,6 +150,7 @@ export async function startCommand(command, options = {}) {
   const child = spawn('bash', ['-c', command], {
     detached: process.platform !== 'win32',
     stdio: [pipeStdin ? 'pipe' : 'ignore', 'pipe', 'pipe'],
+    ...(env ? { env } : {}),
   });
 
   // A write after the tool exited fails with EPIPE; it must not crash the host.
@@ -307,9 +311,12 @@ export async function startCommand(command, options = {}) {
 /**
  * Execute a command in the background (detached)
  * @param {string} command - Command to execute
+ * @param {Object} [options] - Options
+ * @param {Object} [options.env] - Environment of the child (default: inherit)
  * @returns {Promise<{pid: number|null}>} Process information
  */
-export async function executeDetached(command) {
+export async function executeDetached(command, options = {}) {
+  const { env } = options;
   const { spawn } = await import('node:child_process');
 
   return new Promise((resolve, reject) => {
@@ -317,6 +324,7 @@ export async function executeDetached(command) {
       const child = spawn('bash', ['-c', command], {
         detached: true,
         stdio: 'ignore',
+        ...(env ? { env } : {}),
       });
 
       child.once('error', reject);
@@ -330,32 +338,106 @@ export async function executeDetached(command) {
   });
 }
 
+/** Signals the run-scoped shutdown handler listens for. */
+const SHUTDOWN_SIGNALS = ['SIGINT', 'SIGTERM'];
+
+/** Cleanups of the runs currently guarded by {@link setupSignalHandler}. */
+const signalCleanups = new Set();
+let removeSharedSignalListeners = null;
+
 /**
- * Setup CTRL+C handler for graceful shutdown
- * @param {Function} cleanupFn - Function to call on CTRL+C
+ * Exit code for a process stopped by `signal` (shell convention 128 + N).
+ * @param {string} signal - Signal name
+ * @returns {number} Exit code
+ */
+export function signalExitCode(signal) {
+  return 128 + (constants.signals[signal] ?? 0);
+}
+
+/**
+ * Run every registered cleanup once a shutdown signal arrives, then hand the
+ * signal back to the host: when the host has its own listener for it, the
+ * host decides what happens next; otherwise the signal is re-raised with its
+ * default disposition so the process dies *by that signal* (exit status
+ * 128 + N), never with a misleading exit code 0 (issue #59).
+ * @param {string} signal - Signal name
+ * @param {Object} runtime - Runtime hooks (injectable for tests)
+ * @returns {Promise<void>}
+ */
+async function handleShutdownSignal(signal, runtime) {
+  const cleanups = [...signalCleanups];
+  removeSharedSignalListeners?.();
+  removeSharedSignalListeners = null;
+  signalCleanups.clear();
+  runtime.log(`\nReceived ${signal}, stopping the agent...`);
+  await Promise.all(
+    cleanups.map(async (cleanupFn) => {
+      try {
+        await cleanupFn();
+      } catch (error) {
+        runtime.error('Error during cleanup:', error.message);
+      }
+    })
+  );
+  if (runtime.listenerCount(signal) > 0) {
+    // The host owns shutdown (graceful drain, its own exit code).
+    return;
+  }
+  runtime.reraise(signal);
+}
+
+/**
+ * Default runtime hooks for the Node-compatible signal handler.
+ * @returns {Object} Runtime hooks
+ */
+function nodeSignalRuntime() {
+  return {
+    on: (signal, handler) => process.on(signal, handler),
+    off: (signal, handler) => process.off(signal, handler),
+    listenerCount: (signal) => process.listenerCount(signal),
+    log: (...args) => console.error(...args),
+    error: (...args) => console.error(...args),
+    reraise: (signal) => {
+      try {
+        process.kill(process.pid, signal);
+      } catch {
+        process.exit(signalExitCode(signal));
+      }
+      // Runtimes that cannot deliver the signal to themselves still exit
+      // with the shell convention instead of 0.
+      setTimeout(() => process.exit(signalExitCode(signal)), 1000).unref?.();
+    },
+  };
+}
+
+/**
+ * Stop a run when the host process receives SIGINT or SIGTERM.
+ *
+ * Every concurrent run shares one listener per signal (no
+ * `MaxListenersExceededWarning` with many runs). On a signal, all registered
+ * cleanups run, then the signal goes back to the host: if the host listens for
+ * it, nothing else happens; otherwise it is re-raised so the process ends with
+ * 128 + N. Library hosts that own shutdown pass `handleSignals: false` to
+ * `agent()` (or `signalHandlers: false` to `start()`) and call `stop()`.
+ * @param {Function} cleanupFn - Function to call on the signal
+ * @param {Object} [runtime] - Runtime hooks (injectable for tests)
  * @returns {Function} Function to remove the handler
  */
-export function setupSignalHandler(cleanupFn) {
-  // Detect runtime
+export function setupSignalHandler(cleanupFn, runtime) {
   const isDeno = typeof Deno !== 'undefined';
   const isNode =
     typeof process !== 'undefined' && process.versions && process.versions.node;
 
-  if (isDeno) {
-    // Deno signal handling
+  if (!runtime && isDeno) {
     const handler = async () => {
-      console.log('\nReceived SIGINT, shutting down gracefully...');
       try {
         await cleanupFn();
       } catch (error) {
         console.error('Error during cleanup:', error.message);
       }
-      Deno.exit(0);
+      Deno.exit(signalExitCode('SIGINT'));
     };
-
-    // Listen for SIGINT in Deno
     Deno.addSignalListener('SIGINT', handler);
-
     return () => {
       try {
         Deno.removeSignalListener('SIGINT', handler);
@@ -363,27 +445,35 @@ export function setupSignalHandler(cleanupFn) {
         // Signal listener may already be removed
       }
     };
-  } else if (isNode) {
-    // Node.js signal handling
-    const handler = async (signal) => {
-      console.log(`\nReceived ${signal}, shutting down gracefully...`);
-      try {
-        await cleanupFn();
-      } catch (error) {
-        console.error('Error during cleanup:', error.message);
+  }
+
+  if (!runtime && !isNode) {
+    // Return no-op for other runtimes
+    return () => {};
+  }
+
+  const hooks = runtime ?? nodeSignalRuntime();
+  signalCleanups.add(cleanupFn);
+  if (!removeSharedSignalListeners) {
+    const listeners = SHUTDOWN_SIGNALS.map((signal) => {
+      const listener = () => {
+        handleShutdownSignal(signal, hooks);
+      };
+      hooks.on(signal, listener);
+      return [signal, listener];
+    });
+    removeSharedSignalListeners = () => {
+      for (const [signal, listener] of listeners) {
+        hooks.off(signal, listener);
       }
-      process.exit(0);
-    };
-
-    process.on('SIGINT', handler);
-    process.on('SIGTERM', handler);
-
-    return () => {
-      process.off('SIGINT', handler);
-      process.off('SIGTERM', handler);
     };
   }
 
-  // Return no-op for other runtimes
-  return () => {};
+  return () => {
+    signalCleanups.delete(cleanupFn);
+    if (signalCleanups.size === 0) {
+      removeSharedSignalListeners?.();
+      removeSharedSignalListeners = null;
+    }
+  };
 }

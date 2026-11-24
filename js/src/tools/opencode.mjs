@@ -11,7 +11,6 @@ import {
   escapeArg,
   escapeSingleQuotes,
   normalizeExtraArgs,
-  normalizeExtraEnv,
 } from './shell.mjs';
 import {
   normalizeAttachments,
@@ -127,16 +126,14 @@ export function buildCommand(options) {
   const inputCommand = promptFile
     ? `cat ${escapeArg(promptFile)}`
     : `printf '%s' '${escapeSingleQuotes(combinedPrompt)}'`;
-  const env = readOnly
-    ? [
-        ['OPENCODE_PERMISSION', READ_ONLY_PERMISSION],
-        ...normalizeExtraEnv(extraEnv),
-      ]
-    : extraEnv;
-
+  // The read-only policy is a library constant, so it may stay on the
+  // command line; caller `extraEnv` goes through the spawn environment.
   return `${inputCommand} | ${buildCommandHead({
     executable,
-    extraEnv: env,
+    extraEnv,
+    fixedEnv: readOnly
+      ? [['OPENCODE_PERMISSION', READ_ONLY_PERMISSION]]
+      : undefined,
   })} ${args.map(escapeArg).join(' ')}`.trim();
 }
 

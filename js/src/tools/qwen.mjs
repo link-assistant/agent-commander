@@ -8,7 +8,12 @@ import { nativeUsage } from './usage.mjs';
 import { syncedModels, syncedDefaults } from './model-catalog.mjs';
 import { createModelMapper, parseJsonLines } from './json-lines.mjs';
 
-import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
+import {
+  buildCommandHead,
+  escapeArg,
+  fileContentArg,
+  normalizeExtraArgs,
+} from './shell.mjs';
 import {
   jsonSchemaArg,
   mcpConfigArg,
@@ -175,6 +180,7 @@ export function buildArgs(options) {
  * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
  * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
  * @param {boolean} [options.streamInput] - Prompt and follow-ups arrive as stdin frames
+ * @param {string} [options.jsonSchemaFile] - File holding the structured-output schema
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {
@@ -185,6 +191,7 @@ export function buildCommand(options) {
     systemPrompt,
     executable = 'qwen',
     extraEnv,
+    jsonSchemaFile,
     // eslint-disable-next-line no-unused-vars
     workingDirectory,
     ...argOptions
@@ -199,7 +206,8 @@ export function buildCommand(options) {
     prompt: promptFile || streamInput ? undefined : combinedPrompt,
   });
   const command =
-    `${buildCommandHead({ executable, extraEnv })} ${args.map(escapeArg).join(' ')}`.trim();
+    `${buildCommandHead({ executable, extraEnv })} ${args.map(escapeArg).join(' ')}`.trim() +
+    (jsonSchemaFile ? fileContentArg('--json-schema', jsonSchemaFile) : '');
 
   if (promptFile && !streamInput) {
     return `cat ${escapeArg(promptFile)} | ${command}`;

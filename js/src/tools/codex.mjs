@@ -165,6 +165,7 @@ export function buildArgs(options) {
  * @param {string} [options.approvalMode] - Explicit Codex approval mode
  * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
  * @param {string|Object} [options.jsonSchema] - Structured-output schema (`--output-schema`)
+ * @param {string} [options.jsonSchemaFile] - Schema file; replaces the inline `jsonSchema`
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {
@@ -175,6 +176,7 @@ export function buildCommand(options) {
     executable = 'codex',
     extraEnv,
     jsonSchema,
+    jsonSchemaFile,
     ...argOptions
   } = options;
   const args = buildArgs(argOptions);
@@ -197,8 +199,10 @@ export function buildCommand(options) {
 
   // `--output-schema` takes a file; bash process substitution supplies one
   // without a temporary file (codex 0.163 reads and validates /dev/fd/N).
-  const schemaArg =
-    jsonSchema === undefined || jsonSchema === null
+  // A `jsonSchemaFile` (written by `agent()` for real runs) is passed as is.
+  const schemaArg = jsonSchemaFile
+    ? ` --output-schema ${escapeArg(jsonSchemaFile)}`
+    : jsonSchema === undefined || jsonSchema === null
       ? ''
       : ` --output-schema <(printf '%s' ${escapeArg(jsonSchemaArg(jsonSchema))})`;
 

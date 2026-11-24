@@ -244,9 +244,9 @@ test('buildAgentCommand - claude supports raw passthrough options', () => {
     isolation: 'none',
   });
 
-  assert.ok(command.includes('env'));
-  assert.ok(command.includes('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1'));
-  assert.ok(command.includes('MCP_TIMEOUT=10000'));
+  // extraEnv travels in the spawn env, not on argv (issue #60)
+  assert.ok(!command.includes('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC'));
+  assert.ok(!command.includes('MCP_TIMEOUT'));
   assert.ok(command.includes('/opt/Claude Code/bin/claude'));
   assert.ok(command.includes('--mcp-config'));
   assert.ok(command.includes('/tmp/mcp config.json'));
@@ -255,7 +255,7 @@ test('buildAgentCommand - claude supports raw passthrough options', () => {
   assert.ok(!command.includes('--dangerously-skip-permissions'));
 });
 
-test('buildAgentCommand - a null extraEnv value unsets the variable', () => {
+test('buildAgentCommand - extraEnv never reaches the command line', () => {
   const command = buildAgentCommand({
     tool: 'claude',
     workingDirectory: '/tmp/test',
@@ -263,17 +263,27 @@ test('buildAgentCommand - a null extraEnv value unsets the variable', () => {
     extraEnv: {
       GH_TOKEN: null,
       MAX_THINKING_TOKENS: undefined,
-      MCP_TIMEOUT: '1',
+      API_KEY: 'sk-secret-value',
     },
     isolation: 'none',
   });
-  assert.ok(
-    command.includes(
-      'env -u GH_TOKEN -u MAX_THINKING_TOKENS MCP_TIMEOUT=1 claude'
-    ),
-    command
-  );
+  assert.ok(!command.includes('sk-secret-value'), command);
+  assert.ok(!command.includes('env '), command);
   assert.ok(!command.includes('null'));
+});
+
+test('buildAgentCommand - docker forwards extraEnv by name only', () => {
+  const command = buildAgentCommand({
+    tool: 'claude',
+    workingDirectory: '/tmp/test',
+    prompt: 'Hello',
+    extraEnv: { API_KEY: 'sk-secret-value', GH_TOKEN: null },
+    isolation: 'docker',
+    containerName: 'c1',
+  });
+  assert.ok(command.includes(' -e API_KEY '), command);
+  assert.ok(!command.includes('GH_TOKEN'), command);
+  assert.ok(!command.includes('sk-secret-value'), command);
 });
 
 test('buildAgentCommand - codex read-only uses sandbox and no approvals', () => {
@@ -305,8 +315,9 @@ test('buildAgentCommand - codex applies env to the tool side of prompt pipe', ()
 
   assert.ok(command.includes('cat'));
   assert.ok(command.includes('/tmp/prompt.txt'));
-  assert.ok(command.includes('| env CODEX_HOME='));
-  assert.ok(command.includes('/tmp/codex home'));
+  // extraEnv travels in the spawn env, not on argv (issue #60)
+  assert.ok(!command.includes('CODEX_HOME'));
+  assert.ok(!command.includes('/tmp/codex home'));
   assert.ok(command.includes('/opt/codex bin/codex'));
   assert.ok(command.includes('--config'));
   assert.ok(command.includes('model_reasoning_effort='));
@@ -327,8 +338,9 @@ test('buildAgentCommand - qwen applies env to the tool side of prompt pipe', () 
 
   assert.ok(command.includes('cat'));
   assert.ok(command.includes('/tmp/prompt.txt'));
-  assert.ok(command.includes('| env QWEN_HOME='));
-  assert.ok(command.includes('/tmp/qwen home'));
+  // extraEnv travels in the spawn env, not on argv (issue #60)
+  assert.ok(!command.includes('QWEN_HOME'));
+  assert.ok(!command.includes('/tmp/qwen home'));
   assert.ok(command.includes('/opt/qwen code/qwen'));
   assert.ok(command.includes('--checkpointing'));
   assert.ok(command.includes('--approval-mode'));
@@ -350,8 +362,9 @@ test('buildAgentCommand - gemini applies env to the tool side of prompt pipe', (
 
   assert.ok(command.includes('cat'));
   assert.ok(command.includes('/tmp/prompt.txt'));
-  assert.ok(command.includes('| env GEMINI_HOME='));
-  assert.ok(command.includes('/tmp/gemini home'));
+  // extraEnv travels in the spawn env, not on argv (issue #60)
+  assert.ok(!command.includes('GEMINI_HOME'));
+  assert.ok(!command.includes('/tmp/gemini home'));
   assert.ok(command.includes('/opt/gemini cli/gemini'));
   assert.ok(command.includes('--telemetry'));
   assert.ok(command.includes('false'));

@@ -714,6 +714,10 @@ Creates an agent controller.
 - `options.screenName` (string, optional) - Screen session name (required for screen isolation)
 - `options.containerName` (string, optional) - Container name (required for docker isolation)
 - `options.toolOptions` (object, optional) - Additional tool-specific options
+  - `toolOptions.extraEnv` - Variables added to the child environment through `spawn` (never placed on the command line; `null` unsets)
+  - `toolOptions.inheritEnv` - `true` (default), `false`, or an allowlist of variable names to inherit from the host
+  - `toolOptions.env` - Explicit environment that replaces the inherited one
+- `options.handleSignals` (boolean, optional) - Install the shared SIGINT/SIGTERM handler for direct runs (default: true)
   - `executable` (string, optional) - Override the native executable path/name for any supported tool
   - `extraEnv` (object or `KEY=VALUE` / `[key, value]` array, optional) - Environment variables applied to the native tool process. A `null` value unsets an inherited variable (`env -u`), for example `{ ANTHROPIC_API_KEY: null }`.
   - `extraArgs` (string array, optional) - Raw native tool arguments appended after typed agent-commander arguments
@@ -733,7 +737,8 @@ Starts the agent (non-blocking - returns immediately after starting the process)
 
 - `startOptions.dryRun` (boolean, optional) - Preview command without executing
 - `startOptions.detached` (boolean, optional) - Run in detached mode
-- `startOptions.attached` (boolean, optional) - Stream output (default: true)
+- `startOptions.attached` (boolean, optional) - Stream output to this process's stdout/stderr (default: true; library hosts usually pass `false`)
+- `startOptions.signalHandlers` (boolean, optional) - Stop the run on SIGINT/SIGTERM of the host (default: `options.handleSignals`, which defaults to true). After cleanup the signal is handed back to the host, or re-raised so the process exits with 128 + N
 - `startOptions.onMessage` (function, optional) - Callback for JSON messages
 - `startOptions.onOutput` (function, optional) - Callback for raw output chunks
 

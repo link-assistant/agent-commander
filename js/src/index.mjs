@@ -26,8 +26,11 @@ import {
   startCommand,
 } from './executor.mjs';
 import { isToolSupported, resolveToolConfig } from './tools/index.mjs';
-import { normalizeExtraEnv } from './tools/shell.mjs';
-import { definedLaunchOptions } from './tools/launch-options.mjs';
+import { buildChildEnvironment } from './tools/shell.mjs';
+import {
+  definedLaunchOptions,
+  jsonSchemaArg,
+} from './tools/launch-options.mjs';
 import { createOutputStream, createInputStream } from './streaming/index.mjs';
 import { stringifyNdjsonLine } from './streaming/ndjson.mjs';
 import { parseJsonRecords } from './streaming/json-records.mjs';
@@ -60,6 +63,9 @@ const PROMPT_FILE_TOOLS = new Set([
   'qwen',
   'gemini',
 ]);
+
+/** Tools whose structured-output schema `agent()` passes through a file. */
+const SCHEMA_FILE_TOOLS = new Set(['claude', 'codex', 'qwen']);
 
 /**
  * Determine whether the tool can read prompt input from stdin.
@@ -162,7 +168,13 @@ function parseJsonMessages(options) {
  * @param {string|Object} [options.jsonSchema] - JSON Schema the final answer must match (claude, qwen `--json-schema`; codex `--output-schema`); read it from `metadata.structuredOutput`
  * @param {boolean} [options.liveInput=false] - Keep stdin open as a stream-json channel so
  *   `sendMessage()` / `interrupt()` can reach the running session (claude, qwen, agent)
- * @param {Object} [options.toolOptions] - Additional tool-specific options
+ * @param {boolean} [options.handleSignals=true] - Stop the run on SIGINT/SIGTERM of the
+ *   host process (non-detached runs without isolation). Library hosts that own shutdown
+ *   pass `false` and call `cancel()` themselves; `start({ signalHandlers })` overrides it per run
+ * @param {Object} [options.toolOptions] - Additional tool-specific options. Child
+ *   environment: `extraEnv` (add / `null` removes), `env` (explicit replacement map) and
+ *   `inheritEnv` (`true` default, `false`, or an allowlist of names). Values are passed
+ *   through the spawn environment, never on the command line
  * @param {Object} [options.toolOverrides] - Replace parts of the tool configuration for this run:
  *   `buildCommand`, `parseOutput`, `extractSessionId`, `extractUsage`, `detectErrors`, `executable`
  *   or any `supports*` capability flag. A `buildCommand` also drives a tool that is not registered.
@@ -192,6 +204,7 @@ export function agent(options) {
     attachments,
     jsonSchema,
     liveInput = false,
+    handleSignals = true,
     toolOptions = {},
     toolOverrides,
   } = options;
@@ -235,6 +248,72 @@ export function agent(options) {
   let permissionRelay = null;
   let sessionId = null;
   let promptTempDir = null;
+  // Child environment: `extraEnv`, `env` and `inheritEnv` configure the
+  // spawn, not the tool's command line.
+  const childEnvOptions = {
+    extraEnv: toolOptions.extraEnv,
+    env: toolOptions.env,
+    inheritEnv: toolOptions.inheritEnv,
+  };
+  // Validate early: a bad env option fails before anything is spawned.
+  buildChildEnvironment(childEnvOptions);
+
+  const ensurePromptTempDir = async () => {
+    if (!promptTempDir) {
+      promptTempDir = await mkdtemp(join(tmpdir(), 'agent-commander-'));
+    }
+    return promptTempDir;
+  };
+
+  const writePrivateFile = async (name, content) => {
+    const file = join(await ensurePromptTempDir(), name);
+    await writeFile(file, content, { mode: 0o600 });
+    return file;
+  };
+
+  /**
+   * Move private or large values off the `bash -c` command line into 0600
+   * files in the run's temporary directory (issue #60): the Claude system
+   * prompts become `--system-prompt-file` / `--append-system-prompt-file`,
+   * and the structured-output schema is read from a file. Custom
+   * `toolOverrides.buildCommand` builders keep the inline values.
+   * @param {Object} commandOptions - Options for `buildAgentCommand`
+   */
+  const moveInlineValuesToFiles = async (commandOptions) => {
+    if (toolOverrides?.buildCommand) {
+      return;
+    }
+    if (tool === 'claude') {
+      if (commandOptions.systemPrompt && !commandOptions.systemPromptFile) {
+        commandOptions.systemPromptFile = await writePrivateFile(
+          'system-prompt.txt',
+          commandOptions.systemPrompt
+        );
+        delete commandOptions.systemPrompt;
+      }
+      if (
+        commandOptions.appendSystemPrompt &&
+        !commandOptions.appendSystemPromptFile
+      ) {
+        commandOptions.appendSystemPromptFile = await writePrivateFile(
+          'append-system-prompt.txt',
+          commandOptions.appendSystemPrompt
+        );
+        delete commandOptions.appendSystemPrompt;
+      }
+    }
+    if (
+      SCHEMA_FILE_TOOLS.has(tool) &&
+      commandOptions.jsonSchema !== undefined &&
+      commandOptions.jsonSchema !== null
+    ) {
+      commandOptions.jsonSchemaFile = await writePrivateFile(
+        'schema.json',
+        jsonSchemaArg(commandOptions.jsonSchema)
+      );
+      delete commandOptions.jsonSchema;
+    }
+  };
 
   const cleanupPromptTempDir = async () => {
     if (!promptTempDir) {
@@ -259,14 +338,10 @@ export function agent(options) {
       return promptFile;
     }
 
-    promptTempDir = await mkdtemp(join(tmpdir(), 'agent-commander-'));
-    const tempPromptFile = join(promptTempDir, 'prompt.txt');
-    await writeFile(
-      tempPromptFile,
-      buildPromptFileContent({ toolName: tool, prompt, systemPrompt }),
-      { mode: 0o600 }
+    return writePrivateFile(
+      'prompt.txt',
+      buildPromptFileContent({ toolName: tool, prompt, systemPrompt })
     );
-    return tempPromptFile;
   };
 
   /**
@@ -274,7 +349,10 @@ export function agent(options) {
    * @param {Object} [startOptions] - Start options
    * @param {boolean} [startOptions.dryRun] - If true, just show the command
    * @param {boolean} [startOptions.detached] - Run in detached mode
-   * @param {boolean} [startOptions.attached=true] - Stream output to console
+   * @param {boolean} [startOptions.attached=true] - Stream the tool's output to
+   *   this process's stdout/stderr; library callers usually pass `false`
+   * @param {boolean} [startOptions.signalHandlers] - Install the shared
+   *   SIGINT/SIGTERM handler for this run (defaults to `handleSignals`)
    * @param {Function} [startOptions.onMessage] - Callback for JSON messages (streaming)
    * @param {Function} [startOptions.onOutput] - Callback for raw output chunks
    * @returns {Promise<void>} Resolves when process is started (not when it exits)
@@ -284,6 +362,7 @@ export function agent(options) {
       dryRun = false,
       detached = false,
       attached = true,
+      signalHandlers = handleSignals,
       onMessage,
       onOutput,
     } = startOptions;
@@ -380,7 +459,14 @@ export function agent(options) {
         commandOptions.streamInput = true;
       }
 
+      if (!dryRun) {
+        await moveInlineValuesToFiles(commandOptions);
+      }
+
       command = buildAgentCommand(commandOptions);
+      // Variable values reach the child through the spawn environment, never
+      // through the command line (issue #60).
+      const env = buildChildEnvironment(childEnvOptions);
 
       if (dryRun) {
         console.log('Dry run - command that would be executed:');
@@ -389,7 +475,7 @@ export function agent(options) {
       }
 
       // Setup signal handler for graceful shutdown
-      if (!detached && isolation === 'none') {
+      if (signalHandlers && !detached && isolation === 'none') {
         removeSignalHandler = setupSignalHandler(async () => {
           processHandle?.terminate();
           if (processHandle?.waitForExit) {
@@ -401,7 +487,7 @@ export function agent(options) {
 
       if (detached) {
         // For detached mode, use executeDetached
-        processHandle = await executeDetached(command);
+        processHandle = await executeDetached(command, { env });
         console.log(`Agent started in detached mode`);
         if (isolation === 'screen') {
           console.log(`Screen session: ${screenName}`);
@@ -410,7 +496,11 @@ export function agent(options) {
         }
       } else {
         // For attached mode, start command without waiting
-        const commandOptions = { attached, pipeStdin: streamingInput };
+        const commandOptions = {
+          attached,
+          pipeStdin: streamingInput,
+          env,
+        };
 
         // Add output handling for streaming
         if (onOutput) {
@@ -658,21 +748,25 @@ export function agent(options) {
         });
         // Codex and Claude can leave a usage limit only in their session
         // files (hive-mind#3570)
-        const runEnv = normalizeExtraEnv(toolOptions.extraEnv);
-        const codexHome = runEnv.findLast(([name]) => name === 'CODEX_HOME');
-        const rolloutOptions = codexHome ? { codexHome: codexHome[1] } : {};
+        // Only variables the caller set explicitly (env / extraEnv) count.
+        const runEnv = buildChildEnvironment({
+          ...childEnvOptions,
+          inheritEnv: false,
+        });
+        const rolloutOptions = runEnv.CODEX_HOME
+          ? { codexHome: runEnv.CODEX_HOME }
+          : {};
         await applyCodexRolloutUsageLimit(metadata, rolloutOptions);
         await applyCodexRolloutUsageWindows(metadata, rolloutOptions);
         await applyCodexRolloutContextUsage(metadata, rolloutOptions);
         if ((json || tool === 'agent') && isToolSupported({ toolName: tool })) {
           requireCompletedResult(metadata, tool, parsedOutput || []);
         }
-        const claudeConfigDir = runEnv.findLast(
-          ([name]) => name === 'CLAUDE_CONFIG_DIR'
-        );
         await applyClaudeTranscriptUsageLimit(metadata, {
           workingDirectory,
-          ...(claudeConfigDir ? { claudeConfigDir: claudeConfigDir[1] } : {}),
+          ...(runEnv.CLAUDE_CONFIG_DIR
+            ? { claudeConfigDir: runEnv.CLAUDE_CONFIG_DIR }
+            : {}),
         });
 
         return {
@@ -798,6 +892,7 @@ export {
   isProcessGroupAlive,
   normalizeExit,
   setupSignalHandler,
+  signalExitCode,
   signalFromExitCode,
   startCommand,
 } from './executor.mjs';
@@ -893,7 +988,11 @@ export {
   toolVersionFromOutput,
 } from './tool-version.mjs';
 // Shell quoting for `toolOverrides.buildCommand` implementations.
-export { escapeArg } from './tools/shell.mjs';
+export {
+  buildChildEnvironment,
+  escapeArg,
+  normalizeInheritEnv,
+} from './tools/shell.mjs';
 export {
   assertLaunchOptionsSupported,
   codexMcpServersOverride,

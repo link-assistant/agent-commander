@@ -107,6 +107,25 @@ Bundled aliases track a recorded Hive Mind catalogue (v2.39.5: `sonnet` is `clau
 
 See the [parity audit](../docs/case-studies/issue-50/README.md) and [dependency example](../examples/hive-mind-dependency.mjs), which can run against a credential-free fixture for any tool.
 
+### Running inside a service
+
+`start()` defaults to `attached: true`, which streams the tool's output to this process's stdout and stderr. A library host usually passes `attached: false` and reads `result.output` or `onOutput` instead.
+
+A direct run (`isolation: 'none'`, not detached) stops its tool when the host process receives SIGINT or SIGTERM. All concurrent runs share one listener per signal. After cleanup, the signal goes back to the host: if the host has its own listener for it, the host decides what happens next; otherwise the signal is re-raised, and the process exits with 128 + N, never with 0. A host that owns shutdown turns the handler off and cancels runs itself:
+
+```javascript
+const controller = agent({
+  tool: 'claude',
+  workingDirectory,
+  prompt,
+  handleSignals: false,
+});
+await controller.start({ attached: false }); // or start({ signalHandlers: false })
+abortSignal.addEventListener('abort', () => controller.cancel());
+```
+
+Secrets and private input stay off the command line, which other local users can read in `ps` and `/proc/<pid>/cmdline`. `toolOptions.extraEnv` values go through the `spawn` environment (docker isolation forwards them by name with `-e NAME`). `toolOptions.inheritEnv` limits what the child inherits: `true` (default), `false`, or an allowlist such as `['PATH', 'HOME', 'LANG']`. `toolOptions.env` replaces the inherited environment with an explicit map. `extraEnv` is applied on top in both cases. Claude `systemPrompt` and `appendSystemPrompt` are written to 0600 temporary files and passed with `--system-prompt-file` and `--append-system-prompt-file`. `jsonSchema` is also written to a file for Claude, Codex and Qwen. Claude and Qwen still receive the schema as one argument, so it must stay under Linux's 128 KiB per-argument limit (`MAX_ARG_STRLEN`). Codex reads the file directly. A dry run prints the inline form.
+
 ### Launch options, live input and run telemetry
 
 ```javascript
