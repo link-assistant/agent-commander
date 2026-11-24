@@ -1,10 +1,7 @@
 //! Secrets, system prompts and JSON Schemas stay off the command line
 //! (issue #60): `ps` and `/proc/<pid>/cmdline` are readable by other users.
 
-use agent_commander::{
-    agent, build_child_environment, AgentOptions, AgentStartOptions, AgentStopOptions, InheritEnv,
-    LaunchOptions,
-};
+use agent_commander::{build_child_environment, InheritEnv};
 
 fn pairs(items: &[(&str, &str)]) -> Vec<(String, String)> {
     items
@@ -40,6 +37,9 @@ fn build_child_environment_modes() {
 #[cfg(target_os = "linux")]
 #[tokio::test]
 async fn secrets_prompts_and_schema_stay_off_the_command_line() {
+    use agent_commander::{
+        agent, AgentOptions, AgentStartOptions, AgentStopOptions, LaunchOptions,
+    };
     use std::os::unix::fs::PermissionsExt;
     let dir = tempfile::tempdir().unwrap();
     let out = dir.path();
