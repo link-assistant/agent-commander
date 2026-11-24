@@ -308,3 +308,25 @@ test(
     assert.match(latest.transcript, /three/u);
   }
 );
+
+test('buildAgentTuiLaunch keeps the Claude system prompt file and child env options', () => {
+  process.env.AGENT_COMMANDER_TUI_SECRET = 'x';
+  try {
+    const launch = buildAgentTuiLaunch({
+      tool: 'claude',
+      workingDirectory: '/tmp',
+      systemPrompt: 'PRIVATE',
+      appendSystemPromptFile: '/tmp/append.txt',
+      inheritEnv: ['PATH'],
+      extraEnv: { KEY: 'v' },
+    });
+    assert.ok(launch.args.includes('--append-system-prompt-file'));
+    assert.ok(launch.args.includes('/tmp/append.txt'));
+    assert.ok(!launch.args.includes('PRIVATE'));
+    assert.strictEqual(launch.env.KEY, 'v');
+    assert.strictEqual(launch.env.TERM, 'xterm-256color');
+    assert.strictEqual(launch.env.AGENT_COMMANDER_TUI_SECRET, undefined);
+  } finally {
+    delete process.env.AGENT_COMMANDER_TUI_SECRET;
+  }
+});

@@ -80,6 +80,7 @@ async fn main() {
             additional_directories: options.additional_directories,
             attachments: options.attachments,
             json_schema: options.json_schema,
+            ..Default::default()
         },
         ..Default::default()
     };

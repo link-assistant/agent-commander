@@ -38,6 +38,10 @@ pub struct AgentTuiOptions {
     pub prompt: Option<String>,
     /// Optional system prompt.
     pub system_prompt: Option<String>,
+    /// File holding the Claude system prompt (`--append-system-prompt-file`).
+    /// [`capture_agent_tui`] writes `system_prompt` to an owner-only file when
+    /// unset, so the text stays off the command line (issue #60).
+    pub system_prompt_file: Option<PathBuf>,
     /// Marker that must be observed before sending the initial prompt.
     pub prompt_after: Option<String>,
     /// Control key sent after the initial prompt.
@@ -89,6 +93,7 @@ impl Default for AgentTuiOptions {
             model: None,
             prompt: None,
             system_prompt: None,
+            system_prompt_file: None,
             prompt_after: None,
             prompt_key: TerminalKey::Enter,
             resume: None,
@@ -193,7 +198,12 @@ fn claude_args(options: &AgentTuiOptions) -> Vec<String> {
         args.push("--dangerously-skip-permissions".into());
     }
     push_model(&mut args, options);
-    if let Some(system_prompt) = &options.system_prompt {
+    if let Some(file) = &options.system_prompt_file {
+        args.extend([
+            "--append-system-prompt-file".into(),
+            file.to_string_lossy().into_owned(),
+        ]);
+    } else if let Some(system_prompt) = &options.system_prompt {
         args.extend(["--append-system-prompt".into(), system_prompt.clone()]);
     }
     if let Some(resume) = &options.resume {
@@ -384,7 +394,51 @@ pub fn normalize_tui_transcript(transcript: &str) -> Vec<AgentTuiEvent> {
 }
 
 /// Capture and drive an agent's real interactive terminal interface.
-pub fn capture_agent_tui(options: AgentTuiOptions) -> Result<AgentTuiCapture, AgentTuiError> {
+pub fn capture_agent_tui(mut options: AgentTuiOptions) -> Result<AgentTuiCapture, AgentTuiError> {
+    let mut temp_prompt = None;
+    if options.tool == "claude" && options.system_prompt_file.is_none() {
+        if let Some(text) = options.system_prompt.as_deref().filter(|t| !t.is_empty()) {
+            let file = write_private_temp_file(text)?;
+            options.system_prompt_file = Some(file.clone());
+            temp_prompt = Some(file);
+        }
+    }
+    let result = run_agent_tui(options);
+    if let Some(file) = temp_prompt {
+        let _ = std::fs::remove_file(file);
+    }
+    result
+}
+
+/// Write `content` to a new owner-only file in the temp directory.
+fn write_private_temp_file(content: &str) -> Result<PathBuf, AgentTuiError> {
+    use std::io::Write;
+    static SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos());
+    let sequence = SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let path = std::env::temp_dir().join(format!(
+        "agent-commander-tui-{}-{nanos}-{sequence}.txt",
+        std::process::id()
+    ));
+    let mut open = std::fs::OpenOptions::new();
+    open.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        open.mode(0o600);
+    }
+    let mut file = open
+        .open(&path)
+        .and_then(|mut file| file.write_all(content.as_bytes()).map(|()| file))
+        .map_err(|e| AgentTuiError::Launch(format!("system prompt file: {e}")))?;
+    file.flush()
+        .map_err(|e| AgentTuiError::Launch(format!("system prompt file: {e}")))?;
+    Ok(path)
+}
+
+fn run_agent_tui(options: AgentTuiOptions) -> Result<AgentTuiCapture, AgentTuiError> {
     let launch = build_agent_tui_launch(&options)?;
     let combined_prompt = match (&options.system_prompt, &options.prompt) {
         (Some(system), Some(prompt)) if options.tool != "claude" => {

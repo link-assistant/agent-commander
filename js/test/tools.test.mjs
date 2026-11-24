@@ -636,8 +636,9 @@ test('qwenTool - buildCommand reads prompt file with passthrough options', () =>
 
   assert.ok(cmd.startsWith('cat '));
   assert.ok(cmd.includes('/tmp/qwen prompt.txt'));
-  assert.ok(cmd.includes('| env QWEN_HOME='));
-  assert.ok(cmd.includes('/tmp/qwen home'));
+  // extraEnv travels in the spawn env, not on argv (issue #60)
+  assert.ok(!cmd.includes('QWEN_HOME'));
+  assert.ok(!cmd.includes('/tmp/qwen home'));
   assert.ok(cmd.includes('/opt/qwen code/qwen'));
   assert.ok(cmd.includes('--approval-mode'));
   assert.ok(cmd.includes('default'));
@@ -810,8 +811,9 @@ test('geminiTool - buildCommand reads prompt file with passthrough options', () 
 
   assert.ok(cmd.startsWith('cat '));
   assert.ok(cmd.includes('/tmp/gemini prompt.txt'));
-  assert.ok(cmd.includes('| env GEMINI_HOME='));
-  assert.ok(cmd.includes('/tmp/gemini home'));
+  // extraEnv travels in the spawn env, not on argv (issue #60)
+  assert.ok(!cmd.includes('GEMINI_HOME'));
+  assert.ok(!cmd.includes('/tmp/gemini home'));
   assert.ok(cmd.includes('/opt/gemini cli/gemini'));
   assert.ok(cmd.includes('--telemetry'));
   assert.ok(cmd.includes('false'));

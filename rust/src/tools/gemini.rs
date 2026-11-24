@@ -196,7 +196,7 @@ pub fn build_command(options: &GeminiBuildOptions) -> String {
     let executable = options.executable.as_deref().unwrap_or("gemini");
     let command = format!(
         "{} {}",
-        build_command_head(executable, &options.unset_env, &options.extra_env, &[]),
+        build_command_head(executable, &[], &[], &[]),
         args_str.join(" ")
     )
     .trim()

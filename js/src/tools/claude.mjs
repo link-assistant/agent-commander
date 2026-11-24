@@ -7,7 +7,12 @@ import { nativeUsage } from './usage.mjs';
 import { syncedModels, syncedDefaults } from './model-catalog.mjs';
 import { createModelMapper, parseJsonLines } from './json-lines.mjs';
 
-import { buildCommandHead, escapeArg, normalizeExtraArgs } from './shell.mjs';
+import {
+  buildCommandHead,
+  escapeArg,
+  fileContentArg,
+  normalizeExtraArgs,
+} from './shell.mjs';
 import {
   jsonSchemaArg,
   mcpConfigArg,
@@ -102,6 +107,8 @@ export function modelArg({ model }) {
  * @param {string} [options.prompt] - User prompt
  * @param {string} [options.systemPrompt] - System prompt
  * @param {string} [options.appendSystemPrompt] - System prompt to append to default
+ * @param {string} [options.systemPromptFile] - File with the system prompt (`--system-prompt-file`)
+ * @param {string} [options.appendSystemPromptFile] - File appended to the default system prompt (`--append-system-prompt-file`)
  * @param {string} [options.model] - Model to use
  * @param {string} [options.fallbackModel] - Fallback model when default is overloaded
  * @param {boolean} [options.print] - Print mode (non-interactive)
@@ -129,6 +136,8 @@ export function buildArgs(options) {
     prompt,
     systemPrompt,
     appendSystemPrompt,
+    systemPromptFile,
+    appendSystemPromptFile,
     model,
     fallbackModel,
     print = false,
@@ -201,11 +210,15 @@ export function buildArgs(options) {
     args.push('-p', prompt);
   }
 
-  if (systemPrompt) {
+  if (systemPromptFile) {
+    args.push('--system-prompt-file', systemPromptFile);
+  } else if (systemPrompt) {
     args.push('--system-prompt', systemPrompt);
   }
 
-  if (appendSystemPrompt) {
+  if (appendSystemPromptFile) {
+    args.push('--append-system-prompt-file', appendSystemPromptFile);
+  } else if (appendSystemPrompt) {
     args.push('--append-system-prompt', appendSystemPrompt);
   }
 
@@ -275,6 +288,8 @@ export function buildArgs(options) {
  * @param {string[]} [options.extraArgs] - Extra raw CLI args appended after typed args
  * @param {boolean} [options.skipDefaultSafetyFlags] - Do not add default bypass flags
  * @param {string} [options.permissionMode] - Explicit Claude permission mode
+ * @param {string} [options.jsonSchemaFile] - File holding the structured-output
+ *   schema; read by the shell, so it is not part of the `bash -c` command line
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {
@@ -284,6 +299,7 @@ export function buildCommand(options) {
     executable = 'claude',
     extraEnv,
     streamInput = false,
+    jsonSchemaFile,
     ...argOptions
   } = options;
   const args = buildArgs({
@@ -293,8 +309,12 @@ export function buildCommand(options) {
     // the per-command approval relay, so it is not passed as a --prompt arg.
     prompt: promptFile || streamInput ? undefined : prompt,
   });
+  const schemaArg = jsonSchemaFile
+    ? fileContentArg('--json-schema', jsonSchemaFile)
+    : '';
   const command =
-    `${buildCommandHead({ executable, extraEnv })} ${args.map(escapeArg).join(' ')}`.trim();
+    `${buildCommandHead({ executable, extraEnv })} ${args.map(escapeArg).join(' ')}`.trim() +
+    schemaArg;
 
   if (streamInput) {
     return command;

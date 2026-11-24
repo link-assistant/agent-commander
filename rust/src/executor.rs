@@ -372,17 +372,41 @@ impl ProcessHandle {
 
 /// Start a command and drain stdout/stderr concurrently, with optional console output.
 pub async fn start_command(command: &str, attached: bool) -> io::Result<ProcessHandle> {
-    spawn_command(command, attached, false)
+    spawn_command(command, attached, false, None)
 }
 
 /// Like [`start_command`], with stdin piped for
 /// [`ProcessHandle::write_stdin`] (live input, stream-json frames).
 pub async fn start_command_with_stdin(command: &str, attached: bool) -> io::Result<ProcessHandle> {
-    spawn_command(command, attached, true)
+    spawn_command(command, attached, true, None)
 }
 
-fn spawn_command(command: &str, attached: bool, pipe_stdin: bool) -> io::Result<ProcessHandle> {
+/// Like [`start_command`], with an explicit child environment that replaces
+/// the inherited one (issue #60: values stay off the command line).
+pub async fn start_command_with_env(
+    command: &str,
+    attached: bool,
+    pipe_stdin: bool,
+    env: &[(String, String)],
+) -> io::Result<ProcessHandle> {
+    spawn_command(command, attached, pipe_stdin, Some(env))
+}
+
+fn apply_env(command_builder: &mut Command, env: Option<&[(String, String)]>) {
+    if let Some(env) = env {
+        command_builder.env_clear();
+        command_builder.envs(env.iter().map(|(k, v)| (k.as_str(), v.as_str())));
+    }
+}
+
+fn spawn_command(
+    command: &str,
+    attached: bool,
+    pipe_stdin: bool,
+    env: Option<&[(String, String)]>,
+) -> io::Result<ProcessHandle> {
     let mut command_builder = Command::new("bash");
+    apply_env(&mut command_builder, env);
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
@@ -427,7 +451,16 @@ fn spawn_command(command: &str, attached: bool, pipe_stdin: bool) -> io::Result<
 /// Start a detached command with all standard streams disconnected, in its
 /// own process group (JS `spawn(..., { detached: true })`).
 pub async fn execute_detached(command: &str) -> io::Result<Option<u32>> {
+    execute_detached_with_env(command, None).await
+}
+
+/// Like [`execute_detached`], with an optional explicit child environment.
+pub async fn execute_detached_with_env(
+    command: &str,
+    env: Option<&[(String, String)]>,
+) -> io::Result<Option<u32>> {
     let mut command_builder = Command::new("bash");
+    apply_env(&mut command_builder, env);
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;

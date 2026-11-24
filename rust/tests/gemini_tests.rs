@@ -207,8 +207,7 @@ fn test_build_command_reads_prompt_file_with_passthrough_options() {
     let cmd = build_command(&options);
     assert!(cmd.starts_with("cat "));
     assert!(cmd.contains("/tmp/gemini prompt.txt"));
-    assert!(cmd.contains("| env GEMINI_HOME="));
-    assert!(cmd.contains("/tmp/gemini home"));
+    assert!(!cmd.contains("GEMINI_HOME"));
     assert!(cmd.contains("/opt/gemini cli/gemini"));
     assert!(cmd.contains("--telemetry"));
     assert!(cmd.contains("false"));

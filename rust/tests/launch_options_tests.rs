@@ -21,6 +21,7 @@ fn launch() -> LaunchOptions {
         additional_directories: vec!["/a".to_string(), "/b".to_string()],
         attachments: Vec::new(),
         json_schema: None,
+        ..Default::default()
     }
 }
 

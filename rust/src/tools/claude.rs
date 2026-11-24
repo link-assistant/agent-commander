@@ -6,7 +6,7 @@ use crate::streaming::parse_json_records;
 use crate::tools::launch_options::{
     json_schema_arg, normalize_reasoning_effort, push_directories, LaunchOptions,
 };
-use crate::tools::shell::{build_command_head, escape_arg, lookup_model_alias};
+use crate::tools::shell::{build_command_head, escape_arg, file_content_arg, lookup_model_alias};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -244,7 +244,9 @@ pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
         args.push(normalize_reasoning_effort(effort));
     }
     // The answer is reported as `structured_output` on the result message.
-    if let Some(ref json_schema) = launch.json_schema {
+    if launch.json_schema_file.is_some() {
+        // Appended by `build_command` as `"$(cat <file>)"`.
+    } else if let Some(ref json_schema) = launch.json_schema {
         args.push("--json-schema".to_string());
         args.push(json_schema_arg(json_schema));
     }
@@ -269,12 +271,18 @@ pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
         }
     }
 
-    if let Some(ref system_prompt) = options.system_prompt {
+    if let Some(ref file) = options.launch.system_prompt_file {
+        args.push("--system-prompt-file".to_string());
+        args.push(file.clone());
+    } else if let Some(ref system_prompt) = options.system_prompt {
         args.push("--system-prompt".to_string());
         args.push(system_prompt.clone());
     }
 
-    if let Some(ref append_system_prompt) = options.append_system_prompt {
+    if let Some(ref file) = options.launch.append_system_prompt_file {
+        args.push("--append-system-prompt-file".to_string());
+        args.push(file.clone());
+    } else if let Some(ref append_system_prompt) = options.append_system_prompt {
         args.push("--append-system-prompt".to_string());
         args.push(append_system_prompt.clone());
     }
@@ -337,11 +345,14 @@ pub fn build_args(options: &ClaudeBuildOptions) -> Vec<String> {
 /// Complete command string
 pub fn build_command(options: &ClaudeBuildOptions) -> String {
     let args = build_args(options);
-    let args_str: Vec<String> = args.iter().map(|a| escape_arg(a)).collect();
+    let mut args_str: Vec<String> = args.iter().map(|a| escape_arg(a)).collect();
+    if let Some(ref file) = options.launch.json_schema_file {
+        args_str.push(file_content_arg("--json-schema", file));
+    }
     let executable = options.executable.as_deref().unwrap_or("claude");
     let command = format!(
         "{} {}",
-        build_command_head(executable, &options.unset_env, &options.extra_env, &[]),
+        build_command_head(executable, &[], &[], &[]),
         args_str.join(" ")
     )
     .trim()

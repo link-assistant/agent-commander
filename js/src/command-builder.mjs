@@ -5,7 +5,7 @@
 import { quoteForContext } from 'command-stream';
 import { resolveToolConfig, tools } from './tools/index.mjs';
 import { assertLaunchOptionsSupported } from './tools/launch-options.mjs';
-import { escapeArg } from './tools/shell.mjs';
+import { buildChildEnvironment, escapeArg } from './tools/shell.mjs';
 import { askUnsupportedError } from './permissions/index.mjs';
 
 /**
@@ -131,6 +131,7 @@ export function buildAgentCommand(options) {
   } else if (isolation === 'docker') {
     fullCommand = buildDockerCommand({
       baseCommand: fullCommand,
+      envNames: dockerEnvNames(toolOptions),
       containerName,
       workingDirectory,
       detached,
@@ -195,16 +196,34 @@ function buildScreenCommand(options) {
 }
 
 /**
+ * Names of the variables a docker run forwards from the spawn environment:
+ * everything set through `extraEnv` or an explicit `env` map.
+ * @param {Object} toolOptions - Tool options
+ * @returns {string[]} Variable names
+ */
+function dockerEnvNames(toolOptions) {
+  return Object.keys(
+    buildChildEnvironment({
+      extraEnv: toolOptions.extraEnv,
+      env: toolOptions.env,
+      inheritEnv: false,
+    })
+  );
+}
+
+/**
  * Build docker isolation command
  * @param {Object} options - Options
  * @param {string} options.baseCommand - Base command to wrap
  * @param {string} [options.containerName] - Container name
  * @param {string} options.workingDirectory - Working directory to mount
  * @param {boolean} [options.detached] - Detached mode
+ * @param {string[]} [options.envNames] - Variables forwarded into the container
  * @returns {string} Docker command
  */
 function buildDockerCommand(options) {
   const {
+    envNames = [],
     baseCommand,
     containerName,
     workingDirectory,
@@ -223,6 +242,12 @@ function buildDockerCommand(options) {
   dockerCommand += ` --name "${name}"`;
   dockerCommand += ` -v "${workingDirectory}:${workingDirectory}"`;
   dockerCommand += ` -w "${workingDirectory}"`;
+  // `-e NAME` without a value copies NAME from the docker client's
+  // environment, which `agent()` sets through the spawn env: values stay off
+  // the command line (issue #60).
+  for (const name of envNames) {
+    dockerCommand += ` -e ${name}`;
+  }
   dockerCommand += ` node:18-slim`;
   dockerCommand += ` bash -c '${escapeQuotes(baseCommand)}'`;
 

@@ -115,6 +115,16 @@ let mut controller = agent(AgentOptions {
 })?;
 ```
 
+Environment values and private input never appear on the command line, which other local users can read with `ps` and `/proc/<pid>/cmdline` (issue #60):
+- `extra_env` is applied through the child environment, as is `unset_env`.
+- `inherit_env: InheritEnv::Only(vec!["PATH".into(), "HOME".into()])` (or `InheritEnv::None`) limits what the tool inherits.
+- `env: Some(...)` replaces the inherited environment.
+- Docker isolation forwards `extra_env` names with `-e NAME`.
+- Claude system prompts are passed with `--system-prompt-file` and `--append-system-prompt-file` (0600 temporary files).
+- `launch.json_schema` is written to a file: Codex uses `--output-schema <file>`, Qwen uses `--json-schema @<file>`, and Claude uses `--json-schema "$(cat <file>)"`. The Claude form is still one argument, limited to 128 KiB on Linux.
+
+The Rust controller never installs a process-exiting signal handler. A host owns SIGINT and SIGTERM and stops runs with `cancel()`.
+
 ## Completion, usage and cancellation
 
 For direct JSON runs, `metadata.success` requires native completion and a successful process exit. Empty or unfinished streams return `incomplete_stream`; Agent's default NDJSON mode uses the same check. Protocol parsing and usage use stdout, while `plain_output` retains stderr diagnostics. Parent session metadata excludes Claude subagent-scoped results.

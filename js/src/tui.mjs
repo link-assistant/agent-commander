@@ -1,9 +1,14 @@
 import { captureTerminal } from 'command-stream';
-import { rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { getTool, isToolSupported } from './tools/index.mjs';
-import { normalizeExtraArgs, normalizeExtraEnv } from './tools/shell.mjs';
+import {
+  buildChildEnvironment,
+  normalizeExtraArgs,
+  normalizeExtraEnv,
+} from './tools/shell.mjs';
 
 const READ_ONLY_OPENCODE_PERMISSION =
   '{"edit":"deny","bash":"deny","task":"deny"}';
@@ -37,7 +42,9 @@ const claudeArgs = (options, tool) => {
   if (options.model) {
     args.push('--model', mappedModel(tool, options.model));
   }
-  if (options.systemPrompt) {
+  if (options.appendSystemPromptFile) {
+    args.push('--append-system-prompt-file', options.appendSystemPromptFile);
+  } else if (options.systemPrompt) {
     args.push('--append-system-prompt', options.systemPrompt);
   }
   if (options.resume) {
@@ -171,25 +178,17 @@ const selectArtifacts = async (directory, requested) => {
   );
 };
 
-const launchEnvironment = ({ extraEnv, tool, readOnly }) => {
-  const entries = normalizeExtraEnv(extraEnv);
+const launchEnvironment = ({ extraEnv, env, inheritEnv, tool, readOnly }) => {
+  const entries = [
+    // Interactive clients such as Codex refuse to start their TUI when the
+    // parent process inherited TERM=dumb (common in CI).
+    ['TERM', 'xterm-256color'],
+    ...normalizeExtraEnv(extraEnv),
+  ];
   if (tool === 'opencode' && readOnly) {
     entries.push(['OPENCODE_PERMISSION', READ_ONLY_OPENCODE_PERMISSION]);
   }
-  const env = {
-    ...process.env,
-    // Interactive clients such as Codex refuse to start their TUI when the
-    // parent process inherited TERM=dumb (common in CI).
-    TERM: 'xterm-256color',
-  };
-  for (const [name, value] of entries) {
-    if (value === null) {
-      delete env[name];
-    } else {
-      env[name] = value;
-    }
-  }
-  return env;
+  return buildChildEnvironment({ extraEnv: entries, env, inheritEnv });
 };
 
 /**
@@ -222,6 +221,8 @@ export const buildAgentTuiLaunch = (options) => {
     cwd: workingDirectory,
     env: launchEnvironment({
       extraEnv: options.extraEnv,
+      env: options.env,
+      inheritEnv: options.inheritEnv,
       tool: toolName,
       readOnly: options.readOnly,
     }),
@@ -273,6 +274,33 @@ export const normalizeTuiTranscript = (transcript) => {
  * Capture and drive an agent's real interactive terminal interface.
  */
 export const captureAgentTui = async (options) => {
+  const { tool, systemPrompt } = options;
+  // Keep the Claude system prompt off argv (issue #60): pass it as a 0600
+  // file that is removed when the capture ends.
+  const systemPromptDir =
+    tool === 'claude' && systemPrompt && !options.appendSystemPromptFile
+      ? await mkdtemp(join(tmpdir(), 'agent-commander-tui-'))
+      : null;
+  const launchOptions = { ...options };
+  if (systemPromptDir) {
+    launchOptions.appendSystemPromptFile = join(
+      systemPromptDir,
+      'append-system-prompt.txt'
+    );
+    await writeFile(launchOptions.appendSystemPromptFile, systemPrompt, {
+      mode: 0o600,
+    });
+  }
+  try {
+    return await runTuiCapture(launchOptions);
+  } finally {
+    if (systemPromptDir) {
+      await rm(systemPromptDir, { recursive: true, force: true });
+    }
+  }
+};
+
+const runTuiCapture = async (options) => {
   const {
     tool,
     prompt,

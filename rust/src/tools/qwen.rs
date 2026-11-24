@@ -180,7 +180,10 @@ pub fn build_args(options: &QwenBuildOptions) -> Vec<String> {
     }
     // A JSON literal; qwen reads a value starting with `@` as a file path. The
     // answer is reported as `structured_result` on the result message.
-    if let Some(ref json_schema) = options.launch.json_schema {
+    if let Some(ref file) = options.launch.json_schema_file {
+        args.push("--json-schema".to_string());
+        args.push(format!("@{file}"));
+    } else if let Some(ref json_schema) = options.launch.json_schema {
         args.push("--json-schema".to_string());
         args.push(json_schema_arg(json_schema));
     }
@@ -222,7 +225,7 @@ pub fn build_command(options: &QwenBuildOptions) -> String {
     let executable = options.executable.as_deref().unwrap_or("qwen");
     let command = format!(
         "{} {}",
-        build_command_head(executable, &options.unset_env, &options.extra_env, &[]),
+        build_command_head(executable, &[], &[], &[]),
         args_str.join(" ")
     )
     .trim()

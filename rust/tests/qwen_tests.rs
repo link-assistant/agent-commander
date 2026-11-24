@@ -267,8 +267,7 @@ fn test_build_command_reads_prompt_file_with_passthrough_options() {
     let cmd = build_command(&options);
     assert!(cmd.starts_with("cat "));
     assert!(cmd.contains("/tmp/qwen prompt.txt"));
-    assert!(cmd.contains("| env QWEN_HOME="));
-    assert!(cmd.contains("/tmp/qwen home"));
+    assert!(!cmd.contains("QWEN_HOME"));
     assert!(cmd.contains("/opt/qwen code/qwen"));
     assert!(cmd.contains("--approval-mode"));
     assert!(cmd.contains("default"));

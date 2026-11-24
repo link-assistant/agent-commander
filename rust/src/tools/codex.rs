@@ -256,7 +256,9 @@ pub fn build_args(options: &CodexBuildOptions) -> Vec<String> {
 pub fn build_command(options: &CodexBuildOptions) -> String {
     let args = build_args(options);
     let mut args_str: Vec<String> = args.iter().map(|a| escape_arg(a)).collect();
-    if let Some(ref json_schema) = options.launch.json_schema {
+    if let Some(ref file) = options.launch.json_schema_file {
+        args_str.push(format!("--output-schema {}", escape_arg(file)));
+    } else if let Some(ref json_schema) = options.launch.json_schema {
         args_str.push(format!(
             "--output-schema <(printf '%s' {})",
             escape_arg(&json_schema_arg(json_schema))
@@ -289,12 +291,7 @@ pub fn build_command(options: &CodexBuildOptions) -> String {
     format!(
         "{} | {} {}",
         input_command,
-        build_command_head(
-            executable,
-            &options.unset_env,
-            &options.extra_env,
-            &prefix_args
-        ),
+        build_command_head(executable, &[], &[], &prefix_args),
         args_str.join(" ")
     )
     .trim()
