@@ -56,11 +56,13 @@ pub use permissions::{
     PermissionRelay, ASK_DECISIONS, ASK_SUPPORTED_TOOLS,
 };
 
+pub use tools::shell::{build_child_environment, file_content_arg, InheritEnv};
+
 pub use executor::{
-    execute_command, execute_detached, is_process_group_alive, normalize_exit,
-    setup_signal_handler, signal_from_exit_code, signal_name, start_command,
-    start_command_with_stdin, ExecutionResult, ProcessHandle, DEFAULT_KILL_AFTER,
-    DEFAULT_PIPE_DRAIN,
+    execute_command, execute_detached, execute_detached_with_env, is_process_group_alive,
+    normalize_exit, setup_signal_handler, signal_from_exit_code, signal_name, start_command,
+    start_command_with_env, start_command_with_stdin, ExecutionResult, ProcessHandle,
+    DEFAULT_KILL_AFTER, DEFAULT_PIPE_DRAIN,
 };
 
 pub use background_tasks::{
@@ -201,6 +203,12 @@ pub struct AgentOptions {
     pub extra_env: Vec<(String, String)>,
     /// Variables removed from the inherited environment of the tool
     pub unset_env: Vec<String>,
+    /// Which host variables the tool inherits: all (default), none, or an
+    /// allowlist (issue #60)
+    pub inherit_env: InheritEnv,
+    /// Explicit environment replacing the inherited one; `extra_env` and
+    /// `unset_env` still apply on top (issue #60)
+    pub env: Option<Vec<(String, String)>>,
     /// Do not add default autonomous safety bypass flags
     pub skip_default_safety_flags: bool,
     /// Shared launch options: reasoning effort, MCP servers, strict MCP
@@ -408,17 +416,82 @@ impl Agent {
         }
     }
 
+    /// The tool's environment: `extra_env` values travel through `spawn`,
+    /// never through the command line (issue #60).
+    fn child_environment(&self) -> Result<Vec<(String, String)>, String> {
+        build_child_environment(
+            std::env::vars(),
+            &self.options.inherit_env,
+            self.options.env.as_deref(),
+            &self.options.unset_env,
+            &self.options.extra_env,
+        )
+    }
+
+    async fn ensure_prompt_temp_dir(&mut self) -> Result<PathBuf, String> {
+        if let Some(dir) = &self.prompt_temp_dir {
+            return Ok(dir.clone());
+        }
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|e| e.to_string())?
+            .as_nanos();
+        let dir = create_prompt_temp_dir(&std::env::temp_dir(), nanos).await?;
+        self.prompt_temp_dir = Some(dir.clone());
+        Ok(dir)
+    }
+
+    /// Write system prompts and the JSON Schema to owner-only files so they
+    /// stay out of `ps` / `/proc/<pid>/cmdline` and argv limits (issue #60).
+    async fn move_inline_values_to_files(
+        &mut self,
+        options: &mut AgentCommandOptions,
+    ) -> Result<(), String> {
+        let claude = options.tool == "claude";
+        let schema_tool = matches!(options.tool.as_str(), "claude" | "codex" | "qwen");
+        let mut files: Vec<(&str, String)> = Vec::new();
+        if claude {
+            if let Some(text) = options.system_prompt.clone().filter(|t| !t.is_empty()) {
+                files.push(("system-prompt.txt", text));
+            }
+            if let Some(text) = options
+                .append_system_prompt
+                .clone()
+                .filter(|t| !t.is_empty())
+            {
+                files.push(("append-system-prompt.txt", text));
+            }
+        }
+        if schema_tool {
+            if let Some(schema) = options.launch.json_schema.clone() {
+                files.push(("schema.json", json_schema_arg(&schema)));
+            }
+        }
+        if files.is_empty() {
+            return Ok(());
+        }
+        let dir = self.ensure_prompt_temp_dir().await?;
+        for (name, content) in files {
+            let path = dir.join(name);
+            write_prompt_file(&path, &content).await?;
+            let path = path.to_string_lossy().into_owned();
+            match name {
+                "system-prompt.txt" => options.launch.system_prompt_file = Some(path),
+                "append-system-prompt.txt" => {
+                    options.launch.append_system_prompt_file = Some(path);
+                }
+                _ => options.launch.json_schema_file = Some(path),
+            }
+        }
+        Ok(())
+    }
+
     async fn prepare_prompt_file(&mut self, dry_run: bool) -> Result<Option<String>, String> {
         if !should_create_prompt_file(&self.options, dry_run) {
             return Ok(self.options.prompt_file.clone());
         }
 
-        let nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|e| e.to_string())?
-            .as_nanos();
-        let temp_dir = create_prompt_temp_dir(&std::env::temp_dir(), nanos).await?;
-        self.prompt_temp_dir = Some(temp_dir.clone());
+        let temp_dir = self.ensure_prompt_temp_dir().await?;
         let prompt_file = temp_dir.join("prompt.txt");
         let content = build_prompt_file_content(
             &self.options.tool,
@@ -457,6 +530,9 @@ impl Agent {
                     .to_string(),
             );
         }
+
+        // Fail on an invalid environment before any side effects (issue #60).
+        let child_env = self.child_environment()?;
 
         // Create output stream for JSON parsing if in JSON mode
         if self.options.json || live {
@@ -518,6 +594,13 @@ impl Agent {
             overrides: self.options.tool_overrides.clone(),
         };
 
+        let mut command_options = command_options;
+        if !start_options.dry_run && self.options.tool_overrides.build_command.is_none() {
+            if let Err(error) = self.move_inline_values_to_files(&mut command_options).await {
+                self.cleanup_prompt_temp_dir().await;
+                return Err(error);
+            }
+        }
         let command = build_agent_command(&command_options);
 
         if start_options.dry_run {
@@ -528,7 +611,10 @@ impl Agent {
 
         if start_options.detached {
             // For detached mode, use execute_detached
-            if let Err(error) = execute_detached(&command).await.map_err(|e| e.to_string()) {
+            if let Err(error) = execute_detached_with_env(&command, Some(&child_env))
+                .await
+                .map_err(|e| e.to_string())
+            {
                 self.cleanup_prompt_temp_dir().await;
                 return Err(error);
             }
@@ -545,9 +631,9 @@ impl Agent {
         } else {
             // For attached mode, start command without waiting
             let started = if live {
-                start_command_with_stdin(&command, start_options.attached).await
+                start_command_with_env(&command, start_options.attached, true, &child_env).await
             } else {
-                start_command(&command, start_options.attached).await
+                start_command_with_env(&command, start_options.attached, false, &child_env).await
             };
             let handle = match started.map_err(|e| e.to_string()) {
                 Ok(handle) => handle,

@@ -189,7 +189,7 @@ pub fn build_command(options: &AgentBuildOptions) -> String {
     let executable = options.executable.as_deref().unwrap_or("agent");
     let command_head = format!(
         "{} {}",
-        build_command_head(executable, &options.unset_env, &options.extra_env, &[]),
+        build_command_head(executable, &[], &[], &[]),
         args_str.join(" ")
     )
     .trim()

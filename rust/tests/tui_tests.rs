@@ -243,3 +243,23 @@ for screen in one two three; do printf '\033[2J\033[H%s\n' $screen; sleep 0.05; 
     assert_eq!(latest.asciicast.events.len(), 0);
     assert!(latest.transcript.contains("three"));
 }
+
+#[test]
+fn claude_tui_reads_the_system_prompt_from_a_file() {
+    let launch =
+        agent_commander::tui::build_agent_tui_launch(&agent_commander::tui::AgentTuiOptions {
+            tool: "claude".into(),
+            working_directory: "/tmp".into(),
+            system_prompt: Some("PRIVATE".into()),
+            system_prompt_file: Some("/tmp/sp.txt".into()),
+            ..Default::default()
+        })
+        .unwrap();
+    assert!(!launch.args.iter().any(|a| a.contains("PRIVATE")));
+    let at = launch
+        .args
+        .iter()
+        .position(|a| a == "--append-system-prompt-file")
+        .unwrap();
+    assert_eq!(launch.args[at + 1], "/tmp/sp.txt");
+}

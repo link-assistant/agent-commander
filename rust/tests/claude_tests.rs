@@ -233,10 +233,12 @@ fn test_build_command_unsets_inherited_environment() {
         ..ClaudeBuildOptions::new()
     };
     let cmd = agent_commander::tools::claude::build_command(&options);
+    // The controller applies the environment through spawn (issue #60).
     assert!(
-        cmd.contains("env -u GH_TOKEN -u MAX_THINKING_TOKENS MCP_TIMEOUT=1 claude"),
+        !cmd.contains("GH_TOKEN") && !cmd.contains("MCP_TIMEOUT"),
         "{cmd}"
     );
+    assert!(cmd.starts_with("claude "), "{cmd}");
 }
 
 #[test]

@@ -145,12 +145,11 @@ pub fn build_command(options: &OpencodeBuildOptions) -> String {
             READ_ONLY_PERMISSION.to_string(),
         ));
     }
-    extra_env.extend(options.extra_env.clone());
 
     format!(
         "{} | {} {}",
         input_command,
-        build_command_head(executable, &options.unset_env, &extra_env, &[]),
+        build_command_head(executable, &[], &extra_env, &[]),
         args_str.join(" ")
     )
     .trim()

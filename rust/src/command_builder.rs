@@ -122,6 +122,7 @@ fn build_docker_command(
     container_name: Option<&str>,
     working_directory: &str,
     detached: bool,
+    env_names: &[String],
 ) -> String {
     let name = container_name.map(|s| s.to_string()).unwrap_or_else(|| {
         format!(
@@ -147,6 +148,11 @@ fn build_docker_command(
         working_directory, working_directory
     ));
     command.push_str(&format!(" -w \"{}\"", working_directory));
+    // `-e NAME` copies the value from the docker client's environment, so it
+    // never appears on the command line (issue #60).
+    for name in env_names {
+        command.push_str(&format!(" -e {name}"));
+    }
     command.push_str(" node:18-slim");
     command.push_str(&format!(
         " bash -c '{}'",
@@ -154,6 +160,22 @@ fn build_docker_command(
     ));
 
     command
+}
+
+/// Names forwarded into a docker container: `extra_env` plus the read-only
+/// OpenCode permission. Invalid names panic, as in `build_command_head`.
+fn docker_env_names(options: &AgentCommandOptions) -> Vec<String> {
+    let mut names: Vec<String> = Vec::new();
+    for (name, _) in &options.extra_env {
+        assert!(
+            crate::tools::shell::is_valid_env_name(name),
+            "invalid environment variable name: {name}"
+        );
+        if !names.contains(name) {
+            names.push(name.clone());
+        }
+    }
+    names
 }
 
 /// Build the command for executing an agent
@@ -220,6 +242,7 @@ pub fn build_agent_command(options: &AgentCommandOptions) -> String {
                 options.container_name.as_deref(),
                 &options.working_directory,
                 options.detached,
+                &docker_env_names(options),
             );
         }
         _ => {}
@@ -534,15 +557,59 @@ mod tests {
         };
 
         let command = build_agent_command(&options);
-        assert!(command.contains("env"));
-        assert!(command.contains("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1"));
-        assert!(command.contains("MCP_TIMEOUT=10000"));
+        // Environment values travel through spawn, not argv (issue #60).
+        assert!(!command.contains("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"));
+        assert!(!command.contains("MCP_TIMEOUT"));
         assert!(command.contains("/opt/Claude Code/bin/claude"));
         assert!(command.contains("--mcp-config"));
         assert!(command.contains("/tmp/mcp config.json"));
         assert!(command.contains("--permission-mode"));
         assert!(command.contains("default"));
         assert!(!command.contains("--dangerously-skip-permissions"));
+    }
+
+    #[test]
+    fn test_docker_forwards_extra_env_by_name_only() {
+        let options = AgentCommandOptions {
+            tool: "claude".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            prompt: Some("Hello".to_string()),
+            extra_env: vec![("API_TOKEN".to_string(), "sk-secret".to_string())],
+            isolation: "docker".to_string(),
+            container_name: Some("c".to_string()),
+            ..Default::default()
+        };
+        let command = build_agent_command(&options);
+        assert!(command.contains(" -e API_TOKEN "));
+        assert!(!command.contains("sk-secret"));
+    }
+
+    #[test]
+    fn test_claude_prompt_and_schema_files_replace_inline_values() {
+        let options = AgentCommandOptions {
+            tool: "claude".to_string(),
+            working_directory: "/tmp/test".to_string(),
+            prompt: Some("Hello".to_string()),
+            system_prompt: Some("PRIVATE-SYSTEM".to_string()),
+            append_system_prompt: Some("PRIVATE-APPEND".to_string()),
+            launch: crate::tools::launch_options::LaunchOptions {
+                json_schema: Some(r#"{"type":"object","secretField":1}"#.to_string()),
+                json_schema_file: Some("/tmp/d/schema.json".to_string()),
+                system_prompt_file: Some("/tmp/d/system-prompt.txt".to_string()),
+                append_system_prompt_file: Some("/tmp/d/append.txt".to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let command = build_agent_command(&options);
+        assert!(!command.contains("PRIVATE"));
+        assert!(!command.contains("secretField"));
+        assert!(command.contains("--system-prompt-file /tmp/d/system-prompt.txt"));
+        assert!(command.contains("--append-system-prompt-file /tmp/d/append.txt"));
+        assert!(
+            command.contains("--json-schema \\\"\\$(cat /tmp/d/schema.json)\\\""),
+            "{command}"
+        );
     }
 
     #[test]
@@ -566,8 +633,7 @@ mod tests {
         let command = build_agent_command(&options);
         assert!(command.contains("cat"));
         assert!(command.contains("/tmp/prompt.txt"));
-        assert!(command.contains("| env QWEN_HOME="));
-        assert!(command.contains("/tmp/qwen home"));
+        assert!(!command.contains("QWEN_HOME"));
         assert!(command.contains("/opt/qwen code/qwen"));
         assert!(command.contains("--checkpointing"));
         assert!(command.contains("--approval-mode"));
@@ -592,8 +658,7 @@ mod tests {
         let command = build_agent_command(&options);
         assert!(command.contains("cat"));
         assert!(command.contains("/tmp/prompt.txt"));
-        assert!(command.contains("| env GEMINI_HOME="));
-        assert!(command.contains("/tmp/gemini home"));
+        assert!(!command.contains("GEMINI_HOME"));
         assert!(command.contains("/opt/gemini cli/gemini"));
         assert!(command.contains("--telemetry"));
         assert!(command.contains("false"));

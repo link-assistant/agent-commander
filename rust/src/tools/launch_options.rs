@@ -24,6 +24,16 @@ pub struct LaunchOptions {
     /// Claude and Qwen `--json-schema`, Codex `--output-schema`. The result
     /// is reported as `metadata.structured_output`.
     pub json_schema: Option<String>,
+    /// File holding `json_schema` (written by [`crate::Agent::start`] so the
+    /// schema does not appear on the command line; issue #60). Codex reads it
+    /// with `--output-schema <file>`, Qwen with `--json-schema @<file>` and
+    /// Claude through `--json-schema "$(cat <file>)"`.
+    pub json_schema_file: Option<String>,
+    /// Claude `--system-prompt-file` (replaces the inline `--system-prompt`)
+    pub system_prompt_file: Option<String>,
+    /// Claude `--append-system-prompt-file` (replaces the inline
+    /// `--append-system-prompt`)
+    pub append_system_prompt_file: Option<String>,
 }
 
 /// What a tool natively supports among the launch options
