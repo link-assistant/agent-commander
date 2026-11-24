@@ -6,6 +6,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- changelog-insert-here -->
+## [0.5.1] - 2026-11-24
+
+### Added
+
+- Launch options for upcomputer and Hive Mind (issue #57), mapped to native flags and rejected by tools without them:
+  - `reasoning_effort`
+  - `mcp_config` and `strict_mcp_config`
+  - `additional_directories`
+  - `attachments`
+  - `json_schema`
+
+  `launch_capabilities` and `check_launch_options_supported` report and enforce support.
+
+- `usage_windows`, `context_usage` and `structured_output` in result metadata, with Codex rollout helpers (`apply_codex_rollout_usage_windows`, `codex_rollout_context_usage`).
+- Live input for claude, qwen and agent: `send_message`, `interrupt`, `end_input`, and the frame builders.
+- CLI version probe: `get_tool_version`, `parse_tool_version`, `compare_versions`, `build_version_command`.
+- `ToolOverrides` replaces a tool's command builder, parser, session-id or usage extractor, executable or launch capabilities for one run, or drives an unregistered tool. `escape_arg` and `build_base_command` are exported for override builders.
+
+### Fixed
+
+- Prompt files over 2 MiB are now fully written before the agent starts. tokio writes a file at most 2 MiB at a time, and `write_all` returned before the last write finished, so a tool could read a cut-off prompt.
+
+### Security
+
+- `extra_env` values are passed through the child environment (`Command::envs`) instead of `env KEY=value` on the command line, which other local users can read with `ps` or `/proc/<pid>/cmdline` (issue #60). `unset_env` is applied the same way. Docker isolation forwards the variables by name with `-e NAME`.
+- The Claude `system_prompt` and `append_system_prompt` are written to owner-only (0600) temporary files and passed with `--system-prompt-file` and `--append-system-prompt-file`. The TUI driver does the same for `--append-system-prompt-file`.
+- `launch.json_schema` is written to a temporary file:
+  - Codex reads it with `--output-schema <file>`.
+  - Qwen reads it with `--json-schema @<file>`.
+  - Claude receives it as `--json-schema "$(cat <file>)"`. It is still one argument, so it must stay under Linux's 128 KiB per-argument limit.
+
+### Added
+
+- `AgentOptions::inherit_env`: `InheritEnv::All` (default), `None` or `Only(names)`, an allowlist of host variables the tool inherits.
+- `AgentOptions::env`: an explicit environment that replaces the inherited one.
+- `build_child_environment`, `file_content_arg`, `start_command_with_env` and `execute_detached_with_env`.
+
 ## [0.4.0] - 2026-10-22
 
 ### Added
