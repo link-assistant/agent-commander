@@ -3,7 +3,12 @@
 
 use std::collections::HashMap;
 
+use crate::tools::launch_options::{
+    validate_max_output_tokens, validate_temperature, MAX_OUTPUT_TOKENS_ERROR, TEMPERATURE_ERROR,
+};
+
 const VALUE_OPTION_KEYS: &[&str] = &["tool-arg"];
+const GENERATION_OPTION_KEYS: &[&str] = &["max-output-tokens", "temperature"];
 
 /// Parsed command line arguments
 #[derive(Debug, Clone, Default)]
@@ -50,7 +55,20 @@ pub fn parse_args(args: &[String]) -> ParsedArgs {
         let arg = &args[i];
 
         if arg.starts_with("--") {
-            let key = arg.trim_start_matches("--").to_string();
+            let key = arg.trim_start_matches("--");
+            if let Some((name, value)) = key
+                .split_once('=')
+                .filter(|(name, _)| GENERATION_OPTION_KEYS.contains(name))
+            {
+                parsed
+                    .options
+                    .entry(name.to_string())
+                    .or_default()
+                    .push(value.to_string());
+                i += 1;
+                continue;
+            }
+            let key = key.to_string();
             let next_arg = args.get(i + 1);
 
             // Check if it's a flag (boolean) or has a value
@@ -86,6 +104,12 @@ pub struct StartAgentOptions {
     pub model: Option<String>,
     pub fallback_model: Option<String>,
     pub reasoning_effort: Option<String>,
+    /// Native output token budget (`--max-output-tokens`).
+    pub max_output_tokens: Option<u64>,
+    /// Native sampling temperature (`--temperature`).
+    pub temperature: Option<f64>,
+    /// Parsing errors from numeric launch flags.
+    pub generation_option_errors: Vec<String>,
     pub mcp_config: Option<String>,
     pub strict_mcp_config: bool,
     /// Extra directories the agent may access (`--add-dir`, repeatable)
@@ -142,6 +166,20 @@ pub fn parse_start_agent_args(args: &[String]) -> StartAgentOptions {
         .cloned()
         .unwrap_or_else(|| "none".to_string());
 
+    let mut generation_option_errors = Vec::new();
+    let max_output_tokens = parse_generation_option(
+        &parsed,
+        "max-output-tokens",
+        MAX_OUTPUT_TOKENS_ERROR,
+        &mut generation_option_errors,
+    );
+    let temperature = parse_generation_option(
+        &parsed,
+        "temperature",
+        TEMPERATURE_ERROR,
+        &mut generation_option_errors,
+    );
+
     StartAgentOptions {
         tool: parsed.get("tool").cloned(),
         working_directory: parsed.get("working-directory").cloned(),
@@ -152,6 +190,9 @@ pub fn parse_start_agent_args(args: &[String]) -> StartAgentOptions {
         model: parsed.get("model").cloned(),
         fallback_model: parsed.get("fallback-model").cloned(),
         reasoning_effort: parsed.get("reasoning-effort").cloned(),
+        max_output_tokens,
+        temperature,
+        generation_option_errors,
         mcp_config: parsed.get("mcp-config").cloned(),
         strict_mcp_config: parsed.get_bool("strict-mcp-config"),
         additional_directories: parsed.get_all("add-dir"),
@@ -181,6 +222,25 @@ pub fn parse_start_agent_args(args: &[String]) -> StartAgentOptions {
         attached: !detached, // Default is attached unless detached is specified
         help: parsed.get_bool("help") || parsed.get_bool("h"),
     }
+}
+
+fn parse_generation_option<T: std::str::FromStr>(
+    args: &ParsedArgs,
+    key: &str,
+    error: &str,
+    errors: &mut Vec<String>,
+) -> Option<T> {
+    if !args.has_flag(key) {
+        return None;
+    }
+    let value = match args.options.get(key).map(Vec::as_slice) {
+        Some([value]) if !args.flags.iter().any(|flag| flag == key) => value.parse().ok(),
+        _ => None,
+    };
+    if value.is_none() {
+        errors.push(error.to_string());
+    }
+    value
 }
 
 /// Parse stop-agent CLI arguments
@@ -219,6 +279,8 @@ Options:
   --fallback-model <model>         Fallback model when default is overloaded
   --reasoning-effort <level>       Native reasoning effort (claude --effort, codex
                                    model_reasoning_effort, opencode --variant)
+  --max-output-tokens <count>      Native output token budget (claude, opencode)
+  --temperature <number>           Native sampling temperature (agent)
   --mcp-config <path|json>         MCP servers config (claude, codex, qwen)
   --strict-mcp-config              Use only the --mcp-config servers (claude)
   --add-dir <dir>                  Extra directory the agent may access (repeatable;
@@ -323,7 +385,13 @@ pub struct ValidationResult {
 /// # Returns
 /// Validation result with valid flag and errors
 pub fn validate_start_agent_options(options: &StartAgentOptions) -> ValidationResult {
-    let mut errors = Vec::new();
+    let mut errors = options.generation_option_errors.clone();
+    if let Some(Err(error)) = options.max_output_tokens.map(validate_max_output_tokens) {
+        errors.push(error.to_string());
+    }
+    if let Some(Err(error)) = options.temperature.map(validate_temperature) {
+        errors.push(error.to_string());
+    }
 
     if options.tool.is_none() {
         errors.push("--tool is required".to_string());

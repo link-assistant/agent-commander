@@ -167,10 +167,15 @@ test(
       prompt: 'user prompt',
       systemPrompt: 'PRIVATE-SYSTEM-PROMPT',
       jsonSchema: schema,
+      maxOutputTokens: 128,
       json: true,
       toolOptions: {
         appendSystemPrompt: 'PRIVATE-APPEND',
-        extraEnv: { API_TOKEN: 'sk-very-secret', HOME: null },
+        extraEnv: {
+          API_TOKEN: 'sk-very-secret',
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: '256',
+          HOME: null,
+        },
       },
     });
     await controller.start({ attached: false });
@@ -203,6 +208,8 @@ test(
       schema
     );
     assert.match(env, /^API_TOKEN=sk-very-secret$/m);
+    assert.match(env, /^CLAUDE_CODE_MAX_OUTPUT_TOKENS=128$/m);
+    assert.doesNotMatch(argv, /CLAUDE_CODE_MAX_OUTPUT_TOKENS/);
     assert.doesNotMatch(env, /^HOME=/m);
   }
 );

@@ -18,6 +18,7 @@ import {
   mcpConfigArg,
   normalizeAdditionalDirectories,
   normalizeReasoningEffort,
+  validateMaxOutputTokens,
 } from './launch-options.mjs';
 
 /**
@@ -290,6 +291,7 @@ export function buildArgs(options) {
  * @param {string} [options.permissionMode] - Explicit Claude permission mode
  * @param {string} [options.jsonSchemaFile] - File holding the structured-output
  *   schema; read by the shell, so it is not part of the `bash -c` command line
+ * @param {number} [options.maxOutputTokens] - Native output token budget
  * @returns {string} Complete command string
  */
 export function buildCommand(options) {
@@ -298,6 +300,7 @@ export function buildCommand(options) {
     promptFile,
     executable = 'claude',
     extraEnv,
+    maxOutputTokens,
     streamInput = false,
     jsonSchemaFile,
     ...argOptions
@@ -312,8 +315,13 @@ export function buildCommand(options) {
   const schemaArg = jsonSchemaFile
     ? fileContentArg('--json-schema', jsonSchemaFile)
     : '';
+  validateMaxOutputTokens(maxOutputTokens);
+  const fixedEnv =
+    typeof maxOutputTokens === 'number'
+      ? { CLAUDE_CODE_MAX_OUTPUT_TOKENS: maxOutputTokens }
+      : undefined;
   const command =
-    `${buildCommandHead({ executable, extraEnv })} ${args.map(escapeArg).join(' ')}`.trim() +
+    `${buildCommandHead({ executable, extraEnv, fixedEnv })} ${args.map(escapeArg).join(' ')}`.trim() +
     schemaArg;
 
   if (streamInput) {
@@ -387,6 +395,7 @@ export const claudeTool = {
   supportsReadOnly: true, // Supports --permission-mode plan
   supportsAsk: true, // Per-command approval via stream-json can_use_tool relay
   supportsReasoningEffort: true, // --effort <level>
+  supportsMaxOutputTokens: true, // CLAUDE_CODE_MAX_OUTPUT_TOKENS
   reasoningEfforts,
   supportsMcpConfig: true, // --mcp-config <path|json>
   supportsStrictMcpConfig: true, // --strict-mcp-config

@@ -49,6 +49,8 @@ Common options:
 - `--tool-arg <arg>`: append a raw native tool argument, repeatable
 - `--skip-default-safety-flags`: suppress default autonomous safety bypass flags, including Qwen/Gemini `--yolo`
 - `--reasoning-effort <level>`: native reasoning effort (claude `--effort`, codex `model_reasoning_effort`, opencode `--variant`)
+- `--max-output-tokens <count>` for Claude Code and OpenCode
+- `--temperature <number>` for `@link-assistant/agent`
 - `--mcp-config <path|json>` and `--strict-mcp-config`: MCP servers (claude, codex, qwen; strict for claude)
 - `--add-dir <dir>`: extra directory the agent may access, repeatable (claude, codex, gemini, qwen)
 - `--attach <file>`: attach a file to the prompt, repeatable (codex `--image`, opencode `--file`)
@@ -154,6 +156,7 @@ let mut controller = agent(AgentOptions {
     prompt: Some("Refactor the parser".to_string()),
     launch: LaunchOptions {
         reasoning_effort: Some("high".to_string()),
+        max_output_tokens: Some(4096),
         mcp_config: Some("/tmp/mcp.json".to_string()),
         strict_mcp_config: true,
         additional_directories: vec!["../shared".to_string()],
@@ -171,6 +174,8 @@ println!("{:?} {:?}", result.metadata.usage_windows, result.metadata.context_usa
 ```
 
 A tool without a native flag for a launch option is rejected before it starts; `launch_capabilities(tool)` reports what each tool supports. `attachments` works for Codex (`--image`) and OpenCode (`--file`). `launch.json_schema` (JSON text) asks Claude, Codex or Qwen for an answer that matches the schema and reports it as `metadata.structured_output`. `interrupt().await` ends the running turn for Claude and Qwen; `end_input()` closes stdin. `metadata.usage_windows` comes from Claude `rate_limit_event` messages and Codex `rate_limits`; `metadata.context_usage` reports the last and peak context fill against the model's window. For Codex, `stop()` reads both from the thread's rollout file. See [launch options](../docs/common-concepts.md#launch-options) and the [upcomputer case study](../docs/case-studies/issue-57/README.md).
+
+Set `LaunchOptions::max_output_tokens` for Claude Code or OpenCode and `LaunchOptions::temperature` for `@link-assistant/agent`. Check the corresponding booleans on `launch_capabilities(tool)` before starting a run.
 
 ## Tool overrides
 

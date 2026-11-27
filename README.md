@@ -171,6 +171,8 @@ start-agent --tool claude --working-directory "/tmp/dir" --prompt "Solve the iss
 - `--model <name>` - Model to use (e.g., 'sonnet', 'opus', 'grok')
 - `--fallback-model <name>` - Fallback model when default is overloaded (Claude only)
 - `--reasoning-effort <level>` - Native reasoning effort (claude `--effort`, codex `model_reasoning_effort`, opencode `--variant`)
+- `--max-output-tokens <count>` - Native output token budget (claude, opencode)
+- `--temperature <number>` - Native sampling temperature (agent)
 - `--mcp-config <path|json>` - MCP servers config (claude, codex, qwen)
 - `--strict-mcp-config` - Use only the `--mcp-config` servers (claude)
 - `--add-dir <dir>` - Extra directory the agent may access (repeatable; claude, codex, gemini, qwen)
@@ -384,6 +386,8 @@ See [usage windows and context usage](docs/common-concepts.md#usage-windows-and-
 A `CODEX_HOME` or `CLAUDE_CONFIG_DIR` passed in `toolOptions.extraEnv` is honoured. Only the last turn or entry is read, so a limit the session recovered from is not reported. The same checks are exported for callers that run the CLIs themselves: `applyCodexRolloutUsageLimit`, `detectCodexRolloutUsageLimit`, `canResumeCodexSession` (a missing rollout means `codex exec resume` cannot work, so start a new session), `applyClaudeTranscriptUsageLimit` and `readClaudeTranscriptApiError`. Hive Mind's text classifiers are exported too: `detectUsageLimitSources`, `isUsageLimitText`, `extractResetTime` and `isRecoverableToolError`.
 
 ### Launch Options
+
+Use `maxOutputTokens` for Claude Code or OpenCode and `temperature` for `@link-assistant/agent`. Check `getLaunchCapabilities(tools[toolName])` before requesting either option. Unsupported requests fail before the tool starts. See the [launch capability matrix](docs/common-concepts.md#launch-options).
 
 ```javascript
 const controller = agent({
@@ -703,6 +707,8 @@ Creates an agent controller.
 - `options.readOnly` (boolean, optional) - Enforce native read-only/planning mode
 - `options.planOnly` (boolean, optional) - Enforce native planning mode; the `agent` tool maps it to `--permission-mode plan` while other tools treat it like `readOnly`
 - `options.reasoningEffort` (string, optional) - Native reasoning effort / variant level
+- `options.maxOutputTokens` (positive safe integer, optional) - Native output token budget (claude, opencode)
+- `options.temperature` (finite non-negative number, optional) - Native sampling temperature (agent)
 - `options.mcpConfig` (string or object, optional) - MCP servers: config path, inline JSON or `{mcpServers}` object
 - `options.strictMcpConfig` (boolean, optional) - Use only the servers from `mcpConfig`
 - `options.additionalDirectories` (string or string array, optional) - Extra directories the agent may access

@@ -75,6 +75,8 @@ async fn main() {
         container_name: options.container_name,
         launch: LaunchOptions {
             reasoning_effort: options.reasoning_effort,
+            max_output_tokens: options.max_output_tokens,
+            temperature: options.temperature,
             mcp_config: options.mcp_config,
             strict_mcp_config: options.strict_mcp_config,
             additional_directories: options.additional_directories,

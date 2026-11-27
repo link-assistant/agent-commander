@@ -59,6 +59,8 @@ Common options:
 - `--tool-arg <arg>`: append a raw native tool argument, repeatable
 - `--skip-default-safety-flags`: suppress default autonomous safety bypass flags, including Qwen/Gemini `--yolo`
 - `--reasoning-effort <level>`: native reasoning effort (claude `--effort`, codex `model_reasoning_effort`, opencode `--variant`)
+- `--max-output-tokens <count>` for Claude Code and OpenCode
+- `--temperature <number>` for `@link-assistant/agent`
 - `--mcp-config <path|json>` and `--strict-mcp-config`: MCP servers (claude, codex, qwen; strict for claude)
 - `--add-dir <dir>`: extra directory the agent may access, repeatable (claude, codex, gemini, qwen)
 - `--attach <file>`: attach a file to the prompt, repeatable (codex `--image`, opencode `--file`)
@@ -141,6 +143,7 @@ const controller = agent({
   workingDirectory: '/tmp/project',
   prompt: 'Refactor the parser',
   reasoningEffort: 'high',
+  maxOutputTokens: 4096,
   mcpConfig: {
     mcpServers: { docs: { type: 'http', url: 'http://127.0.0.1:4100/mcp' } },
   },
@@ -155,6 +158,8 @@ console.log(result.metadata.usageWindows, result.metadata.contextUsage);
 ```
 
 A tool without a native flag for a launch option throws before it starts; `getLaunchCapabilities(tools.codex)` reports what a tool supports. `attachments` works for Codex (`--image`) and OpenCode (`--file`). `jsonSchema` (an object or JSON text) asks Claude, Codex or Qwen for an answer that matches the schema and reports it as `metadata.structuredOutput`. `interrupt()` ends the running turn for Claude and Qwen; `endInput()` closes stdin. `metadata.usageWindows` comes from Claude `rate_limit_event` messages and Codex `rate_limits`; `metadata.contextUsage` reports the last and peak context fill against the model's window. For Codex, `stop()` reads both from the thread's rollout file. See [launch options](../docs/common-concepts.md#launch-options) and the [upcomputer case study](../docs/case-studies/issue-57/README.md).
+
+Pass a positive safe integer as `maxOutputTokens` or a finite non-negative number as `temperature`. The `maxOutputTokens` and `temperature` booleans returned by `getLaunchCapabilities(tools[toolName])` indicate which controls the tool can apply at launch.
 
 ### Tool overrides
 

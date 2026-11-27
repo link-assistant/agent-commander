@@ -27,6 +27,8 @@ import { askUnsupportedError } from './permissions/index.mjs';
  * @param {boolean} [options.planOnly] - Enforce native planning mode (where the tool distinguishes it)
  * @param {boolean} [options.approveEach] - Enforce per-command approval (ask mode)
  * @param {string} [options.reasoningEffort] - Native reasoning effort level
+ * @param {number} [options.maxOutputTokens] - Native output token budget
+ * @param {number} [options.temperature] - Native sampling temperature
  * @param {string|Object} [options.mcpConfig] - MCP servers (`{mcpServers}`, inline JSON or path)
  * @param {boolean} [options.strictMcpConfig] - Use only the `mcpConfig` servers
  * @param {string[]} [options.additionalDirectories] - Extra workspace directories

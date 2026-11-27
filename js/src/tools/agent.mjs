@@ -17,6 +17,7 @@ import {
   normalizeExtraArgs,
 } from './shell.mjs';
 import { firstErrorText, stringifyErrorValue } from '../error-text.mjs';
+import { validateTemperature } from './launch-options.mjs';
 
 /**
  * Available Agent model configurations
@@ -40,6 +41,7 @@ export const mapModelToId = createModelMapper(modelMap);
  * @param {string} [options.prompt] - User prompt
  * @param {string} [options.systemPrompt] - System prompt (combined with user prompt)
  * @param {string} [options.model] - Model to use
+ * @param {number} [options.temperature] - Native sampling temperature
  * @param {boolean} [options.compactJson] - Use compact JSON output
  * @param {boolean} [options.useExistingClaudeOAuth] - Use existing Claude OAuth credentials
  * @param {boolean} [options.readOnly] - Enforce hard read-only mode (`--permission-mode readonly`)
@@ -54,6 +56,7 @@ export const mapModelToId = createModelMapper(modelMap);
 export function buildArgs(options) {
   const {
     model,
+    temperature,
     resume,
     compactJson = false,
     useExistingClaudeOAuth = false,
@@ -103,6 +106,11 @@ export function buildArgs(options) {
   if (model) {
     const mappedModel = mapModelToId({ model });
     args.push('--model', mappedModel);
+  }
+
+  validateTemperature(temperature);
+  if (typeof temperature === 'number') {
+    args.push('--temperature', String(temperature));
   }
 
   if (compactJson) {
@@ -364,6 +372,7 @@ export const agentTool = {
   supportsReadOnly: true, // Native --permission-mode readonly/plan (agent v0.24.0, PR #272)
   supportsAsk: true, // Native --permission-mode ask with JSON permission relay
   supportsReasoningEffort: false, // No effort/variant flag (agent 0.26)
+  supportsTemperature: true, // --temperature <number>
   reasoningEfforts: null,
   supportsMcpConfig: false, // No MCP config flag
   supportsStrictMcpConfig: false,

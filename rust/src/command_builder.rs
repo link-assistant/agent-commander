@@ -321,6 +321,7 @@ pub fn build_base_command(options: &AgentCommandOptions) -> String {
             prompt_file: options.prompt_file.clone(),
             system_prompt: options.system_prompt.clone(),
             model: options.model.clone(),
+            temperature: options.launch.temperature,
             compact_json: false,
             use_existing_claude_oauth: false,
             read_only: read_only_requested,

@@ -10,8 +10,161 @@ use agent_commander::{
     CLAUDE_REASONING_EFFORTS,
 };
 use serde_json::json;
+use std::process::Command;
 
 const MCP: &str = r#"{"mcpServers":{"upcomputer":{"type":"http","url":"http://127.0.0.1:4100/mcp","headers":{"Authorization":"Bearer t"}},"local fs":{"command":"npx","args":["-y","fs-mcp"]}}}"#;
+
+#[test]
+fn launch_options_keep_total_equality_with_temperature() {
+    fn assert_equal<T: Eq + std::fmt::Debug>(left: T, right: T) {
+        assert_eq!(left, right);
+    }
+    let options = |temperature| LaunchOptions {
+        temperature: Some(temperature),
+        ..Default::default()
+    };
+    assert_equal(options(0.0), options(-0.0));
+    assert_equal(options(f64::NAN), options(f64::NAN));
+    assert_ne!(options(0.1), options(0.2));
+}
+
+#[test]
+fn generation_capabilities_report_native_controls() {
+    for tool in ["claude", "codex", "opencode", "agent", "gemini", "qwen"] {
+        let capabilities = launch_capabilities(tool);
+        assert_eq!(
+            capabilities.max_output_tokens,
+            matches!(tool, "claude" | "opencode"),
+            "{tool}"
+        );
+        assert_eq!(capabilities.temperature, tool == "agent", "{tool}");
+    }
+}
+
+#[test]
+fn native_generation_options_reach_the_command() {
+    let mut options = AgentCommandOptions {
+        tool: "opencode".into(),
+        working_directory: ".".into(),
+        isolation: "docker".into(),
+        read_only: true,
+        launch: LaunchOptions {
+            max_output_tokens: Some(128),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let command = build_agent_command(&options);
+    assert!(command.contains("OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX=128 opencode run"));
+    assert!(command.contains("OPENCODE_PERMISSION="));
+
+    options.tool = "agent".into();
+    options.launch.max_output_tokens = None;
+    options.launch.temperature = Some(0.0);
+    assert!(
+        build_agent_command(&options).contains("agent --permission-mode readonly --temperature 0")
+    );
+}
+
+#[tokio::test]
+async fn unsupported_and_invalid_generation_options_fail_before_launch() {
+    let cases = [
+        (
+            "codex",
+            Some(128),
+            None,
+            "Tool \"codex\" does not support an output token budget",
+        ),
+        (
+            "claude",
+            None,
+            Some(0.0),
+            "Tool \"claude\" does not support sampling temperature",
+        ),
+        (
+            "claude",
+            Some(0),
+            None,
+            "--max-output-tokens must be a positive",
+        ),
+        (
+            "agent",
+            None,
+            Some(f64::NAN),
+            "--temperature must be a finite",
+        ),
+    ];
+    for (tool, max_output_tokens, temperature, expected) in cases {
+        let mut controller = agent(AgentOptions {
+            tool: tool.into(),
+            working_directory: ".".into(),
+            prompt: Some("hi".into()),
+            launch: LaunchOptions {
+                max_output_tokens,
+                temperature,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .unwrap();
+        let error = controller
+            .start(AgentStartOptions::default())
+            .await
+            .unwrap_err();
+        assert!(error.contains(expected), "{error}");
+    }
+}
+
+#[test]
+fn start_agent_maps_and_validates_generation_flags() {
+    let run = |args: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_start-agent"))
+            .args(["--working-directory", ".", "--dry-run"])
+            .args(args)
+            .output()
+            .unwrap()
+    };
+    for (args, expected) in [
+        (
+            &["--tool", "claude", "--max-output-tokens", "128"][..],
+            "CLAUDE_CODE_MAX_OUTPUT_TOKENS=128",
+        ),
+        (
+            &["--tool", "agent", "--temperature=0.1"],
+            "--temperature 0.1",
+        ),
+    ] {
+        let output = run(args);
+        assert!(output.status.success());
+        assert!(String::from_utf8_lossy(&output.stdout).contains(expected));
+    }
+
+    for (args, expected) in [
+        (&["--tool", "agent", "--temperature"][..], "--temperature"),
+        (
+            &["--tool", "claude", "--max-output-tokens", "1.5"],
+            "--max-output-tokens",
+        ),
+        (
+            &[
+                "--tool",
+                "claude",
+                "--max-output-tokens",
+                "128",
+                "--max-output-tokens=256",
+            ],
+            "--max-output-tokens",
+        ),
+        (
+            &["--tool", "codex", "--max-output-tokens=128"],
+            "Tool \"codex\" does not support",
+        ),
+    ] {
+        let output = run(args);
+        assert!(!output.status.success());
+        assert!(String::from_utf8_lossy(&output.stderr).contains(expected));
+    }
+}
 
 fn launch() -> LaunchOptions {
     LaunchOptions {

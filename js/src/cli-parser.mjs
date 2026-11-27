@@ -3,7 +3,13 @@
  * Simple argument parser without external dependencies
  */
 
+import {
+  validateMaxOutputTokens,
+  validateTemperature,
+} from './tools/launch-options.mjs';
+
 const VALUE_OPTION_KEYS = new Set(['tool-arg']);
+const NUMERIC_OPTION_KEYS = new Set(['max-output-tokens', 'temperature']);
 
 /**
  * Parse command line arguments
@@ -19,6 +25,11 @@ export function parseArgs(args) {
 
     if (arg.startsWith('--')) {
       const key = arg.slice(2);
+      const equals = key.indexOf('=');
+      if (equals !== -1 && NUMERIC_OPTION_KEYS.has(key.slice(0, equals))) {
+        setOptionValue(options, key.slice(0, equals), key.slice(equals + 1));
+        continue;
+      }
       const nextArg = args[i + 1];
 
       // Check if it's a flag (boolean) or has a value
@@ -28,6 +39,8 @@ export function parseArgs(args) {
       ) {
         setOptionValue(options, key, nextArg);
         i++; // Skip next arg as it's the value
+      } else if (NUMERIC_OPTION_KEYS.has(key)) {
+        setOptionValue(options, key, true);
       } else {
         options[key] = true;
       }
@@ -44,7 +57,7 @@ export function parseArgs(args) {
  * Set an option value while preserving repeated options.
  * @param {Object} options - Parsed options
  * @param {string} key - Option key
- * @param {string} value - Option value
+ * @param {string|boolean} value - Option value or a missing-value marker
  */
 function setOptionValue(options, key, value) {
   if (options[key] === undefined) {
@@ -71,6 +84,19 @@ function getOptionValues(parsed, key) {
 }
 
 /**
+ * Parse a numeric flag while retaining invalid and missing values for validation.
+ * @param {string|boolean|string[]|undefined} value - Parsed flag
+ * @param {RegExp} pattern - Accepted syntax
+ * @returns {number|undefined} Numeric value or NaN for an invalid flag
+ */
+function parseNumberOption(value, pattern) {
+  if (value === undefined) {
+    return undefined;
+  }
+  return typeof value === 'string' && pattern.test(value) ? Number(value) : NaN;
+}
+
+/**
  * Parse start-agent CLI arguments
  * @param {string[]} args - Process arguments
  * @returns {Object} Parsed configuration
@@ -88,6 +114,11 @@ export function parseStartAgentArgs(args) {
     model: parsed.model,
     fallbackModel: parsed['fallback-model'],
     reasoningEffort: parsed['reasoning-effort'],
+    maxOutputTokens: parseNumberOption(parsed['max-output-tokens'], /^\+?\d+$/),
+    temperature: parseNumberOption(
+      parsed.temperature,
+      /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i
+    ),
     mcpConfig: parsed['mcp-config'],
     strictMcpConfig: parsed['strict-mcp-config'] || false,
     additionalDirectories: getOptionValues(parsed, 'add-dir'),
@@ -151,6 +182,8 @@ Options:
   --fallback-model <model>         Fallback model when default is overloaded
   --reasoning-effort <level>       Native reasoning effort (claude --effort, codex
                                    model_reasoning_effort, opencode --variant)
+  --max-output-tokens <count>      Native output token budget (claude, opencode)
+  --temperature <number>           Native sampling temperature (agent)
   --mcp-config <path|json>         MCP servers config (claude, codex, qwen)
   --strict-mcp-config              Use only the --mcp-config servers (claude)
   --add-dir <dir>                  Extra directory the agent may access (repeatable;
@@ -250,6 +283,17 @@ Examples:
  */
 export function validateStartAgentOptions(options) {
   const errors = [];
+
+  for (const [validate, value] of [
+    [validateMaxOutputTokens, options.maxOutputTokens],
+    [validateTemperature, options.temperature],
+  ]) {
+    try {
+      validate(value);
+    } catch (error) {
+      errors.push(error.message);
+    }
+  }
 
   if (!options.tool) {
     errors.push('--tool is required');
