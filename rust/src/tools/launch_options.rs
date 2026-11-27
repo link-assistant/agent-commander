@@ -3,7 +3,7 @@
 use serde_json::Value;
 
 /// Launch options shared by every tool
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default)]
 pub struct LaunchOptions {
     /// Native reasoning effort / variant level (`--reasoning-effort`)
     pub reasoning_effort: Option<String>,
@@ -35,6 +35,46 @@ pub struct LaunchOptions {
     /// `--append-system-prompt`)
     pub append_system_prompt_file: Option<String>,
 }
+
+impl PartialEq for LaunchOptions {
+    fn eq(&self, other: &Self) -> bool {
+        let Self {
+            reasoning_effort,
+            max_output_tokens,
+            temperature,
+            mcp_config,
+            strict_mcp_config,
+            additional_directories,
+            attachments,
+            json_schema,
+            json_schema_file,
+            system_prompt_file,
+            append_system_prompt_file,
+        } = self;
+        // Even a NaN constructed before launch validation must equal itself.
+        let same_temperature = match (*temperature, other.temperature) {
+            (None, None) => true,
+            (Some(a), Some(b)) => {
+                a.partial_cmp(&b).is_some_and(std::cmp::Ordering::is_eq)
+                    || (a.is_nan() && b.is_nan())
+            }
+            _ => false,
+        };
+        same_temperature
+            && reasoning_effort == &other.reasoning_effort
+            && max_output_tokens == &other.max_output_tokens
+            && mcp_config == &other.mcp_config
+            && strict_mcp_config == &other.strict_mcp_config
+            && additional_directories == &other.additional_directories
+            && attachments == &other.attachments
+            && json_schema == &other.json_schema
+            && json_schema_file == &other.json_schema_file
+            && system_prompt_file == &other.system_prompt_file
+            && append_system_prompt_file == &other.append_system_prompt_file
+    }
+}
+
+impl Eq for LaunchOptions {}
 
 /// What a tool natively supports among the launch options
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

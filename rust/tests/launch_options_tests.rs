@@ -15,6 +15,20 @@ use std::process::Command;
 const MCP: &str = r#"{"mcpServers":{"upcomputer":{"type":"http","url":"http://127.0.0.1:4100/mcp","headers":{"Authorization":"Bearer t"}},"local fs":{"command":"npx","args":["-y","fs-mcp"]}}}"#;
 
 #[test]
+fn launch_options_keep_total_equality_with_temperature() {
+    fn assert_equal<T: Eq + std::fmt::Debug>(left: T, right: T) {
+        assert_eq!(left, right);
+    }
+    let options = |temperature| LaunchOptions {
+        temperature: Some(temperature),
+        ..Default::default()
+    };
+    assert_equal(options(0.0), options(-0.0));
+    assert_equal(options(f64::NAN), options(f64::NAN));
+    assert_ne!(options(0.1), options(0.2));
+}
+
+#[test]
 fn generation_capabilities_report_native_controls() {
     for tool in ["claude", "codex", "opencode", "agent", "gemini", "qwen"] {
         let capabilities = launch_capabilities(tool);
