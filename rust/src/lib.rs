@@ -211,7 +211,7 @@ pub struct AgentOptions {
     pub env: Option<Vec<(String, String)>>,
     /// Do not add default autonomous safety bypass flags
     pub skip_default_safety_flags: bool,
-    /// Shared launch options: reasoning effort, MCP servers, strict MCP
+    /// Shared launch options: generation controls, reasoning effort, MCP servers, strict MCP
     /// configuration, extra workspace directories, attachments and a JSON
     /// Schema for structured output
     pub launch: LaunchOptions,

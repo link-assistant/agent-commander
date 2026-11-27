@@ -1,13 +1,37 @@
 /**
- * Launch options shared by every tool: reasoning effort, MCP servers, extra
- * workspace directories, file attachments and a structured-output JSON Schema
- * (issue #57). Each tool maps them onto its own
- * native flag; a tool without a native flag rejects the option instead of
- * silently dropping it.
+ * Shared launch options and their native tool capabilities.
  */
 
 const EFFORT_PATTERN = /^[A-Za-z0-9_-]+$/;
 const TOML_BARE_KEY = /^[A-Za-z0-9_-]+$/;
+
+/**
+ * Validate a requested output budget.
+ * @param {number|null|undefined} value - Maximum output tokens
+ */
+export function validateMaxOutputTokens(value) {
+  if (
+    value !== undefined &&
+    value !== null &&
+    (!Number.isSafeInteger(value) || value < 1)
+  ) {
+    throw new TypeError('--max-output-tokens must be a positive safe integer');
+  }
+}
+
+/**
+ * Validate a requested sampling temperature.
+ * @param {number|null|undefined} value - Sampling temperature
+ */
+export function validateTemperature(value) {
+  if (
+    value !== undefined &&
+    value !== null &&
+    (!Number.isFinite(value) || value < 0)
+  ) {
+    throw new TypeError('--temperature must be a finite non-negative number');
+  }
+}
 
 /**
  * Validate a reasoning effort / variant name.
@@ -197,12 +221,14 @@ export function codexMcpServersOverride(mcpConfig) {
 /**
  * Describe what a tool natively supports among the launch options.
  * @param {Object} toolConfig - Tool configuration
- * @returns {{reasoningEffort: boolean, reasoningEfforts: string[]|null, mcpConfig: boolean, strictMcpConfig: boolean, additionalDirectories: boolean, attachments: boolean, jsonSchema: boolean}}
+ * @returns {{reasoningEffort: boolean, reasoningEfforts: string[]|null, maxOutputTokens: boolean, temperature: boolean, mcpConfig: boolean, strictMcpConfig: boolean, additionalDirectories: boolean, attachments: boolean, jsonSchema: boolean}}
  */
 export function getLaunchCapabilities(toolConfig) {
   return {
     reasoningEffort: Boolean(toolConfig?.supportsReasoningEffort),
     reasoningEfforts: toolConfig?.reasoningEfforts || null,
+    maxOutputTokens: Boolean(toolConfig?.supportsMaxOutputTokens),
+    temperature: Boolean(toolConfig?.supportsTemperature),
     mcpConfig: Boolean(toolConfig?.supportsMcpConfig),
     strictMcpConfig: Boolean(toolConfig?.supportsStrictMcpConfig),
     additionalDirectories: Boolean(toolConfig?.supportsAdditionalDirectories),
@@ -212,6 +238,16 @@ export function getLaunchCapabilities(toolConfig) {
 }
 
 const LAUNCH_OPTIONS = [
+  {
+    key: 'maxOutputTokens',
+    flag: 'supportsMaxOutputTokens',
+    label: 'an output token budget (--max-output-tokens)',
+  },
+  {
+    key: 'temperature',
+    flag: 'supportsTemperature',
+    label: 'sampling temperature (--temperature)',
+  },
   {
     key: 'reasoningEffort',
     flag: 'supportsReasoningEffort',
@@ -260,7 +296,7 @@ function supportingTools(tools, flag) {
 }
 
 /**
- * Throw when a requested launch option has no native flag in the tool.
+ * Throw when a requested launch option has no native control in the tool.
  * @param {Object} options - Options
  * @param {string} options.tool - Tool name
  * @param {Object|undefined} options.toolConfig - Tool configuration
@@ -273,6 +309,8 @@ export function assertLaunchOptionsSupported({
   tools,
   requested,
 }) {
+  validateMaxOutputTokens(requested.maxOutputTokens);
+  validateTemperature(requested.temperature);
   for (const { key, flag, label, normalize } of LAUNCH_OPTIONS) {
     const value = requested[key];
     const isRequested = normalize

@@ -2,7 +2,9 @@
 //! Based on hive-mind's opencode.lib.mjs implementation
 
 use crate::streaming::parse_json_records;
-use crate::tools::launch_options::{normalize_reasoning_effort, push_attachments, LaunchOptions};
+use crate::tools::launch_options::{
+    normalize_reasoning_effort, push_attachments, validate_max_output_tokens, LaunchOptions,
+};
 use crate::tools::shell::{
     build_command_head, escape_arg, escape_single_quotes, lookup_model_alias,
 };
@@ -143,6 +145,13 @@ pub fn build_command(options: &OpencodeBuildOptions) -> String {
         extra_env.push((
             "OPENCODE_PERMISSION".to_string(),
             READ_ONLY_PERMISSION.to_string(),
+        ));
+    }
+    if let Some(limit) = options.launch.max_output_tokens {
+        validate_max_output_tokens(limit).unwrap_or_else(|error| panic!("{error}"));
+        extra_env.push((
+            "OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX".to_string(),
+            limit.to_string(),
         ));
     }
 

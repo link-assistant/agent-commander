@@ -15,6 +15,7 @@ import {
 import {
   normalizeAttachments,
   normalizeReasoningEffort,
+  validateMaxOutputTokens,
 } from './launch-options.mjs';
 
 const READ_ONLY_PERMISSION = '{"edit":"deny","bash":"deny","task":"deny"}';
@@ -113,6 +114,7 @@ export function buildCommand(options) {
     readOnly = false,
     executable = 'opencode',
     extraEnv,
+    maxOutputTokens,
     ...argOptions
   } = options;
   const args = buildArgs(argOptions);
@@ -126,14 +128,20 @@ export function buildCommand(options) {
   const inputCommand = promptFile
     ? `cat ${escapeArg(promptFile)}`
     : `printf '%s' '${escapeSingleQuotes(combinedPrompt)}'`;
-  // The read-only policy is a library constant, so it may stay on the
-  // command line; caller `extraEnv` goes through the spawn environment.
+  // Apply only non-secret, typed options here. Caller `extraEnv` travels
+  // through the spawn environment.
+  const fixedEnv = {};
+  if (readOnly) {
+    fixedEnv.OPENCODE_PERMISSION = READ_ONLY_PERMISSION;
+  }
+  validateMaxOutputTokens(maxOutputTokens);
+  if (typeof maxOutputTokens === 'number') {
+    fixedEnv.OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX = maxOutputTokens;
+  }
   return `${inputCommand} | ${buildCommandHead({
     executable,
     extraEnv,
-    fixedEnv: readOnly
-      ? [['OPENCODE_PERMISSION', READ_ONLY_PERMISSION]]
-      : undefined,
+    fixedEnv,
   })} ${args.map(escapeArg).join(' ')}`.trim();
 }
 
@@ -192,6 +200,7 @@ export const opencodeTool = {
   supportsAsk: false, // Only a static up-front policy; no per-command request/response relay
   supportsReasoningEffort: true, // --variant <provider-specific level>
   reasoningEfforts: null, // Variants are defined by the model provider
+  supportsMaxOutputTokens: true, // OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX
   supportsMcpConfig: false, // MCP servers come from opencode.json only
   supportsStrictMcpConfig: false,
   supportsAdditionalDirectories: false, // No extra workspace directory flag

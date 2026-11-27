@@ -4,7 +4,8 @@
 use super::usage::{self, count};
 use crate::streaming::parse_json_records;
 use crate::tools::launch_options::{
-    json_schema_arg, normalize_reasoning_effort, push_directories, LaunchOptions,
+    json_schema_arg, normalize_reasoning_effort, push_directories, validate_max_output_tokens,
+    LaunchOptions,
 };
 use crate::tools::shell::{build_command_head, escape_arg, file_content_arg, lookup_model_alias};
 use serde_json::Value;
@@ -350,9 +351,21 @@ pub fn build_command(options: &ClaudeBuildOptions) -> String {
         args_str.push(file_content_arg("--json-schema", file));
     }
     let executable = options.executable.as_deref().unwrap_or("claude");
+    let fixed_env: Vec<_> = options
+        .launch
+        .max_output_tokens
+        .map(|limit| {
+            validate_max_output_tokens(limit).unwrap_or_else(|error| panic!("{error}"));
+            (
+                "CLAUDE_CODE_MAX_OUTPUT_TOKENS".to_string(),
+                limit.to_string(),
+            )
+        })
+        .into_iter()
+        .collect();
     let command = format!(
         "{} {}",
-        build_command_head(executable, &[], &[], &[]),
+        build_command_head(executable, &[], &fixed_env, &[]),
         args_str.join(" ")
     )
     .trim()

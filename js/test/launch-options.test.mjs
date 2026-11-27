@@ -6,6 +6,8 @@
 
 import { mock, test } from 'node:test';
 import assert from 'node:assert';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { fileURLToPath, URL } from 'node:url';
 import {
   agent,
   buildAgentCommand,
@@ -34,6 +36,140 @@ const MCP = {
 
 const args = (toolName, options) =>
   getTool({ toolName }).buildArgs({ prompt: 'hi', ...options });
+
+const cliPath = fileURLToPath(
+  new URL('../bin/start-agent.mjs', import.meta.url)
+);
+const generationBase = {
+  workingDirectory: process.cwd(),
+  prompt: 'hello',
+};
+
+test('generation capabilities report native controls for every tool', () => {
+  for (const tool of Object.values(tools)) {
+    const capabilities = getLaunchCapabilities(tool);
+    assert.equal(
+      capabilities.maxOutputTokens,
+      ['claude', 'opencode'].includes(tool.name),
+      tool.name
+    );
+    assert.equal(capabilities.temperature, tool.name === 'agent', tool.name);
+  }
+});
+
+test('Agent forwards temperature zero via its native flag', () => {
+  const result = args('agent', { temperature: 0 });
+  const index = result.indexOf('--temperature');
+  assert.notEqual(index, -1);
+  assert.equal(result[index + 1], '0');
+});
+
+test('OpenCode forwards the output budget alongside its read-only policy', () => {
+  const command = buildAgentCommand({
+    ...generationBase,
+    tool: 'opencode',
+    isolation: 'docker',
+    readOnly: true,
+    maxOutputTokens: 128,
+  });
+  assert.match(
+    command,
+    /OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX=128 opencode run/
+  );
+  assert.match(command, /OPENCODE_PERMISSION=/);
+});
+
+test('unsupported generation options fail before launch', async () => {
+  for (const [tool, option, flag] of [
+    ['codex', { maxOutputTokens: 128 }, '--max-output-tokens'],
+    ['claude', { temperature: 0 }, '--temperature'],
+    ['custom-tool', { temperature: 0.1 }, '--temperature'],
+  ]) {
+    const expected = new RegExp(`Tool "${tool}" does not support.*${flag}`);
+    assert.throws(
+      () => buildAgentCommand({ ...generationBase, tool, ...option }),
+      expected
+    );
+    await assert.rejects(
+      agent({ ...generationBase, tool, ...option }).start(),
+      expected
+    );
+  }
+});
+
+test('invalid library generation values are rejected', () => {
+  for (const maxOutputTokens of [0, 1.5, Infinity, '128', false]) {
+    assert.throws(
+      () =>
+        buildAgentCommand({
+          ...generationBase,
+          tool: 'claude',
+          maxOutputTokens,
+        }),
+      /--max-output-tokens.*positive/
+    );
+  }
+  for (const temperature of [-0.1, Infinity, NaN, '0.1', false]) {
+    assert.throws(
+      () =>
+        buildAgentCommand({ ...generationBase, tool: 'agent', temperature }),
+      /--temperature.*non-negative/
+    );
+  }
+});
+
+test('start-agent parses generation flags and rejects missing or invalid values', () => {
+  const denoArgs =
+    typeof globalThis.Deno === 'undefined'
+      ? []
+      : ['run', '--no-lock', '--allow-read', '--allow-env'];
+  const base = [
+    ...denoArgs,
+    cliPath,
+    '--working-directory',
+    process.cwd(),
+    '--dry-run',
+  ];
+  assert.match(
+    execFileSync(
+      process.execPath,
+      [...base, '--tool', 'agent', '--temperature=0.1'],
+      { encoding: 'utf8' }
+    ),
+    /--temperature 0\.1/
+  );
+  assert.match(
+    execFileSync(
+      process.execPath,
+      [...base, '--tool', 'claude', '--max-output-tokens', '128'],
+      { encoding: 'utf8' }
+    ),
+    /CLAUDE_CODE_MAX_OUTPUT_TOKENS=128/
+  );
+  for (const [flag, ...values] of [
+    ['--temperature'],
+    ['--max-output-tokens', '1.5'],
+    ['--max-output-tokens', '128', '--max-output-tokens=256'],
+  ]) {
+    const result = spawnSync(
+      process.execPath,
+      [...base, '--tool', 'claude', flag, ...values],
+      { encoding: 'utf8' }
+    );
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, new RegExp(flag));
+  }
+  const unsupported = spawnSync(
+    process.execPath,
+    [...base, '--tool', 'codex', '--max-output-tokens=128'],
+    { encoding: 'utf8' }
+  );
+  assert.equal(unsupported.status, 1);
+  assert.match(
+    unsupported.stderr,
+    /Tool "codex" does not support.*--max-output-tokens/
+  );
+});
 
 test('claude maps every launch option before --model', () => {
   const result = args('claude', {
@@ -230,6 +366,8 @@ test('getLaunchCapabilities reports each tool', () => {
   assert.deepStrictEqual(capabilities.claude, {
     reasoningEffort: true,
     reasoningEfforts: ['low', 'medium', 'high', 'xhigh', 'max'],
+    maxOutputTokens: true,
+    temperature: false,
     mcpConfig: true,
     strictMcpConfig: true,
     additionalDirectories: true,
@@ -243,6 +381,8 @@ test('getLaunchCapabilities reports each tool', () => {
   assert.deepStrictEqual(capabilities.agent, {
     reasoningEffort: false,
     reasoningEfforts: null,
+    maxOutputTokens: false,
+    temperature: true,
     mcpConfig: false,
     strictMcpConfig: false,
     additionalDirectories: false,

@@ -106,6 +106,8 @@ async function main() {
       screenName: options.screenName,
       containerName: options.containerName,
       reasoningEffort: options.reasoningEffort,
+      maxOutputTokens: options.maxOutputTokens,
+      temperature: options.temperature,
       mcpConfig: options.mcpConfig,
       strictMcpConfig: options.strictMcpConfig,
       additionalDirectories: options.additionalDirectories,

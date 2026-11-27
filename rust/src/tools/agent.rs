@@ -83,6 +83,8 @@ pub struct AgentBuildOptions {
     pub prompt_file: Option<String>,
     pub system_prompt: Option<String>,
     pub model: Option<String>,
+    /// Native sampling temperature (`--temperature`)
+    pub temperature: Option<f64>,
     pub resume: Option<String>,
     pub compact_json: bool,
     pub use_existing_claude_oauth: bool,
@@ -160,6 +162,13 @@ pub fn build_args(options: &AgentBuildOptions) -> Vec<String> {
         let mapped_model = map_model_to_id(model);
         args.push("--model".to_string());
         args.push(mapped_model);
+    }
+
+    if let Some(temperature) = options.temperature {
+        super::launch_options::validate_temperature(temperature)
+            .unwrap_or_else(|error| panic!("{error}"));
+        args.push("--temperature".to_string());
+        args.push(temperature.to_string());
     }
 
     if options.compact_json {

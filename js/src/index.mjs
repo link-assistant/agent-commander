@@ -25,9 +25,10 @@ import {
   setupSignalHandler,
   startCommand,
 } from './executor.mjs';
-import { isToolSupported, resolveToolConfig } from './tools/index.mjs';
+import { isToolSupported, resolveToolConfig, tools } from './tools/index.mjs';
 import { buildChildEnvironment } from './tools/shell.mjs';
 import {
+  assertLaunchOptionsSupported,
   definedLaunchOptions,
   jsonSchemaArg,
 } from './tools/launch-options.mjs';
@@ -161,6 +162,8 @@ function parseJsonMessages(options) {
  *   when provided together with approveEach for a relay-capable tool, native permission requests are
  *   normalized, relayed to this callback, and the decision is forwarded to the tool's stdin
  * @param {string} [options.reasoningEffort] - Native reasoning effort / variant level
+ * @param {number} [options.maxOutputTokens] - Native output token budget
+ * @param {number} [options.temperature] - Native sampling temperature
  * @param {string|Object} [options.mcpConfig] - MCP servers: config path, inline JSON or `{mcpServers}` object
  * @param {boolean} [options.strictMcpConfig=false] - Use only the servers from `mcpConfig`
  * @param {string|string[]} [options.additionalDirectories] - Extra directories the agent may access
@@ -198,6 +201,8 @@ export function agent(options) {
     approveEach = false,
     onPermissionRequest,
     reasoningEffort,
+    maxOutputTokens,
+    temperature,
     mcpConfig,
     strictMcpConfig = false,
     additionalDirectories,
@@ -367,6 +372,29 @@ export function agent(options) {
       onOutput,
     } = startOptions;
 
+    const launchOptions = {
+      ...definedLaunchOptions({
+        reasoningEffort,
+        mcpConfig,
+        strictMcpConfig,
+        additionalDirectories,
+        attachments,
+        jsonSchema,
+      }),
+      maxOutputTokens,
+      temperature,
+      ...toolOptions,
+    };
+    assertLaunchOptionsSupported({
+      tool,
+      toolConfig,
+      tools,
+      requested: {
+        maxOutputTokens: launchOptions.maxOutputTokens,
+        temperature: launchOptions.temperature,
+      },
+    });
+
     // Fail clearly (before any filesystem side effects such as writing the
     // temporary prompt file) when ask mode is requested for a tool that has no
     // drivable per-command approval protocol — same pattern as `--read-only`.
@@ -435,18 +463,7 @@ export function agent(options) {
         commandOptions.model = model;
         commandOptions.json = json;
         commandOptions.resume = resume;
-        Object.assign(
-          commandOptions,
-          definedLaunchOptions({
-            reasoningEffort,
-            mcpConfig,
-            strictMcpConfig,
-            additionalDirectories,
-            attachments,
-            jsonSchema,
-          }),
-          toolOptions
-        );
+        Object.assign(commandOptions, launchOptions);
       }
 
       // When relaying per-command approvals or accepting live input, force a

@@ -77,10 +77,14 @@ printf '%s\n' '{{"type":"result","subtype":"success","session_id":"s","result":"
         append_system_prompt: Some("PRIVATE-APPEND".into()),
         json: true,
         executable: Some(fake.display().to_string()),
-        extra_env: pairs(&[("API_TOKEN", "sk-very-secret")]),
+        extra_env: pairs(&[
+            ("API_TOKEN", "sk-very-secret"),
+            ("CLAUDE_CODE_MAX_OUTPUT_TOKENS", "256"),
+        ]),
         inherit_env: InheritEnv::Only(vec!["PATH".into()]),
         launch: LaunchOptions {
             json_schema: Some(r#"{"type":"object","properties":{"secretField":{}}}"#.into()),
+            max_output_tokens: Some(128),
             ..Default::default()
         },
         ..Default::default()
@@ -114,6 +118,12 @@ printf '%s\n' '{{"type":"result","subtype":"success","session_id":"s","result":"
     let schema: serde_json::Value = serde_json::from_str(&read("schema")).unwrap();
     assert_eq!(schema["properties"]["secretField"], serde_json::json!({}));
     let env = read("env");
+    assert!(
+        env.lines()
+            .any(|line| line == "CLAUDE_CODE_MAX_OUTPUT_TOKENS=128"),
+        "{env}"
+    );
+    assert!(!argv.contains("CLAUDE_CODE_MAX_OUTPUT_TOKENS"), "{argv}");
     assert!(
         env.lines().any(|l| l == "API_TOKEN=sk-very-secret"),
         "{env}"

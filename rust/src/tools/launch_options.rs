@@ -1,16 +1,16 @@
-//! Launch options shared by every tool (issue #57).
-//!
-//! Reasoning effort, MCP servers, extra workspace directories, file
-//! attachments and a JSON Schema for structured output. Each tool maps them onto its own native flag; a tool without a native flag rejects the option instead of
-//! silently dropping it.
+//! Shared launch options and their native tool capabilities.
 
 use serde_json::Value;
 
 /// Launch options shared by every tool
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct LaunchOptions {
     /// Native reasoning effort / variant level (`--reasoning-effort`)
     pub reasoning_effort: Option<String>,
+    /// Native output token budget (`--max-output-tokens`)
+    pub max_output_tokens: Option<u64>,
+    /// Native sampling temperature (`--temperature`)
+    pub temperature: Option<f64>,
     /// MCP servers: config file path or inline `{"mcpServers": {...}}` JSON
     pub mcp_config: Option<String>,
     /// Use only the servers from `mcp_config`
@@ -42,6 +42,10 @@ pub struct LaunchCapabilities {
     pub reasoning_effort: bool,
     /// Documented effort levels; `None` when the tool or provider defines them
     pub reasoning_efforts: Option<&'static [&'static str]>,
+    /// Whether the tool has a native per-launch output token budget.
+    pub max_output_tokens: bool,
+    /// Whether the tool has a native per-launch temperature setting.
+    pub temperature: bool,
     pub mcp_config: bool,
     pub strict_mcp_config: bool,
     pub additional_directories: bool,
@@ -56,6 +60,27 @@ pub const CLAUDE_REASONING_EFFORTS: &[&str] = &["low", "medium", "high", "xhigh"
 pub const CODEX_REASONING_EFFORTS: &[&str] = &["none", "minimal", "low", "medium", "high", "xhigh"];
 
 const TOOLS: &[&str] = &["claude", "codex", "opencode", "agent", "gemini", "qwen"];
+
+pub(crate) const MAX_OUTPUT_TOKENS_ERROR: &str =
+    "--max-output-tokens must be a positive safe integer";
+pub(crate) const TEMPERATURE_ERROR: &str = "--temperature must be a finite non-negative number";
+
+pub(crate) fn validate_max_output_tokens(value: u64) -> Result<(), &'static str> {
+    // Match JavaScript's exact integer range across the two APIs.
+    if (1..=9_007_199_254_740_991).contains(&value) {
+        Ok(())
+    } else {
+        Err(MAX_OUTPUT_TOKENS_ERROR)
+    }
+}
+
+pub(crate) fn validate_temperature(value: f64) -> Result<(), &'static str> {
+    if value.is_finite() && value >= 0.0 {
+        Ok(())
+    } else {
+        Err(TEMPERATURE_ERROR)
+    }
+}
 
 /// Describe what a tool natively supports among the launch options.
 pub fn launch_capabilities(tool: &str) -> LaunchCapabilities {
@@ -88,6 +113,8 @@ pub fn launch_capabilities(tool: &str) -> LaunchCapabilities {
     LaunchCapabilities {
         reasoning_effort: effort,
         reasoning_efforts: efforts,
+        max_output_tokens: matches!(tool, "claude" | "opencode"),
+        temperature: tool == "agent",
         mcp_config: mcp,
         strict_mcp_config: strict,
         additional_directories: dirs,
@@ -96,7 +123,7 @@ pub fn launch_capabilities(tool: &str) -> LaunchCapabilities {
     }
 }
 
-/// Check that every requested launch option has a native flag in the tool.
+/// Check that every requested launch option has a native control in the tool.
 ///
 /// # Errors
 /// Returns the message naming the tools that do support the option.
@@ -115,7 +142,23 @@ pub fn check_launch_options_against(
     capabilities: &LaunchCapabilities,
 ) -> Result<(), String> {
     type Pick = fn(&LaunchCapabilities) -> bool;
-    let checks: [(bool, Pick, &str); 6] = [
+    if let Some(value) = launch.max_output_tokens {
+        validate_max_output_tokens(value)?;
+    }
+    if let Some(value) = launch.temperature {
+        validate_temperature(value)?;
+    }
+    let checks: [(bool, Pick, &str); 8] = [
+        (
+            launch.max_output_tokens.is_some(),
+            |c| c.max_output_tokens,
+            "an output token budget (--max-output-tokens)",
+        ),
+        (
+            launch.temperature.is_some(),
+            |c| c.temperature,
+            "sampling temperature (--temperature)",
+        ),
         (
             launch.reasoning_effort.is_some(),
             |c| c.reasoning_effort,
