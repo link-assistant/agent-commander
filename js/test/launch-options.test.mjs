@@ -122,7 +122,13 @@ test('start-agent parses generation flags and rejects missing or invalid values'
   const denoArgs =
     typeof globalThis.Deno === 'undefined'
       ? []
-      : ['run', '--no-lock', '--allow-read', '--allow-env'];
+      : [
+          'run',
+          '--no-lock',
+          '--allow-read',
+          '--allow-env',
+          '--allow-sys=osRelease',
+        ];
   const base = [
     ...denoArgs,
     cliPath,
